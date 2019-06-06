@@ -1,0 +1,20 @@
+planning:
+  discretization:
+    x    0.05
+    y    0.05
+    theta    0.19625
+    right_limb_j1    0.017453292519943295
+    right_limb_j2    0.017453292519943295
+    right_limb_j3    0.017453292519943295
+    right_limb_j4    0.017453292519943295
+    right_limb_j5    0.017453292519943295
+    right_limb_j6    0.017453292519943295
+    right_limb_j7    0.017453292519943295
+  use_xyz_snap_mprim: false
+  use_rpy_snap_mprim: false
+  use_xyzrpy_snap_mprim: false
+  use_short_dist_mprims: false
+  xyz_snap_dist_thresh: 0.2
+  rpy_snap_dist_thresh: 0.5
+  xyzrpy_snap_dist_thresh: 1.0
+  short_dist_mprims_thresh: 0.4
