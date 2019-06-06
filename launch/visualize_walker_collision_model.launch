@@ -3,7 +3,7 @@
     <arg name="rvizconfig" default ="$(find walker_planner)/config/urdf.rviz" />
 
 
-    <!--<include file="$(find walker_planner)/launch/planning_context_walker.launch"/>-->
+    <include file="$(find walker_planner)/launch/planning_context_walker.launch"/>
 
     <arg unless="$(arg debug)" name="launch-prefix" value=""/>
     <arg     if="$(arg debug)" name="launch-prefix" value="gdb -ex run --args"/>

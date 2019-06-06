@@ -22,7 +22,6 @@ find_package(catkin REQUIRED COMPONENTS
   smpl_ompl_interface
   smpl_moveit_interface
   visualization_msgs
-  walker_gazebo
   trac_ik_lib
 )
 
@@ -83,28 +82,20 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(test_walker src/test_smpl.cpp src/collision_space_scene.cpp)
-target_link_libraries(test_walker ${catkin_LIBRARIES} smpl::smpl)
-
-add_executable(test_walker_interface src/test_smpl_interface.cpp src/collision_space_scene.cpp)
-target_link_libraries(test_walker_interface ${catkin_LIBRARIES} smpl::smpl
-    ${orocos_kdl_LIBRARIES})
-add_dependencies(test_walker_interface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-add_executable(test_walker_interface src/test_walker_interface.cpp src/collision_space_scene.cpp)
-target_link_libraries(test_walker_interface ${catkin_LIBRARIES} smpl::smpl
-    ${orocos_kdl_LIBRARIES})
-add_dependencies(test_walker_interface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-add_executable(test_urdf src/test_urdf.cpp src/collision_space_scene.cpp)
-target_link_libraries(test_urdf ${catkin_LIBRARIES} smpl::smpl)
-
-add_executable(test_urdf_walker src/test_urdf_walker.cpp
+add_executable(collision_model_visualizer src/collision_model_visualizer.cpp
     src/collision_space_scene.cpp)
-target_link_libraries(test_urdf_walker ${catkin_LIBRARIES} smpl::smpl)
+target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
 
-add_executable(interactive_planner src/interactive_planner.cpp src/collision_space_scene.cpp)
-target_link_libraries(interactive_planner ${catkin_LIBRARIES} smpl::smpl)
+#add_executable(test_walker src/test_smpl.cpp src/collision_space_scene.cpp)
+#target_link_libraries(test_walker ${catkin_LIBRARIES} smpl::smpl)
+
+#add_executable(walker_interface_planner src/test_walker_interface.cpp src/collision_space_scene.cpp)
+#target_link_libraries(test_walker_interface ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+#add_dependencies(test_walker_interface ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+
+#add_executable(interactive_planner src/interactive_planner.cpp src/collision_space_scene.cpp)
+#target_link_libraries(interactive_planner ${catkin_LIBRARIES} smpl::smpl)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
