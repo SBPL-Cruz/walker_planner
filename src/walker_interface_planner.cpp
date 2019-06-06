@@ -1049,7 +1049,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
 
 int main(int argc, char* argv[])
 {
-    ros::init(argc, argv, "test_walker_interface");
+    ros::init(argc, argv, "walker_interface_planner");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);
