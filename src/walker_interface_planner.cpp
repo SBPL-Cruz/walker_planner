@@ -63,7 +63,6 @@
 #include <cruzr_planner/Path1.h>
 #include "publish_path.h"
 
-#include <trac_ik/trac_ik.hpp>
 
 int plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::Pose grasp, octomap_msgs::OctomapWithPose octomap);
 void FillGoalConstraint(
@@ -867,12 +866,6 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
 
         smpl::PlannerInterface planner(rm.get(), &cc, &grid);
 
-        // XXX
-        // Trac_ik
-        double timeout = 0.05;
-        double eps = 1e-3;
-        //planner.m_tracik_solver_ptr = std::make_shared<TRAC_IK::TRAC_IK>( robot_description, "right_shoulder", "rght_hand_dummy_gripper", timeout, eps );
-
         smpl::PlanningParams params;
 
         params.addParam("discretization", planning_config.discretization);
@@ -931,7 +924,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if (planning_mode == "BASE")
             req.planner_id = "arastar.euclid_diff.manip";
         else
-            req.planner_id = "arastar.bfs.manip";
+            req.planner_id = "arastar.euclid.bfs.manip";
         req.start_state = start_state;
     //    req.trajectory_constraints;
     //    req.workspace_parameters;

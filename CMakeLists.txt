@@ -88,9 +88,8 @@ add_executable(walker_interface_planner src/walker_interface_planner.cpp src/col
 target_link_libraries(walker_interface_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 add_dependencies(walker_interface_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-#add_executable(test_walker src/test_smpl.cpp src/collision_space_scene.cpp)
-#target_link_libraries(test_walker ${catkin_LIBRARIES} smpl::smpl)
-
+add_executable(walker_planner src/walker_planner.cpp src/collision_space_scene.cpp)
+target_link_libraries(walker_planner ${catkin_LIBRARIES} smpl::smpl)
 
 #add_executable(interactive_planner src/interactive_planner.cpp src/collision_space_scene.cpp)
 #target_link_libraries(interactive_planner ${catkin_LIBRARIES} smpl::smpl)
