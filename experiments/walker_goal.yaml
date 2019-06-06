@@ -1,0 +1,22 @@
+initial_configuration:
+  joint_state:
+    - { name: x, position: 0.0 }
+    - { name: y, position: 0.0 }
+    - { name: theta, position: 0.0 }
+    - { name: head_j1,   position: 0.0 }
+    - { name: head_j2,   position: 0.0 }
+    - { name: right_limb_j1, position: 0.0 }
+    - { name: right_limb_j2, position: 0.0 }
+    - { name: right_limb_j3, position: 0.0 }
+    - { name: right_limb_j4, position: 0.0 }
+    - { name: right_limb_j5, position: 0.0 }
+    - { name: right_limb_j6, position: 0.0 }
+    - { name: right_limb_j7, position: 0.0 }
+
+goal:
+  x: 0.70
+  y: 0.15
+  z: 1.00
+  roll: 0.0
+  pitch: 0.0
+  yaw: 1.57
