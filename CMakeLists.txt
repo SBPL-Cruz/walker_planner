@@ -22,7 +22,6 @@ find_package(catkin REQUIRED COMPONENTS
   smpl_ompl_interface
   smpl_moveit_interface
   visualization_msgs
-  trac_ik_lib
 )
 
 

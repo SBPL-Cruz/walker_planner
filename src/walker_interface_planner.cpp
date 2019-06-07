@@ -878,7 +878,8 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         params.addParam("rpy_snap_dist_thresh", planning_config.rpy_snap_dist_thresh);
         params.addParam("xyzrpy_snap_dist_thresh", planning_config.xyzrpy_snap_dist_thresh);
         params.addParam("short_dist_mprims_thresh", planning_config.short_dist_mprims_thresh);
-        params.addParam("epsilon", 100.0);
+        params.addParam("epsilon", 50.0);
+        params.addParam("epsilon_mha", 20);
         params.addParam("search_mode", false);
         params.addParam("allow_partial_solutions", false);
         params.addParam("target_epsilon", 1.0);
@@ -924,7 +925,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if (planning_mode == "BASE")
             req.planner_id = "arastar.euclid_diff.manip";
         else
-            req.planner_id = "arastar.euclid.bfs.manip";
+            req.planner_id = "mhastar.euclid.bfs.manip";
         req.start_state = start_state;
     //    req.trajectory_constraints;
     //    req.workspace_parameters;
