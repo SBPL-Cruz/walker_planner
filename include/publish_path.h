@@ -1,5 +1,5 @@
-#include "cruzr_planner/GraspPose.h"
-#include "cruzr_planner/Path1.h"
+#include "walker_planner/GraspPose.h"
+#include "walker_planner/Path1.h"
 
 void publish_path(std::vector<smpl::RobotState> path, ros::Publisher path_pub)
 {
@@ -11,12 +11,12 @@ void publish_path(std::vector<smpl::RobotState> path, ros::Publisher path_pub)
   //while(ros::ok())
   for(int k=0; k<10000;k++)
   {
-  cruzr_planner::Path1 Final_path;
+  walker_planner::Path1 Final_path;
   for(int i=0;i<path.size();i++)
     {
       // std::cerr<<i<<" "<<"path size "<<path.size()<<'\n';
       // std::cerr<<"states size "<<path[i].size()<<'\n';
-      cruzr_planner::GraspPose State;
+      walker_planner::GraspPose State;
       for(int j=0;j<path[i].size();j++)
       {
           // std::cerr<<path[i][j]<<' ';

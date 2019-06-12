@@ -61,10 +61,9 @@ generate_messages(
     )
 
 catkin_package(
-#INCLUDE_DIRS include
+INCLUDE_DIRS include
 #  LIBRARIES walker
-CATKIN_DEPENDS geometry_msgs leatherman moveit_msgs moveit_ros_planning
-message_runtime std_msgs
+CATKIN_DEPENDS geometry_msgs leatherman moveit_msgs moveit_ros_planning message_runtime std_msgs
 #orocos_kdl roscpp sbpl_collision_checking sbpl_kdl_robot_model smpl
 #smpl_ompl_interface smpl_moveit_interface visualization_msgs
 #DEPENDS system_lib
@@ -84,11 +83,12 @@ add_executable(collision_model_visualizer src/collision_model_visualizer.cpp
 target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
 
 add_executable(walker_interface_planner src/walker_interface_planner.cpp src/collision_space_scene.cpp)
-target_link_libraries(walker_interface_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 add_dependencies(walker_interface_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(walker_interface_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 
-add_executable(walker_planner src/walker_planner.cpp src/collision_space_scene.cpp)
-target_link_libraries(walker_planner ${catkin_LIBRARIES} smpl::smpl)
+
+#add_executable(walker_planner src/walker_planner.cpp src/collision_space_scene.cpp)
+#target_link_libraries(walker_planner ${catkin_LIBRARIES} smpl::smpl)
 
 #add_executable(interactive_planner src/interactive_planner.cpp src/collision_space_scene.cpp)
 #target_link_libraries(interactive_planner ${catkin_LIBRARIES} smpl::smpl)
