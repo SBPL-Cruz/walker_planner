@@ -332,6 +332,7 @@ struct PlannerConfig
 {
     std::string discretization;
     std::string mprim_filename;
+    std::string mprim_filenames;
     bool use_xyz_snap_mprim;
     bool use_rpy_snap_mprim;
     bool use_xyzrpy_snap_mprim;
@@ -351,6 +352,11 @@ bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config)
 
     if (!nh.getParam("mprim_filename", config.mprim_filename)) {
         ROS_ERROR("Failed to read param 'mprim_filename' from the param server");
+        return false;
+    }
+
+    if (!nh.getParam("mprim_filenames", config.mprim_filenames)) {
+        ROS_ERROR("Failed to read param 'mprim_filenames' from the param server");
         return false;
     }
 
@@ -656,22 +662,23 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         //while(!m_start_received) {
         //    ROS_ERROR("Waiting for the Start state from AMCL.");
         //}
-        //ROS_INFO("Start received");
-        // m_start_base.position.x = 0;
-        // m_start_base.position.y = 0;
-        start_state.joint_state.position[1] = m_start_base.position.y;
-        start_state.joint_state.position[0] = m_start_base.position.x;
+        bool read_goal_from_file;
+        ph.param("read_goal_from_file", read_goal_from_file, true );
+        if( !read_goal_from_file ){
+            start_state.joint_state.position[1] = m_start_base.position.y;
+            start_state.joint_state.position[0] = m_start_base.position.x;
 
-        {
-        double roll, pitch, yaw;
-        tf::Quaternion q(
-            m_start_base.orientation.x,
-            m_start_base.orientation.y,
-            m_start_base.orientation.z,
-            m_start_base.orientation.w);
-        tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+            {
+            double roll, pitch, yaw;
+            tf::Quaternion q(
+                m_start_base.orientation.x,
+                m_start_base.orientation.y,
+                m_start_base.orientation.z,
+                m_start_base.orientation.w);
+            tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
-        start_state.joint_state.position[2] = yaw;
+            start_state.joint_state.position[2] = yaw;
+            }
         }
 
 
@@ -770,8 +777,6 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
             goal_state[4] = pitch;
             goal_state[5] = yaw;
         }
-         bool read_goal_from_file;
-         ph.param("read_goal_from_file", read_goal_from_file, true );
          // Read from file.
          if (read_goal_from_file) {
              ph.param("goal/x", goal_state[0], 0.0);
@@ -870,7 +875,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
 
         std::string mprim_filenames;
         params.addParam("mprim_filename", planning_config.mprim_filename);
-
+        params.addParam("mprim_filenames", planning_config.mprim_filenames);
         params.addParam("discretization", planning_config.discretization);
         params.addParam("use_xyz_snap_mprim", planning_config.use_xyz_snap_mprim);
         params.addParam("use_rpy_snap_mprim", planning_config.use_rpy_snap_mprim);
@@ -927,7 +932,8 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if (planning_mode == "BASE")
             req.planner_id = "arastar.euclid_diff.manip";
         else
-            req.planner_id = "mrmhastar.euclid.bfs.euclid_diff.manip_mr";
+            //req.planner_id = "mrmhastar.euclid.bfs.euclid_diff.manip_mr";
+            req.planner_id = "mrmhastar.euclid_diff.euclid_diff.manip_mr";
         req.start_state = start_state;
     //    req.trajectory_constraints;
     //    req.workspace_parameters;
