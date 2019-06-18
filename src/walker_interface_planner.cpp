@@ -1,4 +1,4 @@
-  ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2012, Benjamin Cohen
 // All rights reserved.
 //
@@ -521,6 +521,9 @@ class MsgSubscriber {
 
             std::string planning_mode = "FULLBODY";
             ros::param::get("/walker_planner_mode", planning_mode);
+	    ROS_ERROR("mode: %s", planning_mode.c_str());
+	    ROS_ERROR("start_received: %d", m_start_received);
+	    ROS_ERROR("occgrid received: %d", m_occgrid_received);
             if( ( planning_mode == "FULLBODY" ) && m_start_received &&
                    m_occgrid_received){// &&  m_octomap_received) {
                 ROS_ERROR("Fullbody Planner Called.");
@@ -616,17 +619,17 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         ros::param::get("/walker_planner_mode", planning_mode);
         if (planning_mode == "BASE") {
             ROS_INFO("Switching to BASE planning mode.");
-            ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "base_link");
-            ros::param::set("/test_walker_interface/robot_model/planning_joints", "x y theta");
+            ros::param::set("/walker_interface_planner/robot_model/chain_tip_link", "base_link");
+            ros::param::set("/walker_interface_planner/robot_model/planning_joints", "x y theta");
             std::string pkg_path = ros::package::getPath("walker_planner");
-            ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker_base.mprim");
+            ros::param::set("/walker_interface_planner/planning/mprim_filename", pkg_path + "/config/walker_base.mprim");
         }
         else {
           ROS_INFO("Switching to FULLBODY planning mode.");
-          ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "right_palm_link");
-          ros::param::set("/test_walker_interface/robot_model/planning_joints", "x  y theta right_limb_j1  right_limb_j2 right_limb_j3 right_limb_j4 right_limb_j5 right_limb_j6 right_limb_j7" );
+          ros::param::set("/walker_interface_planner/robot_model/chain_tip_link", "right_palm_link");
+          ros::param::set("/walker_interface_planner/robot_model/planning_joints", "x  y theta right_limb_j1  right_limb_j2 right_limb_j3 right_limb_j4 right_limb_j5 right_limb_j6 right_limb_j7" );
           std::string pkg_path = ros::package::getPath("walker_planner");
-          ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker.mprim");
+          ros::param::set("/walker_interface_planner/planning/mprim_filename", pkg_path + "/config/walker.mprim");
         }
 
 
@@ -867,7 +870,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         smpl::PlannerInterface planner(rm.get(), &cc, &grid);
 
         smpl::PlanningParams params;
-
+        ROS_ERROR("mprim_filename, %s", planning_config.mprim_filename.c_str());
         params.addParam("discretization", planning_config.discretization);
         params.addParam("mprim_filename", planning_config.mprim_filename);
         params.addParam("use_xyz_snap_mprim", planning_config.use_xyz_snap_mprim);
