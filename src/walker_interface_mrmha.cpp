@@ -60,7 +60,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include "collision_space_scene.h"
 #include <nav_msgs/OccupancyGrid.h>
-#include <cruzr_planner/Path1.h>
+#include <cruiser_msgs/Path1.h>
 #include "publish_path.h"
 
 
@@ -428,7 +428,7 @@ class MsgSubscriber {
 
             ros::param::set("/walker_planner_request", 0);
             ros::param::set("/walker_planner_done", 0);
-            m_path_pub = m_nh.advertise<cruzr_planner::Path1>("Robot_path", 1000);
+            m_path_pub = m_nh.advertise<cruiser_msgs::Path1>("Robot_path", 1000);
             m_sub_start = m_nh.subscribe("/poseupdate", 1000, &MsgSubscriber::startCallback, this);
             m_sub_occgrid = m_nh.subscribe("/map", 1000, &MsgSubscriber::occgridCallback, this);
             //m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &MsgSubscriber::octomapCallback, this);
@@ -625,7 +625,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
           ROS_INFO("Switching to FULLBODY planning mode.");
           ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "right_palm_link");
           ros::param::set("/test_walker_interface/robot_model/planning_joints", "x  y theta right_limb_j1  right_limb_j2 right_limb_j3 right_limb_j4 right_limb_j5 right_limb_j6 right_limb_j7" );
-          std::string pkg_path = ros::package::getPath("cruzr_planner");
+          std::string pkg_path = ros::package::getPath("cruiser_msgs");
           ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker.mprim");
         }
 
