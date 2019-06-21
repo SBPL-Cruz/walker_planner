@@ -62,9 +62,8 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <cruzr_planner/Path1.h>
 #include "publish_path.h"
+#include "get_collision_objects.h"
 
-
-int plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::Pose grasp, octomap_msgs::OctomapWithPose octomap);
 void FillGoalConstraint(
     const std::vector<double>& pose,
     std::string frame_id,
@@ -109,113 +108,6 @@ void FillGoalConstraint(
     ROS_INFO("Done packing the goal constraints message.");
 }
 
-auto GetCollisionCube(
-    const geometry_msgs::Pose& pose,
-    std::vector<double>& dims,
-    const std::string& frame_id,
-    const std::string& id)
-    -> moveit_msgs::CollisionObject
-{
-    moveit_msgs::CollisionObject object;
-    object.id = id;
-    object.operation = moveit_msgs::CollisionObject::ADD;
-    object.header.frame_id = frame_id;
-    object.header.stamp = ros::Time::now();
-
-    shape_msgs::SolidPrimitive box_object;
-    box_object.type = shape_msgs::SolidPrimitive::BOX;
-    box_object.dimensions.resize(3);
-    box_object.dimensions[0] = dims[0];
-    box_object.dimensions[1] = dims[1];
-    box_object.dimensions[2] = dims[2];
-
-    object.primitives.push_back(box_object);
-    object.primitive_poses.push_back(pose);
-    return object;
-}
-
-auto GetCollisionCubes(
-    std::vector<std::vector<double>>& objects,
-    std::vector<std::string>& object_ids,
-    const std::string& frame_id)
-    -> std::vector<moveit_msgs::CollisionObject>
-{
-    std::vector<moveit_msgs::CollisionObject> objs;
-    std::vector<double> dims(3,0);
-    geometry_msgs::Pose pose;
-    pose.orientation.x = 0;
-    pose.orientation.y = 0;
-    pose.orientation.z = 0;
-    pose.orientation.w = 1;
-
-    if (object_ids.size() != objects.size()) {
-        ROS_INFO("object id list is not same length as object list. exiting.");
-        return objs;
-    }
-
-    for (size_t i = 0; i < objects.size(); i++) {
-        pose.position.x = objects[i][0];
-        pose.position.y = objects[i][1];
-        pose.position.z = objects[i][2];
-        dims[0] = objects[i][3];
-        dims[1] = objects[i][4];
-        dims[2] = objects[i][5];
-
-        objs.push_back(GetCollisionCube(pose, dims, frame_id, object_ids.at(i)));
-    }
-    return objs;
-}
-
-auto GetCollisionObjects(
-    const std::string& filename,
-    const std::string& frame_id)
-    -> std::vector<moveit_msgs::CollisionObject>
-{
-    char sTemp[1024];
-    int num_obs = 0;
-    std::vector<std::string> object_ids;
-    std::vector<std::vector<double> > objects;
-    std::vector<moveit_msgs::CollisionObject> objs;
-
-    FILE* fCfg = fopen(filename.c_str(), "r");
-
-    if (fCfg == NULL) {
-        ROS_INFO("ERROR: unable to open objects file. Exiting.\n");
-        return objs;
-    }
-
-    // get number of objects
-    if (fscanf(fCfg,"%s",sTemp) < 1) {
-        printf("Parsed string has length < 1.\n");
-    }
-
-    num_obs = atoi(sTemp);
-
-    ROS_INFO("%i objects in file",num_obs);
-
-    //get {x y z dimx dimy dimz} for each object
-    objects.resize(num_obs);
-    object_ids.clear();
-    for (int i=0; i < num_obs; ++i) {
-        if (fscanf(fCfg,"%s",sTemp) < 1) {
-            printf("Parsed string has length < 1.\n");
-        }
-        object_ids.push_back(sTemp);
-
-        objects[i].resize(6);
-        for (int j=0; j < 6; ++j)
-        {
-            if (fscanf(fCfg,"%s",sTemp) < 1) {
-                printf("Parsed string has length < 1.\n");
-            }
-            if (!feof(fCfg) && strlen(sTemp) != 0) {
-                objects[i][j] = atof(sTemp);
-            }
-        }
-    }
-
-    return GetCollisionCubes(objects, object_ids, frame_id);
-}
 
 bool ReadInitialConfiguration(
     ros::NodeHandle& nh,
@@ -436,7 +328,7 @@ class MsgSubscriber {
             ros::param::set("/walker_planner_done", 0);
             m_path_pub = m_nh.advertise<cruzr_planner::Path1>("Robot_path", 1000);
             m_sub_start = m_nh.subscribe("/poseupdate", 1000, &MsgSubscriber::startCallback, this);
-            m_sub_occgrid = m_nh.subscribe("/map", 1000, &MsgSubscriber::occgridCallback, this);
+            //m_sub_occgrid = m_nh.subscribe("/map", 1000, &MsgSubscriber::occgridCallback, this);
             //m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &MsgSubscriber::octomapCallback, this);
             m_sub_pose = m_nh.subscribe("/Grasps", 1000, &MsgSubscriber::poseCallback, this);
         }
@@ -464,15 +356,15 @@ class MsgSubscriber {
         }
 
         void occgridCallback(const nav_msgs::OccupancyGrid& msg) {
-            ROS_ERROR("Occupancy Grid received");
+            //ROS_ERROR("Occupancy Grid received");
 
             std::vector<smpl::Vector3> points;
             int height = msg.info.height;
             int width = msg.info.width;
             auto res = msg.info.resolution;
             geometry_msgs::Point origin = msg.info.origin.position;
-            ROS_ERROR("Occupancy grid origin: %f %f", origin.x, origin.y);
-            ROS_ERROR("Occupancy grid res: %f", res);
+            //ROS_ERROR("Occupancy grid origin: %f %f", origin.x, origin.y);
+            //ROS_ERROR("Occupancy grid res: %f", res);
 
             std::string planning_mode = "FULLBODY";
             ros::param::get("/walker_planner_mode", planning_mode);
@@ -527,9 +419,9 @@ class MsgSubscriber {
 
             std::string planning_mode = "FULLBODY";
             ros::param::get("/walker_planner_mode", planning_mode);
-            if( ( planning_mode == "FULLBODY" ) && m_start_received &&
-                   m_occgrid_received){// &&  m_octomap_received) {
-                ROS_ERROR("Fullbody Planner Called.");
+            if( ( planning_mode == "FULLBODY" ) && m_start_received){// &&
+                   //m_occgrid_received){// &&  m_octomap_received) {
+                //ROS_ERROR("Fullbody Planner Called.");
                 m_octomap_received = false;
                 m_start_received = false;
                 m_grasp_received = false;
@@ -537,18 +429,18 @@ class MsgSubscriber {
             }
             else if( ( planning_mode == "BASE" ) && m_start_received  &&
                     m_occgrid_received ) {
-                ROS_ERROR("Base Planner Called.");
+                //ROS_ERROR("Base Planner Called.");
                 plan(m_nh, m_ph, m_grasp, m_map_with_pose);
             }
             else{
-                ROS_ERROR("Planner mode not understood.");
+                //ROS_ERROR("Planner mode not understood.");
             }
         }
 
 
         void startCallback(const geometry_msgs::PoseWithCovarianceStamped start) {
-            if( m_start_received == false )
-                ROS_INFO("Start received");
+            //if( m_start_received == false )
+                //ROS_INFO("Start received");
             m_start_base = start.pose.pose;
             m_start_received = true;
         }
@@ -688,12 +580,12 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
 
         ROS_INFO("Initialize Occupancy Grid");
 
-        auto df_size_x = 15.0;
+        auto df_size_x = 20.0;
         auto df_size_y = 15.0;
-        auto df_size_z = 2.0;
+        auto df_size_z = 1.5;
         auto df_res = 0.05;
-        auto df_origin_x = m_start_base.position.x - 5;
-        auto df_origin_y = m_start_base.position.y - 4;
+        auto df_origin_x = 0;//m_start_base.position.x - 5;
+        auto df_origin_y = 0;//m_start_base.position.y - 4;
         auto df_origin_z = 0.0;
         auto max_distance = 1.8;
 
@@ -796,14 +688,19 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         scene.SetCollisionSpace(&cc);
 
         std::string object_filename;
-        ph.param<std::string>("object_filename", object_filename, "");
+        ph.getParam("object_filename", object_filename);
+        ROS_ERROR("%s", object_filename.c_str());
 
         // Read in collision objects from file and add to the scene...
-        if (!object_filename.empty()) {
-            auto objects = GetCollisionObjects(object_filename, planning_frame);
-            for (auto& object : objects) {
-                scene.ProcessCollisionObjectMsg(object);
-            }
+        //if (!object_filename.empty()) {
+        //    auto objects = GetCollisionObjects(object_filename, planning_frame);
+        //    for (auto& object : objects) {
+        //        scene.ProcessCollisionObjectMsg(object);
+        //    }
+        //}
+        auto objects = GetMultiRoomMapCollisionCubes(planning_frame, 20, 15, 1);
+        for (auto& object : objects) {
+            scene.ProcessCollisionObjectMsg(object);
         }
 
         ROS_INFO("Setting up robot model");
@@ -885,8 +782,8 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         params.addParam("rpy_snap_dist_thresh", planning_config.rpy_snap_dist_thresh);
         params.addParam("xyzrpy_snap_dist_thresh", planning_config.xyzrpy_snap_dist_thresh);
         params.addParam("short_dist_mprims_thresh", planning_config.short_dist_mprims_thresh);
-        params.addParam("epsilon", 50.0);
-        params.addParam("epsilon_mha", 20);
+        params.addParam("epsilon", 10.0);
+        params.addParam("epsilon_mha", 2);
         params.addParam("search_mode", false);
         params.addParam("allow_partial_solutions", false);
         params.addParam("target_epsilon", 1.0);
@@ -922,7 +819,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if(planning_mode == "BASE")
             FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.2, 0.2);
         else
-            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.10, 2*3.14);
+            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.40, 2*3.14);
 
         req.group_name = robot_config.group_name;
         req.max_acceleration_scaling_factor = 1.0;
@@ -933,7 +830,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
             req.planner_id = "arastar.euclid_diff.manip";
         else
             //req.planner_id = "mrmhastar.euclid.bfs.euclid_diff.manip_mr";
-            req.planner_id = "mrmhastar.euclid_diff.euclid_diff.manip_mr";
+            req.planner_id = "mrmhastar.euclid_diff.euclid_diff.arm_retract.manip_mr";
         req.start_state = start_state;
     //    req.trajectory_constraints;
     //    req.workspace_parameters;
