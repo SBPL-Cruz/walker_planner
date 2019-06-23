@@ -20,7 +20,7 @@ required="true" /> -->
 
     <node pkg="walker_planner" type="walker_interface_planner" name="walker_interface_planner"
             launch-prefix="$(arg launch-prefix)" output="screen">
-        <param name="planning_frame" value="dummy_base"/>
+        <param name="planning_frame" value="map"/>
 
         <!-- 1. robot model (for planning) -->
         <rosparam param="robot_model">

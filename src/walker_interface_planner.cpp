@@ -916,7 +916,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         ph.param("allowed_planning_time", req.allowed_planning_time, 30.0);
         req.goal_constraints.resize(1);
         if(planning_mode == "BASE")
-            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.2, 0.2);
+            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.03, 0.2);
         else
             FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.10, 2*3.14);
 
