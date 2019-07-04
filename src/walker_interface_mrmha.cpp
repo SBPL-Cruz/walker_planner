@@ -624,7 +624,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         else {
           ROS_INFO("Switching to FULLBODY planning mode.");
           ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "right_palm_link");
-          ros::param::set("/test_walker_interface/robot_model/planning_joints", "x  y theta right_limb_j1  right_limb_j2 right_limb_j3 right_limb_j4 right_limb_j5 right_limb_j6 right_limb_j7" );
+          ros::param::set("/test_walker_interface/robot_model/planning_joints", "x  y theta right_j1  right_j2 right_j3 right_j4 right_j5 right_j6 right_j7" );
           std::string pkg_path = ros::package::getPath("cruiser_msgs");
           ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker.mprim");
         }
