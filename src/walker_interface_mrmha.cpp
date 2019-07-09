@@ -698,7 +698,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         //        scene.ProcessCollisionObjectMsg(object);
         //    }
         //}
-        auto objects = GetMultiRoomMapCollisionCubes(planning_frame, 20, 15, 1);
+        auto objects = GetMultiRoomMapCollisionCubes(planning_frame, 20, 15, .8);
         for (auto& object : objects) {
             scene.ProcessCollisionObjectMsg(object);
         }
@@ -829,8 +829,9 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if (planning_mode == "BASE")
             req.planner_id = "arastar.euclid_diff.manip";
         else
-            //req.planner_id = "mrmhastar.euclid.bfs.euclid_diff.manip_mr";
-            req.planner_id = "mrmhastar.euclid_diff.euclid_diff.arm_retract.manip_mr";
+            //req.planner_id = "mrmhastar.euclid.bfs.euclid_diff.manip";
+            req.planner_id = "mrmhastar.euclid.euclid.arm_retract.manip_mr";
+            //req.planner_id = "mrmhastar.euclid.euclid_diff.manip_mr";
         req.start_state = start_state;
     //    req.trajectory_constraints;
     //    req.workspace_parameters;
