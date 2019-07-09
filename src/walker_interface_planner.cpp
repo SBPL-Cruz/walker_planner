@@ -297,6 +297,7 @@ struct RobotModelConfig
     std::vector<std::string> planning_joints;
     std::string kinematics_frame;
     std::string chain_tip_link;
+    std::string arm_start_link;
 };
 
 bool ReadRobotModelConfig(const ros::NodeHandle &nh, RobotModelConfig &config)
@@ -409,6 +410,25 @@ auto SetupRobotModel(const std::string& urdf, const RobotModelConfig &config)
     std::unique_ptr<smpl::KDLRobotModel> rm(new smpl::KDLRobotModel);
 
     if (!rm->init(urdf, config.kinematics_frame, config.chain_tip_link)) {
+        ROS_ERROR("Failed to initialize robot model.");
+        return NULL;
+    }
+
+    return std::move(rm);
+}
+
+auto SetupArmModel(const std::string& urdf, const RobotModelConfig &config)
+    -> std::unique_ptr<smpl::KDLRobotModel>
+{
+    if (config.arm_start_link.empty() || config.chain_tip_link.empty()) {
+        ROS_ERROR("Failed to retrieve param 'arm_start_link' or 'chain_tip_link' from the param server");
+        return NULL;
+    }
+
+    ROS_INFO("Construct Generic KDL Arm Model");
+    std::unique_ptr<smpl::KDLRobotModel> rm(new smpl::KDLRobotModel);
+
+    if (!rm->init(urdf, config.arm_start_link, config.chain_tip_link)) {
         ROS_ERROR("Failed to initialize robot model.");
         return NULL;
     }
@@ -808,6 +828,12 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         auto rm = SetupRobotModel(robot_description, robot_config);
         if (!rm) {
             ROS_ERROR("Failed to set up Robot Model");
+            return 1;
+        }
+
+        auto arm_rm = SetupArmModel(robot_description, robot_config);
+        if(!arm_rm){
+            ROS_ERROR("Failed to set up Arm modle.");
             return 1;
         }
 

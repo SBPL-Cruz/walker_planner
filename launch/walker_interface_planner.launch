@@ -40,6 +40,8 @@ required="true" /> -->
                 planar_1
             chain_tip_link:
                 right_palm_link
+            arm_start_link:
+                base_link
         </rosparam>
 
         <!-- collision checking -->
@@ -49,7 +51,7 @@ required="true" /> -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
         <param name="planning/mprim_filename" value="$(find walker_planner)/config/walker_right_arm.mprim"/>
         <param name="allowed_planning_time" value="50.0"/>
-        <param name="read_goal_from_file" value="false"/>
+        <param name="read_goal_from_file" value="true"/>
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
