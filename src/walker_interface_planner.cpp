@@ -326,6 +326,7 @@ bool ReadRobotModelConfig(const ros::NodeHandle &nh, RobotModelConfig &config)
     // only required for generic kdl robot model?
     nh.getParam("kinematics_frame", config.kinematics_frame);
     nh.getParam("chain_tip_link", config.chain_tip_link);
+    nh.getParam("arm_start_link", config.arm_start_link);
     return true;
 }
 
@@ -457,7 +458,7 @@ class MsgSubscriber {
 
         void octomapCallback(const octomap_msgs::Octomap& msg) {
             ROS_ERROR("Octomap received");
-            m_map_with_pose.header.frame_id = "world";
+            m_map_with_pose.header.frame_id = "map";
             m_map_with_pose.octomap = msg;
 
             geometry_msgs::Point p;
