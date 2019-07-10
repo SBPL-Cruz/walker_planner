@@ -451,7 +451,7 @@ class MsgSubscriber {
             m_path_pub = m_nh.advertise<walker_planner::Path1>("Robot_path", 1000);
             m_sub_start = m_nh.subscribe("/poseupdate", 1000, &MsgSubscriber::startCallback, this);
             m_sub_occgrid = m_nh.subscribe("/map", 1000, &MsgSubscriber::occgridCallback, this);
-            //m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &MsgSubscriber::octomapCallback, this);
+            m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &MsgSubscriber::octomapCallback, this);
             m_sub_pose = m_nh.subscribe("/Grasps", 1000, &MsgSubscriber::poseCallback, this);
         }
 
@@ -545,7 +545,7 @@ class MsgSubscriber {
 	    ROS_ERROR("start_received: %d", m_start_received);
 	    ROS_ERROR("occgrid received: %d", m_occgrid_received);
             if( ( planning_mode == "FULLBODY" ) && m_start_received &&
-                   m_occgrid_received){// &&  m_octomap_received) {
+                   m_occgrid_received &&  m_octomap_received) {
                 ROS_ERROR("Fullbody Planner Called.");
                 m_octomap_received = false;
                 m_start_received = false;
