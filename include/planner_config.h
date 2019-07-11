@@ -1,3 +1,6 @@
+#ifndef PLANNER_CONFIG_H
+#define PLANNER_CONFIG_H
+
 #include <vector>
 #include <ros/ros.h>
 
@@ -226,3 +229,5 @@ auto SetupArmModel(const std::string& urdf, const RobotModelConfig &config)
 
     return std::move(rm);
 }
+
+#endif
