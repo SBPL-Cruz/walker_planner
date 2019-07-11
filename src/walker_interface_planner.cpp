@@ -47,7 +47,6 @@
 #include <smpl/ros/propagation_distance_field.h>
 #include <sbpl_collision_checking/collision_space.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <smpl/angles.h>
 #include <smpl/debug/visualizer_ros.h>
 #include <tf/tf.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>

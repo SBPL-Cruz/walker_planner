@@ -9,6 +9,7 @@
 #include <moveit_msgs/PlanningScene.h>
 #include <sbpl_kdl_robot_model/kdl_robot_model.h>
 #include <smpl/spatial.h>
+#include <smpl/angles.h>
 
 bool ReadInitialConfiguration(
     ros::NodeHandle& nh,
