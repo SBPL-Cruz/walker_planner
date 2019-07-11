@@ -80,9 +80,46 @@ robot_collision_model:
     - link_name: right_palm_link
       auto: false
       spheres:
-          - { name: rp0, x: 0.0, y: -0.02, z: 0.02, radius: 0.055, priority: 2 }
-          - { name: rp1, x: -0.01, y: -0.1, z: 0.01, radius: 0.05, priority: 2 }
+          - { name: rp0, x: -0.01, y: -0.02, z: 0.02, radius: 0.055, priority: 2 }
+          - { name: rp1, x: -0.01, y: -0.1, z: 0.01, radius: 0.055, priority: 2 }
           - { name: rp2, x: 0.05, y: -0.03, z: 0.03, radius: 0.03, priority: 2 }
+    - link_name: left_limb_l1
+      auto: false
+      spheres:
+          #- { name: r10, x: 0.0, y: 0.0, z: 0, radius: 0.08, priority: 1 }
+          - { name: r10, x: 0.0, y: 0.0, z: -0.03, radius: 0.07, priority: 1 }
+    - link_name: left_limb_l2
+      auto: false
+      spheres:
+        - { name: r20, x: 0.0, y: -0.115, z: 0.0, radius: 0.05, priority: 5 }
+    - link_name: left_limb_l3
+      auto: false
+      spheres:
+        - { name: r30, x: 0.03, y: 0.0, z: 0.0, radius: 0.05, priority: 4 }
+    - link_name: left_limb_l4
+      auto: false
+      spheres:
+        - { name: r40, x: 0.03, y: -0.08, z: 0.0, radius: 0.04, priority: 4 }
+    - link_name: left_limb_l5
+      auto: false
+      spheres:
+        - { name: rlo0, x: 0, y: 0.0, z: -0.05, radius: 0.04, priority: 2 }
+        - { name: rlo0, x: 0, y: 0.0, z: -0.03, radius: 0.04, priority: 2 }
+        - { name: rlo0, x: 0, y: 0.0, z: 0.00, radius: 0.04, priority: 2 }
+    - link_name: left_limb_l6
+      auto: false
+      spheres:
+        - { name: rlo0, x: 0, y: 0.0, z: 0.00, radius: 0.04, priority: 2 }
+    - link_name: left_limb_l7
+      auto: false
+      spheres:
+        - { name: rlo0, x: 0, y: 0.0, z: 0.0, radius: 0.00, priority: 2 }
+    - link_name: left_palm_link
+      auto: false
+      spheres:
+          - { name: rp0, x: 0.0, y: -0.02, z: 0.02, radius: 0.05, priority: 2 }
+          - { name: rp1, x: -0.01, y: -0.1, z: 0.01, radius: 0.05, priority: 2 }
+          - { name: rp2, x: -0.05, y: -0.03, z: 0.03, radius: 0.03, priority: 2 }
 
 
   collision_groups:
@@ -94,6 +131,14 @@ robot_collision_model:
           - name: right_limb_l4
           - name: right_limb_l5
           - name: right_palm_link
+    - name: left_arm
+      links:
+          - name: left_limb_l1
+          - name: left_limb_l2
+          - name: left_limb_l3
+          - name: left_limb_l4
+          - name: left_limb_l5
+          - name: left_palm_link
     - name: base
       links:
           - name: base_link
@@ -103,7 +148,7 @@ robot_collision_model:
     - name: right_arm_base
       groups: [right_arm, base]
     - name: full_body
-      groups: [right_arm, base]
+      groups: [right_arm, left_arm, base]
     - name: head
       links:
         - name: head_l1
