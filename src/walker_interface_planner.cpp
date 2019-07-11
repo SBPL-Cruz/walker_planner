@@ -918,7 +918,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         params.addParam("bound_expansions", true);
         params.addParam("repair_time", 1.0);
         params.addParam("bfs_inflation_radius", 0.05);
-        params.addParam("bfs_cost_per_cell", 300);
+        params.addParam("bfs_cost_per_cell", 400);
         params.addParam("x_coeff", 1.0);
         params.addParam("y_coeff", 1.0);
         params.addParam("z_coeff", 1.0);
@@ -952,7 +952,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if(planning_mode == "BASE")
             FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.03, 0.2);
         else
-            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.10, 2*3.14);
+            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.05, 2*3.14);
 
         req.group_name = robot_config.group_name;
         req.max_acceleration_scaling_factor = 1.0;
@@ -962,7 +962,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if (planning_mode == "BASE")
             req.planner_id = "arastar.euclid_diff.manip";
         else
-            req.planner_id = "mhastar.euclid.bfs.manip";
+            req.planner_id = "arastar.magic_arm.manip";
         req.start_state = start_state;
     //    req.trajectory_constraints;
     //    req.workspace_parameters;
