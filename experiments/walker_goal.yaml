@@ -13,6 +13,14 @@ initial_configuration:
     - { name: right_j6, position: 0.0 }
     - { name: right_j7, position: 0.0 }
 
+    # - { name: right_j1, position: -0.736 }
+    # - { name: right_j2, position: -1.052 }
+    # - { name: right_j3, position: 0.243 }
+    # - { name: right_j4, position: -0.807 }
+    # - { name: right_j5, position: 0.2405 }
+    # - { name: right_j6, position: 0.017 }
+    # - { name: right_j7, position: 0.133 }
+
 goal:
   x: 0.2
   y: 0.1

@@ -225,7 +225,7 @@ bool ReadInitialConfiguration(
 
     // joint_state
     if (nh.hasParam("initial_configuration/joint_state")) {
-        nh.getParam("initial_configuration/joint_state", xlist);
+        ros::param::get("initial_configuration/joint_state", xlist);
 
         if (xlist.getType() != XmlRpc::XmlRpcValue::TypeArray) {
             ROS_WARN("initial_configuration/joint_state is not an array.");
@@ -431,13 +431,13 @@ class MsgSubscriber {
             m_path_pub = m_nh.advertise<walker_planner::Path1>("Robot_path", 1000);
             m_sub_start = m_nh.subscribe("/poseupdate", 1000, &MsgSubscriber::startCallback, this);
             m_sub_occgrid = m_nh.subscribe("/map", 1000, &MsgSubscriber::occgridCallback, this);
-            //m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &MsgSubscriber::octomapCallback, this);
+            m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &MsgSubscriber::octomapCallback, this);
             m_sub_pose = m_nh.subscribe("/Grasps", 1000, &MsgSubscriber::poseCallback, this);
         }
 
         void octomapCallback(const octomap_msgs::Octomap& msg) {
             ROS_ERROR("Octomap received");
-            m_map_with_pose.header.frame_id = "world";
+            m_map_with_pose.header.frame_id = "map";
             m_map_with_pose.octomap = msg;
 
             geometry_msgs::Point p;
@@ -481,7 +481,7 @@ class MsgSubscriber {
                     if (val > 50) {
                         //scaled_i = i*scale, scaled_j = j*scale;
                         //for (int k=scaled_i; k < scaled_i+6; k++) {
-                          for (int h=0; h < 0.65/res; h++) {
+                          for (int h=0; h < 0.72/res; h++) {
                                 smpl::Vector3 v,v2,v3,v4,v5;
                                 v[0] = j*res + origin.x;//k;
                                 v[1] = i*res + origin.y;//l;
@@ -521,11 +521,11 @@ class MsgSubscriber {
 
             std::string planning_mode = "FULLBODY";
             ros::param::get("/walker_planner_mode", planning_mode);
-	    ROS_ERROR("mode: %s", planning_mode.c_str());
+       ROS_ERROR("mode: %s", planning_mode.c_str());
 	    ROS_ERROR("start_received: %d", m_start_received);
 	    ROS_ERROR("occgrid received: %d", m_occgrid_received);
             if( ( planning_mode == "FULLBODY" ) && m_start_received &&
-                   m_occgrid_received){// &&  m_octomap_received) {
+                   m_occgrid_received){// && m_octomap_received) {
                 ROS_ERROR("Fullbody Planner Called.");
                 m_octomap_received = false;
                 m_start_received = false;
@@ -629,7 +629,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
           ros::param::set("/walker_interface_planner/robot_model/chain_tip_link", "right_palm_link");
           ros::param::set("/walker_interface_planner/robot_model/planning_joints", "x  y theta right_j1  right_j2 right_j3 right_j4 right_j5 right_j6 right_j7" );
           std::string pkg_path = ros::package::getPath("walker_planner");
-          ros::param::set("/walker_interface_planner/planning/mprim_filename", pkg_path + "/config/walker.mprim");
+          ros::param::set("/walker_interface_planner/planning/mprim_filename", pkg_path + "/config/walker_right_arm.mprim");
         }
 
 
@@ -839,7 +839,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         //    ros::Duration(1.0).sleep();
         //}
         if( planning_mode == "FULLBODY" ){
-            bool ret = scene.ProcessOctomapMsg(octomap);
+            bool ret = false;//scene.ProcessOctomapMsg(octomap);
             if(ret)
                 ROS_INFO("Succesfully added ocotmap");
             else
@@ -881,8 +881,8 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         params.addParam("rpy_snap_dist_thresh", planning_config.rpy_snap_dist_thresh);
         params.addParam("xyzrpy_snap_dist_thresh", planning_config.xyzrpy_snap_dist_thresh);
         params.addParam("short_dist_mprims_thresh", planning_config.short_dist_mprims_thresh);
-        params.addParam("epsilon", 50.0);
-        params.addParam("epsilon_mha", 20);
+        params.addParam("epsilon", 20.0);
+        params.addParam("epsilon_mha", 5);
         params.addParam("search_mode", false);
         params.addParam("allow_partial_solutions", false);
         params.addParam("target_epsilon", 1.0);
@@ -891,13 +891,20 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         params.addParam("bound_expansions", true);
         params.addParam("repair_time", 1.0);
         params.addParam("bfs_inflation_radius", 0.05);
-        params.addParam("bfs_cost_per_cell", 200);
+        params.addParam("bfs_cost_per_cell", 3000);
         params.addParam("x_coeff", 1.0);
         params.addParam("y_coeff", 1.0);
         params.addParam("z_coeff", 1.0);
         params.addParam("rot_coeff", 1.0);
-        //params.addParam("interpolate_path", true);
-        params.addParam("shortcut_path", true);
+
+        if (planning_mode == "BASE"){
+          params.interpolate_path = false;
+          params.shortcut_path = true;
+        }
+        else if(planning_mode == "FULLBODY"){
+          params.interpolate_path = true;
+          params.shortcut_path = false;
+        }
 
         if (!planner.init(params)) {
             ROS_ERROR("Failed to initialize Planner Interface");
@@ -918,7 +925,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if(planning_mode == "BASE")
             FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.03, 0.2);
         else
-            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.10, 2*3.14);
+            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.02, 0.7);
 
         req.group_name = robot_config.group_name;
         req.max_acceleration_scaling_factor = 1.0;
@@ -928,7 +935,8 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if (planning_mode == "BASE")
             req.planner_id = "arastar.euclid_diff.manip";
         else
-            req.planner_id = "mhastar.euclid.bfs.manip";
+            // req.planner_id = "arastar.bfs.manip";
+            req.planner_id = "arastar.bfs.manip";
         req.start_state = start_state;
     //    req.trajectory_constraints;
     //    req.workspace_parameters;
@@ -993,7 +1001,10 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         path.push_back(path_state);
         }
         m_path_cached = path;
-        publish_path(path, m_path_pub);
+        if( planning_mode == "BASE")
+          publish_path_base(path, m_path_pub);
+        else if( planning_mode == "FULLBODY")
+         publish_path_fullbody( path, m_path_pub);
         //----------------------------------------------------------------------------------
         ///////////////////////////////////
         // Visualizations and Statistics //
@@ -1035,7 +1046,12 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         int done;
         ros::param::get("/walker_planner_done", done);
         if (done) {
-            publish_path(m_path_cached, m_path_pub);
+            std::string planning_mode = "FULLBODY";
+            ros::param::get("/walker_planner_mode", planning_mode);
+          if( planning_mode == "BASE")
+            publish_path_base(m_path_cached, m_path_pub);
+          else if( planning_mode == "FULLBODY")
+           publish_path_fullbody( m_path_cached, m_path_pub);
         }
         else {
           //ROS_ERROR("No cached path found.");
