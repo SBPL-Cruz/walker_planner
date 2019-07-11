@@ -225,7 +225,7 @@ bool ReadInitialConfiguration(
 
     // joint_state
     if (nh.hasParam("initial_configuration/joint_state")) {
-        nh.getParam("initial_configuration/joint_state", xlist);
+        ros::param::get("initial_configuration/joint_state", xlist);
 
         if (xlist.getType() != XmlRpc::XmlRpcValue::TypeArray) {
             ROS_WARN("initial_configuration/joint_state is not an array.");
@@ -502,7 +502,7 @@ class MsgSubscriber {
                     if (val > 50) {
                         //scaled_i = i*scale, scaled_j = j*scale;
                         //for (int k=scaled_i; k < scaled_i+6; k++) {
-                          for (int h=0; h < 0.65/res; h++) {
+                          for (int h=0; h < 0.72/res; h++) {
                                 smpl::Vector3 v,v2,v3,v4,v5;
                                 v[0] = j*res + origin.x;//k;
                                 v[1] = i*res + origin.y;//l;
@@ -650,7 +650,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
           ros::param::set("/walker_interface_planner/robot_model/chain_tip_link", "right_palm_link");
           ros::param::set("/walker_interface_planner/robot_model/planning_joints", "x  y theta right_j1  right_j2 right_j3 right_j4 right_j5 right_j6 right_j7" );
           std::string pkg_path = ros::package::getPath("walker_planner");
-          ros::param::set("/walker_interface_planner/planning/mprim_filename", pkg_path + "/config/walker.mprim");
+          ros::param::set("/walker_interface_planner/planning/mprim_filename", pkg_path + "/config/walker_right_arm.mprim");
         }
 
 
@@ -918,15 +918,22 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         params.addParam("bound_expansions", true);
         params.addParam("repair_time", 1.0);
         params.addParam("bfs_inflation_radius", 0.05);
-        params.addParam("bfs_cost_per_cell", 200);
+        params.addParam("bfs_cost_per_cell", 300);
         params.addParam("x_coeff", 1.0);
         params.addParam("y_coeff", 1.0);
         params.addParam("z_coeff", 1.0);
         params.addParam("rot_coeff", 1.0);
-        //params.addParam("interpolate_path", true);
-        params.addParam("shortcut_path", true);
 
-        if (!planner.init(params)) {
+     	if (planning_mode == "BASE"){
+          params.interpolate_path = false;
+          params.shortcut_path = true;
+        }
+        else if(planning_mode == "FULLBODY"){
+          params.interpolate_path = true;
+          params.shortcut_path = false;
+        }
+
+  	if (!planner.init(params)) {
             ROS_ERROR("Failed to initialize Planner Interface");
             return 1;
         }

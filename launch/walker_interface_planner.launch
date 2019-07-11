@@ -39,7 +39,7 @@ required="true" /> -->
             kinematics_frame:
                 planar_1
             chain_tip_link:
-                right_palm_link
+                right_palm_dummy_link
             arm_start_link:
                 base_link
         </rosparam>
@@ -55,7 +55,7 @@ required="true" /> -->
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
-        <rosparam command="load" file="$(find walker_planner)/experiments/walker_goal.yaml"/>
+        <rosparam command="load" file="$(find walker_planner)/experiments/walker_goal_custom_home.yaml"/>
 
         <!-- 2.2 world state -->
         <param name="object_filename" value="$(find walker_planner)/env/tabletop.env"/>
