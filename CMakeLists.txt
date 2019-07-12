@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(walker_planner)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -82,10 +82,11 @@ add_executable(collision_model_visualizer src/collision_model_visualizer.cpp
 target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
 
 add_executable(walker_interface_planner src/walker_interface_planner.cpp src/collision_space_scene.cpp)
-#add_dependencies(walker_interface_planner ${${project_name}_exported_targets} ${catkin_exported_targets})
+add_dependencies(walker_interface_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(walker_interface_planner ${catkin_libraries} smpl::smpl ${orocos_kdl_libraries})
 
 add_executable(interactive_walker_model src/interactive_walker_model.cpp src/collision_space_scene.cpp)
+add_dependencies(interactive_walker_model ${${PROJECT_NAME}_EXPORTED_TARGETS} ${CATKIN_EXPORTED_TARGETS})
 target_link_libraries(interactive_walker_model ${catkin_libraries} smpl::smpl ${orocos_kdl_libraries})
 
 #add_executable(walker_interface_mrmha src/walker_interface_mrmha.cpp src/collision_space_scene.cpp)

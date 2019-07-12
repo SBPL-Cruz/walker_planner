@@ -9,24 +9,26 @@
 #include "collision_space_scene.h"
 #include "planner_config.h"
 
-visualization_msgs::Marker makeBox( visualization_msgs::InteractiveMarker &msg ){
+visualization_msgs::Marker makeBox(
+        double scale ){
     visualization_msgs::Marker marker;
-    marker.type = Marker::CUBE;
-    marker.scale.x = msg.scale * 0.45;
-    marker.scale.y = msg.scale * 0.45;
-    marker.scale.z = msg.scale * 0.45;
+    marker.type = visualization_msgs::Marker::CUBE;
+    marker.scale.x = scale * 0.45;
+    marker.scale.y = scale * 0.45;
+    marker.scale.z = scale * 0.45;
     marker.color.r = 0.5;
     marker.color.g = 0.5;
     marker.color.b = 0.5;
     marker.color.a = 1.0;
 
-  return marker;
+    return marker;
 }
 
-visualization_msgs::InteractiveMarkerControl makeTransControl(){
+visualization_msgs::InteractiveMarkerControl makeTransControl(
+        double scale ){
     visualization_msgs::InteractiveMarkerControl trans_control;
     trans_control.always_visible = true;
-    trans_control.markers.push_back(marker);
+    trans_control.markers.push_back( makeBox( scale ) );
     trans_control.orientation.w = 1;
     trans_control.orientation.x = 0;
     trans_control.orientation.y = 1;
@@ -36,16 +38,18 @@ visualization_msgs::InteractiveMarkerControl makeTransControl(){
     return trans_control;
 }
 
-auto makeRotControl(){
-    visualization_msgs::InteractiveMarkerControl control;
-    control.orientation.w = 1;
-    control.orientation.x = 0;
-    control.orientation.y = 1;
-    control.orientation.z = 0;
-    control.name = "rotate_z";
-    control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_AXIS;
+auto makeRotControl(
+        double scale ){
+    visualization_msgs::InteractiveMarkerControl rot_control;
+    rot_control.markers.push_back( makeBox( scale ) );
+    rot_control.orientation.w = 1;
+    rot_control.orientation.x = 0;
+    rot_control.orientation.y = 1;
+    rot_control.orientation.z = 0;
+    rot_control.name = "rotate_z";
+    rot_control.interaction_mode = visualization_msgs::InteractiveMarkerControl::ROTATE_AXIS;
 
-    return control;
+    return rot_control;
 }
 
 int main( int argc, char* argv[] ){
@@ -118,28 +122,31 @@ int main( int argc, char* argv[] ){
             visualization_msgs::InteractiveMarker robot_int_marker;
             robot_int_marker.header.frame_id = planning_frame;
             robot_int_marker.header.stamp = ros::Time::now();
-            robot_int_marker.header.name = "Start Model Marker";
+            robot_int_marker.name = "Start Model Marker";
+            robot_int_marker.scale = 1;
 
-            auto trans_control = makeTransControl();
-            auto rot_control = makeRotControl();
+            auto trans_control = makeTransControl( robot_int_marker.scale );
+            auto rot_control = makeRotControl( robot_int_marker.scale );
             robot_int_marker.controls.push_back( trans_control );
             robot_int_marker.controls.push_back( rot_control );
 
-            int_marker_server.insert( robot_int_marker,
-                    boost::bind(&ControlPlanner::processFeedback, this, _1) );
+            //int_marker_server.insert( robot_int_marker,
+            //        boost::bind(&ControlPlanner::processFeedback, this, _1) );
 
         }
+        /*
         {//Start Right Hand
             visualization_msgs::InteractiveMarker robot_int_marker;
             robot_int_marker.header.frame_id = planning_frame;
             robot_int_marker.header.stamp = ros::Time::now();
-            robot_int_marker.header.name = "Start Right Arm Marker";
+            robot_int_marker.name = "Start Right Arm Marker";
 
             auto trans_control = makeTransControl();
             robot_int_marker.controls.push_back(trans_control);
             ->insert(int_marker, boost::bind(&ControlPlanner::processFeedback, this, _1));
 
         }
+        */
     }
 
     {//Goal Marker
