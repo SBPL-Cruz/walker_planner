@@ -952,7 +952,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if(planning_mode == "BASE")
             FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.03, 0.2);
         else
-            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.05, 2*3.14);
+            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.05, 0.7);
 
         req.group_name = robot_config.group_name;
         req.max_acceleration_scaling_factor = 1.0;
