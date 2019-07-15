@@ -19,7 +19,6 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sbpl_collision_checking
   sbpl_kdl_robot_model
-  smpl_moveit_interface
   visualization_msgs
   interactive_markers
 )

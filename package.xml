@@ -61,7 +61,6 @@
   <build_depend>sbpl_collision_checking</build_depend>
   <build_depend>sbpl_kdl_robot_model</build_depend>
   <build_depend>smpl</build_depend>
-  <build_depend>smpl_moveit_interface</build_depend>
   <build_depend>visualization_msgs</build_depend>
   <build_depend>interactive_markers</build_depend>
   <build_export_depend>geometry_msgs</build_export_depend>
@@ -85,7 +84,6 @@
   <exec_depend>sbpl_collision_checking</exec_depend>
   <exec_depend>sbpl_kdl_robot_model</exec_depend>
   <exec_depend>smpl</exec_depend>
-  <exec_depend>smpl_moveit_interface</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
   <exec_depend>interactive_markers</exec_depend>
 

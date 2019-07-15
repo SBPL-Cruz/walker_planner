@@ -21,7 +21,6 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <smpl/angles.h>
 #include <smpl/debug/visualizer_ros.h>
-#include <smpl_moveit_interface/planner/moveit_robot_model.h>
 
 #include "collision_space_scene.h"
 
