@@ -52,6 +52,13 @@ auto makeRotControl(
     return rot_control;
 }
 
+void processFeedback(
+        const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback ){
+    ROS_INFO_STREAM( feedback->marker_name << " is now at "
+        << feedback->pose.position.x << ", " << feedback->pose.position.y
+        << ", " << feedback->pose.position.z );
+}
+
 int main( int argc, char* argv[] ){
     ros::init(argc, argv, "interactive_walker_model");
     ros::NodeHandle nh;
@@ -130,8 +137,11 @@ int main( int argc, char* argv[] ){
             robot_int_marker.controls.push_back( trans_control );
             robot_int_marker.controls.push_back( rot_control );
 
+            int_marker_server.insert( robot_int_marker, &processFeedback );
             //int_marker_server.insert( robot_int_marker,
             //        boost::bind(&ControlPlanner::processFeedback, this, _1) );
+
+            int_marker_server.applyChanges();
 
         }
         /*
@@ -150,8 +160,17 @@ int main( int argc, char* argv[] ){
     }
 
     {//Goal Marker
+        {//Goal Base
+
+        }
+
+        {//Goal Right Hand
+
+        }
 
     }
+
+    ros::spin();
 
     return 0;
 }
