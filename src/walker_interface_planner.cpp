@@ -499,14 +499,14 @@ class MsgSubscriber {
             for (int i=0; i<height; i++) {
                 for (int j=0; j<width; j++) {
                     int val = msg.data[i*width + j];
-                    if (val > 50) {
+                    if (val >= 50) {
                         //scaled_i = i*scale, scaled_j = j*scale;
                         //for (int k=scaled_i; k < scaled_i+6; k++) {
-                          for (int h=0; h < 0.72/res; h++) {
+                          for (int h=0; h < 0.75/res; h++) {
                                 smpl::Vector3 v,v2,v3,v4,v5;
-                                v[0] = j*res + origin.x;//k;
-                                v[1] = i*res + origin.y;//l;
-                                v[2] = h*res;
+                                v[0] = (j)*res + origin.x;//k;
+                                v[1] = (i)*res  + origin.y;//l;
+                                v[2] = (h)*res;
                                 v2[0] = (j-1)*res + origin.x;//k;
                                 v2[1] = (i-1)*res + origin.y;//l;
                                 v2[2] = h*res;
@@ -647,7 +647,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         }
         else {
           ROS_INFO("Switching to FULLBODY planning mode.");
-          ros::param::set("/walker_interface_planner/robot_model/chain_tip_link", "right_palm_link");
+          ros::param::set("/walker_interface_planner/robot_model/chain_tip_link", "right_palm_dummy_link");
           ros::param::set("/walker_interface_planner/robot_model/planning_joints", "x  y theta right_j1  right_j2 right_j3 right_j4 right_j5 right_j6 right_j7" );
           std::string pkg_path = ros::package::getPath("walker_planner");
           ros::param::set("/walker_interface_planner/planning/mprim_filename", pkg_path + "/config/walker_right_arm.mprim");
@@ -952,7 +952,7 @@ int MsgSubscriber::plan(ros::NodeHandle nh, ros::NodeHandle ph, geometry_msgs::P
         if(planning_mode == "BASE")
             FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.03, 0.2);
         else
-            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.05, 0.7);
+            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.03, 0.7);
 
         req.group_name = robot_config.group_name;
         req.max_acceleration_scaling_factor = 1.0;
