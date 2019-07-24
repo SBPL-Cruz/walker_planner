@@ -86,14 +86,12 @@ add_executable(walker_interface_planner src/walker_interface_planner.cpp src/col
 add_dependencies(walker_interface_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(walker_interface_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 
-add_executable(walker_interface_mrmha src/walker_interface_mrmha.cpp
+#add_executable(walker_interface_mrmha src/walker_interface_mrmha.cpp
+#        src/collision_space_scene.cpp src/get_collision_objects.cpp)
+#target_link_libraries(walker_interface_mrmha ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+#add_dependencies(walker_interface_mrmha ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_executable(walker_planner_mrmha src/walker_planner_mrmha.cpp
         src/collision_space_scene.cpp src/get_collision_objects.cpp)
-target_link_libraries(walker_interface_mrmha ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
-add_dependencies(walker_interface_mrmha ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-#add_executable(walker_planner src/walker_planner.cpp src/collision_space_scene.cpp)
-#target_link_libraries(walker_planner ${catkin_LIBRARIES} smpl::smpl)
-
-#add_executable(interactive_planner src/interactive_planner.cpp src/collision_space_scene.cpp)
-#target_link_libraries(interactive_planner ${catkin_LIBRARIES} smpl::smpl)
-
+target_link_libraries(walker_planner_mrmha ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+add_dependencies(walker_planner_mrmha ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
