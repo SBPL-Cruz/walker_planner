@@ -141,6 +141,19 @@ int MsgSubscriber::plan(
         ros::NodeHandle ph,
         geometry_msgs::Pose grasp,
         octomap_msgs::OctomapWithPose octomap ){
+    if( m_planner_mode == PLANNER_MODE::MHA )
+        plan_mha( nh, ph, grasp, octomap );
+    else if( m_planner_mode == PLANNER_MODE::MRMHA )
+        plan_mrmha( nh, ph, grasp, octomap );
+    else
+        throw "Planner mode not understood.";
+}
+
+int MsgSubscriber::plan_mha(
+        ros::NodeHandle nh,
+        ros::NodeHandle ph,
+        geometry_msgs::Pose grasp,
+        octomap_msgs::OctomapWithPose octomap ){
     int req, done;
     ros::param::get("/walker_planner_request", req);
     if (req) {
@@ -630,6 +643,7 @@ int main(int argc, char* argv[]){
     ros::Rate loop_rate(10);
 
     MsgSubscriber sub(nh, ph);
+    sub.m_planner_mode = PLANNER_MODE::MRMHA;
     while(ros::ok()) {
         loop_rate.sleep();
         ros::spinOnce();
