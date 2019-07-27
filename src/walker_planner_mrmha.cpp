@@ -1,4 +1,127 @@
+#include <sbpl/planners/mrmhaplanner.h>
+#include <smpl/heuristic/bfs_heuristic.h>
+#include <smpl/graph/motion_primitive.h>
+#include <smpl/graph/manip_lattice.h>
+#include <smpl/graph/manip_lattice_action_space.h>
+
 #include "walker_planner.h"
+
+using namespace smpl;
+
+template <class T>
+static auto ParseMapFromString(const std::string& s)
+    -> std::unordered_map<std::string, T>
+{
+    std::unordered_map<std::string, T> map;
+    std::istringstream ss(s);
+    std::string key;
+    T value;
+    while (ss >> key >> value) {
+        map.insert(std::make_pair(key, value));
+    }
+    return map;
+}
+
+bool IsMultiDOFJointVariable(
+    const std::string& name,
+    std::string* joint_name,
+    std::string* local_name)
+{
+    auto slash_pos = name.find_last_of('/');
+    if (slash_pos != std::string::npos) {
+        if (joint_name != NULL) {
+            *joint_name = name.substr(0, slash_pos);
+        }
+        if (local_name != NULL) {
+            *local_name = name.substr(slash_pos + 1);
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
+std::vector<double> getResolutions(
+        smpl::RobotModel* robot,
+        const PlannerConfig& params ){
+
+    auto resolutions = std::vector<double>(robot->jointVariableCount());
+
+    std::string disc_string = params.discretization;
+    if (disc_string.empty()) {
+        SMPL_ERROR("Parameter 'discretization' not found in planning params");
+    }
+
+    auto disc = ParseMapFromString<double>(disc_string);
+
+    for (size_t vidx = 0; vidx < robot->jointVariableCount(); ++vidx) {
+        auto& vname = robot->getPlanningJoints()[vidx];
+        std::string joint_name, local_name;
+        if (IsMultiDOFJointVariable(vname, &joint_name, &local_name)) {
+            // adjust variable name if a variable of a multi-dof joint
+            auto mdof_vname = joint_name + "_" + local_name;
+            auto dit = disc.find(mdof_vname);
+            if (dit == end(disc)) {
+                SMPL_ERROR("Discretization for variable '%s' not found in planning parameters", vname.c_str());
+            }
+            resolutions[vidx] = dit->second;
+        } else {
+            auto dit = disc.find(vname);
+            if (dit == end(disc)) {
+                SMPL_ERROR("Discretization for variable '%s' not found in planning parameters", vname.c_str());
+            }
+            resolutions[vidx] = dit->second;
+        }
+
+        SMPL_DEBUG("resolution(%s) = %0.3f", vname.c_str(), resolutions[vidx]);
+    }
+
+    return resolutions;
+}
+
+std::unique_ptr<MRMHAPlanner> constructPlanner(
+        std::vector<std::unique_ptr<RobotHeuristic>>& heurs,
+        std::unique_ptr<ManipLattice>& pspace,
+        smpl::OccupancyGrid& grid,
+        PlannerConfig& params ){
+
+    SMPL_INFO("Initialize Heuristics");
+
+    heurs.clear();
+    {
+        auto h = make_unique<BfsHeuristic>();
+        h->setCostPerCell(params.cost_per_cell);
+        h->setInflationRadius(params.inflation_radius);
+        if (!h->init(pspace.get(), &grid)) {
+            return false;
+        }
+        heurs.push_back(std::move(h));
+    }
+
+    // Need at least 2 heuristics for MR-MHA to make sense.
+    {
+        auto h = make_unique<BfsHeuristic>();
+        h->setCostPerCell(params.cost_per_cell);
+        h->setInflationRadius(params.inflation_radius);
+        if (!h->init(pspace.get(), &grid)) {
+            return false;
+        }
+        heurs.push_back(std::move(h));
+    }
+
+    for (auto& entry : heurs) {
+        pspace->insertHeuristic(entry.get());
+    }
+
+    std::vector<Heuristic*> heur_ptrs;
+    for(auto& entry: heurs)
+        heur_ptrs.push_back(entry.get());
+
+    SMPL_INFO("Create planner");
+    auto planner = make_unique<MRMHAPlanner>( pspace.get(),
+            heur_ptrs[0], &(heur_ptrs[1]), heur_ptrs.size() - 1 );
+    return planner;
+}
 
 int MsgSubscriber::plan_mrmha(
         ros::NodeHandle nh,
@@ -261,10 +384,6 @@ int MsgSubscriber::plan_mrmha(
             return 1;
         }
 
-        //while (planning_mode == "FULLBODY" && m_octomap_received == false) {
-        //    ROS_ERROR("Waiting for octomap.");
-        //    ros::Duration(1.0).sleep();
-        //}
         if( planning_mode == "FULLBODY" ){
             bool ret = scene.ProcessOctomapMsg(octomap);
             if(ret)
@@ -294,50 +413,60 @@ int MsgSubscriber::plan_mrmha(
             return 1;
         }
 
-        smpl::PlannerInterface planner(rm.get(), &cc, &grid);
+        auto resolutions = getResolutions( rm.get(), planning_config );
+        auto actions = make_unique<ManipLatticeActionSpace>();
+        auto space = make_unique<ManipLattice>();
 
-        smpl::PlanningParams params;
-
-        std::string mprim_filenames;
-        params.addParam("mprim_filename", planning_config.mprim_filename);
-        params.addParam("mprim_filenames", planning_config.mprim_filenames);
-        params.addParam("discretization", planning_config.discretization);
-        params.addParam("use_xyz_snap_mprim", planning_config.use_xyz_snap_mprim);
-        params.addParam("use_rpy_snap_mprim", planning_config.use_rpy_snap_mprim);
-        params.addParam("use_xyzrpy_snap_mprim", planning_config.use_xyzrpy_snap_mprim);
-        params.addParam("use_short_dist_mprims", planning_config.use_short_dist_mprims);
-        params.addParam("xyz_snap_dist_thresh", planning_config.xyz_snap_dist_thresh);
-        params.addParam("rpy_snap_dist_thresh", planning_config.rpy_snap_dist_thresh);
-        params.addParam("xyzrpy_snap_dist_thresh", planning_config.xyzrpy_snap_dist_thresh);
-        params.addParam("short_dist_mprims_thresh", planning_config.short_dist_mprims_thresh);
-        params.addParam("epsilon", 10.0);
-        params.addParam("epsilon_mha", 2);
-        params.addParam("search_mode", false);
-        params.addParam("allow_partial_solutions", false);
-        params.addParam("target_epsilon", 1.0);
-        params.addParam("delta_epsilon", 1.0);
-        params.addParam("improve_solution", false);
-        params.addParam("bound_expansions", true);
-        params.addParam("repair_time", 1.0);
-        params.addParam("bfs_inflation_radius", 0.05);
-        params.addParam("bfs_cost_per_cell", 200);
-        params.addParam("x_coeff", 1.0);
-        params.addParam("y_coeff", 1.0);
-        params.addParam("z_coeff", 1.0);
-        params.addParam("rot_coeff", 1.0);
-        //params.addParam("interpolate_path", true);
-        params.addParam("shortcut_path", true);
-
-        if (!planner.init(params)) {
-            ROS_ERROR("Failed to initialize Planner Interface");
+        if (!space->init( rm.get(), &cc, resolutions, actions.get() )) {
+            SMPL_ERROR("Failed to initialize Manip Lattice");
             return 1;
         }
 
+        if (!actions->init(space.get())) {
+            SMPL_ERROR("Failed to initialize Manip Lattice Action Space");
+            return 1;
+        }
+
+        space->setVisualizationFrameId(grid.getReferenceFrame());
+
+        actions->useMultipleIkSolutions(planning_config.use_multiple_ik_solutions);
+        actions->useAmp(MotionPrimitive::SNAP_TO_XYZ, planning_config.use_xyz_snap_mprim);
+        actions->useAmp(MotionPrimitive::SNAP_TO_RPY, planning_config.use_rpy_snap_mprim);
+        actions->useAmp(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.use_xyzrpy_snap_mprim);
+        actions->useAmp(MotionPrimitive::SHORT_DISTANCE, planning_config.use_short_dist_mprims);
+        actions->ampThresh(MotionPrimitive::SNAP_TO_XYZ, planning_config.xyz_snap_dist_thresh);
+        actions->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
+        actions->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
+        actions->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
+
+        if (!actions->load(planning_config.mprim_filename)) {
+            return 1;
+        }
+
+        /*
+        SMPL_DEBUG_NAMED(PI_LOGGER, "Action Set:");
+        for (auto ait = actions.begin(); ait != actions.end(); ++ait) {
+            SMPL_DEBUG_NAMED(PI_LOGGER, "  type: %s", to_cstring(ait->type));
+            if (ait->type == MotionPrimitive::SNAP_TO_RPY) {
+                SMPL_DEBUG_NAMED(PI_LOGGER, "    enabled: %s", actions.useAmp(MotionPrimitive::SNAP_TO_RPY) ? "true" : "false");
+                SMPL_DEBUG_NAMED(PI_LOGGER, "    thresh: %0.3f", actions.ampThresh(MotionPrimitive::SNAP_TO_RPY));
+            } else if (ait->type == MotionPrimitive::SNAP_TO_XYZ) {
+                SMPL_DEBUG_NAMED(PI_LOGGER, "    enabled: %s", actions.useAmp(MotionPrimitive::SNAP_TO_XYZ) ? "true" : "false");
+                SMPL_DEBUG_NAMED(PI_LOGGER, "    thresh: %0.3f", actions.ampThresh(MotionPrimitive::SNAP_TO_XYZ));
+            } else if (ait->type == MotionPrimitive::SNAP_TO_XYZ_RPY) {
+                SMPL_DEBUG_NAMED(PI_LOGGER, "    enabled: %s", actions.useAmp(MotionPrimitive::SNAP_TO_XYZ_RPY) ? "true" : "false");
+                SMPL_DEBUG_NAMED(PI_LOGGER, "    thresh: %0.3f", actions.ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY));
+            } else if (ait->type == MotionPrimitive::LONG_DISTANCE ||
+                ait->type == MotionPrimitive::SHORT_DISTANCE)
+            {
+                SMPL_DEBUG_STREAM_NAMED(PI_LOGGER, "    action: " << ait->action);
+            }
+        }
+        */
 
         //////////////
         // Planning //
         //////////////
-
 
         moveit_msgs::MotionPlanRequest req;
         moveit_msgs::MotionPlanResponse res;
@@ -353,23 +482,27 @@ int MsgSubscriber::plan_mrmha(
         req.max_acceleration_scaling_factor = 1.0;
         req.max_velocity_scaling_factor = 1.0;
         req.num_planning_attempts = 1;
-    //    req.path_constraints;
-        if (planning_mode == "BASE")
-            req.planner_id = "arastar.euclid_diff.manip";
-        else
-            //req.planner_id = "mrmhastar.euclid.bfs.euclid_diff.manip";
-            req.planner_id = "mrmhastar.euclid.euclid.arm_retract.manip_mr";
-            //req.planner_id = "mrmhastar.euclid.euclid_diff.manip_mr";
+
+
+        std::vector<std::unique_ptr<RobotHeuristic>> heurs;
+        auto planner = constructPlanner( heurs, space, grid, planning_config );
+
+        planner->set_initial_mha_eps(10);
+        planner->set_initialsolution_eps(10);
+        planner->set_search_mode(false);
+
+        //if (planning_mode == "BASE")
+        //    throw "Not Implemented";
+        //else
+        //    req.planner_id = "mrmhastar.euclid.euclid.arm_retract.manip_mr";
         req.start_state = start_state;
-    //    req.trajectory_constraints;
-    //    req.workspace_parameters;
 
         // plan
-        ROS_INFO("Calling solve...");
-        moveit_msgs::PlanningScene planning_scene;
-        planning_scene.robot_state = start_state;
-        if (!planner.solve(planning_scene, req, res)) {
-            ROS_ERROR("Failed to plan.");
+        //ROS_INFO("Calling solve...");
+        //moveit_msgs::PlanningScene planning_scene;
+        //planning_scene.robot_state = start_state;
+        //if (!planner.solve(planning_scene, req, res)) {
+        //    ROS_ERROR("Failed to plan.");
 
             // XXX
             /*
@@ -389,7 +522,7 @@ int MsgSubscriber::plan_mrmha(
                 SV_SHOW_DEBUG_NAMED( "ik_base", markers );
                 i++;
             }*/
-            return 1;
+            //return 1;
         }
         // XXX
         // For BFS Fullbody heuristic.
@@ -410,6 +543,7 @@ int MsgSubscriber::plan_mrmha(
         */
 
 
+    /*
         //-----------------Publishing path---------------------------
         std::vector<smpl::RobotState> path;
         for(int i=0;i<res.trajectory.joint_trajectory.points.size();i++)
@@ -472,4 +606,5 @@ int MsgSubscriber::plan_mrmha(
           //ROS_ERROR("No cached path found.");
         }
     }
+    */
 }
