@@ -28,6 +28,7 @@ struct PlannerConfig
     std::string discretization;
     std::string mprim_filename;
     std::string mprim_filenames;
+    bool use_multiple_ik_solutions;
     bool use_xyz_snap_mprim;
     bool use_rpy_snap_mprim;
     bool use_xyzrpy_snap_mprim;
@@ -36,6 +37,8 @@ struct PlannerConfig
     double rpy_snap_dist_thresh;
     double xyzrpy_snap_dist_thresh;
     double short_dist_mprims_thresh;
+    double cost_per_cell;
+    double inflation_radius;
 };
 
 void FillGoalConstraint(
@@ -55,5 +58,10 @@ bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config);
 
 auto SetupRobotModel(const std::string& urdf, const RobotModelConfig &config)
     -> std::unique_ptr<smpl::KDLRobotModel>;
+
+template <typename T, typename... Args>
+inline std::unique_ptr<T> make_unique(Args&&... args){
+    return std::move(std::unique_ptr<T>(new T(args...)));
+}
 
 #endif
