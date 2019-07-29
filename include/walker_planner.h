@@ -12,7 +12,9 @@
 
 // Library includes
 #include <kdl_conversions/kdl_msg.h>
-#include <smpl/ros/planner_interface.h>
+#include <moveit_msgs/Constraints.h>
+#include <sbpl/planners/planner.h>
+#include <smpl/graph/manip_lattice.h>
 #include <smpl/heuristic/euclid_fullbody_heuristic.h>
 #include <smpl/heuristic/bfs_fullbody_heuristic.h>
 #include <smpl/spatial.h>
@@ -87,5 +89,29 @@ class MsgSubscriber {
         bool m_start_received;
         bool m_occgrid_received;
 };
+
+template <class T>
+static auto ParseMapFromString(const std::string& s)
+    -> std::unordered_map<std::string, T>;
+
+bool IsMultiDOFJointVariable(
+    const std::string& name,
+    std::string* joint_name,
+    std::string* local_name);
+
+std::vector<double> getResolutions(
+        smpl::RobotModel* robot,
+        const PlannerConfig& params );
+
+bool setGoal( const smpl::GoalConstraint&,
+        smpl::ManipLattice*,
+        std::vector<smpl::RobotHeuristic*>&,
+        SBPLPlanner* );
+
+bool setStart( const moveit_msgs::RobotState& state,
+        smpl::RobotModel*,
+        smpl::ManipLattice*,
+        std::vector<smpl::RobotHeuristic*>&,
+        SBPLPlanner* );
 
 #endif

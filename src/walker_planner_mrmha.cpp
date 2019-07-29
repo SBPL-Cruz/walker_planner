@@ -1,3 +1,5 @@
+ #include <tf2/LinearMath/Quaternion.h>
+
 #include <sbpl/planners/mrmhaplanner.h>
 #include <smpl/heuristic/bfs_heuristic.h>
 #include <smpl/graph/motion_primitive.h>
@@ -8,76 +10,6 @@
 
 using namespace smpl;
 
-template <class T>
-static auto ParseMapFromString(const std::string& s)
-    -> std::unordered_map<std::string, T>
-{
-    std::unordered_map<std::string, T> map;
-    std::istringstream ss(s);
-    std::string key;
-    T value;
-    while (ss >> key >> value) {
-        map.insert(std::make_pair(key, value));
-    }
-    return map;
-}
-
-bool IsMultiDOFJointVariable(
-    const std::string& name,
-    std::string* joint_name,
-    std::string* local_name)
-{
-    auto slash_pos = name.find_last_of('/');
-    if (slash_pos != std::string::npos) {
-        if (joint_name != NULL) {
-            *joint_name = name.substr(0, slash_pos);
-        }
-        if (local_name != NULL) {
-            *local_name = name.substr(slash_pos + 1);
-        }
-        return true;
-    } else {
-        return false;
-    }
-}
-
-std::vector<double> getResolutions(
-        smpl::RobotModel* robot,
-        const PlannerConfig& params ){
-
-    auto resolutions = std::vector<double>(robot->jointVariableCount());
-
-    std::string disc_string = params.discretization;
-    if (disc_string.empty()) {
-        SMPL_ERROR("Parameter 'discretization' not found in planning params");
-    }
-
-    auto disc = ParseMapFromString<double>(disc_string);
-
-    for (size_t vidx = 0; vidx < robot->jointVariableCount(); ++vidx) {
-        auto& vname = robot->getPlanningJoints()[vidx];
-        std::string joint_name, local_name;
-        if (IsMultiDOFJointVariable(vname, &joint_name, &local_name)) {
-            // adjust variable name if a variable of a multi-dof joint
-            auto mdof_vname = joint_name + "_" + local_name;
-            auto dit = disc.find(mdof_vname);
-            if (dit == end(disc)) {
-                SMPL_ERROR("Discretization for variable '%s' not found in planning parameters", vname.c_str());
-            }
-            resolutions[vidx] = dit->second;
-        } else {
-            auto dit = disc.find(vname);
-            if (dit == end(disc)) {
-                SMPL_ERROR("Discretization for variable '%s' not found in planning parameters", vname.c_str());
-            }
-            resolutions[vidx] = dit->second;
-        }
-
-        SMPL_DEBUG("resolution(%s) = %0.3f", vname.c_str(), resolutions[vidx]);
-    }
-
-    return resolutions;
-}
 
 std::unique_ptr<MRMHAPlanner> constructPlanner(
         std::vector<std::unique_ptr<RobotHeuristic>>& heurs,
@@ -145,9 +77,6 @@ int MsgSubscriber::plan_mrmha(
         /////////////////
 
         ROS_INFO("Load common parameters");
-
-        // Robot description required to initialize collision checker and robot
-        // model...
         auto robot_description_key = "robot_description";
         std::string robot_description_param;
         if (!nh.searchParam(robot_description_key, robot_description_param)) {
@@ -178,7 +107,6 @@ int MsgSubscriber::plan_mrmha(
           ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker.mprim");
         }
 
-
         // Reads planning_joints, frames.
         RobotModelConfig robot_config;
         if (!ReadRobotModelConfig(ros::NodeHandle("~robot_model"), robot_config)) {
@@ -186,9 +114,6 @@ int MsgSubscriber::plan_mrmha(
             return 1;
         }
 
-        // Everyone needs to know the name of the planning frame for reasons...
-        // ...frame_id for the occupancy grid (for visualization)
-        // ...frame_id for collision objects (must be the same as the grid, other than that, useless)
         std::string planning_frame;
         if (!ph.getParam("planning_frame", planning_frame)) {
             ROS_ERROR("Failed to retrieve param 'planning_frame' from the param server");
@@ -202,9 +127,6 @@ int MsgSubscriber::plan_mrmha(
             return 1;
         }
 
-        //while(!m_start_received) {
-        //    ROS_ERROR("Waiting for the Start state from AMCL.");
-        //}
         bool read_goal_from_file;
         ph.param("read_goal_from_file", read_goal_from_file, true );
         if( !read_goal_from_file ){
@@ -251,16 +173,8 @@ int MsgSubscriber::plan_mrmha(
         auto ref_counted = false;
         smpl::OccupancyGrid grid(df, ref_counted);
 
-        //while(m_occgrid_received == false) {
-        //    ROS_INFO("Waiting for 2D occupancy grid.");
-        //    ros::Duration(1.0).sleep();
-        //}
         grid.addPointsToField(m_occgrid_points);
         ROS_ERROR("Occupied voxesls: %d", grid.getOccupiedVoxelCount());
-    //////////////////////////////////
-    // Initialize Collision Checker //
-    //////////////////////////////////
-
 
         grid.setReferenceFrame(planning_frame);
         SV_SHOW_INFO(grid.getBoundingBoxVisualization());
@@ -300,7 +214,7 @@ int MsgSubscriber::plan_mrmha(
         SV_SHOW_INFO(marker);
         visualizer.visualize(smpl::visual::Level::Info, marker);
 
-
+        /*
         std::vector<double> goal_state(6, 0);
 
         {
@@ -320,15 +234,32 @@ int MsgSubscriber::plan_mrmha(
             goal_state[4] = pitch;
             goal_state[5] = yaw;
         }
+        */
+        smpl::Affine3 goal_pose;
          // Read from file.
          if (read_goal_from_file) {
+             std::vector<double> goal_state( 6, 0 );
              ph.param("goal/x", goal_state[0], 0.0);
              ph.param("goal/y", goal_state[1], 0.0);
              ph.param("goal/z", goal_state[2], 0.0);
              ph.param("goal/roll", goal_state[3], 0.0);
              ph.param("goal/pitch", goal_state[4], 0.0);
              ph.param("goal/yaw", goal_state[5], 0.0);
-             ROS_ERROR("Goal z: %f", goal_state[2]);
+
+             geometry_msgs::Pose read_grasp;
+             read_grasp.position.x = goal_state[0];
+             read_grasp.position.y = goal_state[1];
+             read_grasp.position.z = goal_state[2];
+             tf::Quaternion q;
+             q.setRPY( goal_state[3], goal_state[4], goal_state[5] );
+             read_grasp.orientation.x = q[0];
+             read_grasp.orientation.y = q[1];
+             read_grasp.orientation.z = q[2];
+             read_grasp.orientation.w = q[3];
+             tf::poseMsgToEigen( read_grasp, goal_pose);
+
+         } else{
+             tf::poseMsgToEigen( grasp, goal_pose );
          }
         /////////////////
         // Setup Scene //
@@ -443,27 +374,6 @@ int MsgSubscriber::plan_mrmha(
             return 1;
         }
 
-        /*
-        SMPL_DEBUG_NAMED(PI_LOGGER, "Action Set:");
-        for (auto ait = actions.begin(); ait != actions.end(); ++ait) {
-            SMPL_DEBUG_NAMED(PI_LOGGER, "  type: %s", to_cstring(ait->type));
-            if (ait->type == MotionPrimitive::SNAP_TO_RPY) {
-                SMPL_DEBUG_NAMED(PI_LOGGER, "    enabled: %s", actions.useAmp(MotionPrimitive::SNAP_TO_RPY) ? "true" : "false");
-                SMPL_DEBUG_NAMED(PI_LOGGER, "    thresh: %0.3f", actions.ampThresh(MotionPrimitive::SNAP_TO_RPY));
-            } else if (ait->type == MotionPrimitive::SNAP_TO_XYZ) {
-                SMPL_DEBUG_NAMED(PI_LOGGER, "    enabled: %s", actions.useAmp(MotionPrimitive::SNAP_TO_XYZ) ? "true" : "false");
-                SMPL_DEBUG_NAMED(PI_LOGGER, "    thresh: %0.3f", actions.ampThresh(MotionPrimitive::SNAP_TO_XYZ));
-            } else if (ait->type == MotionPrimitive::SNAP_TO_XYZ_RPY) {
-                SMPL_DEBUG_NAMED(PI_LOGGER, "    enabled: %s", actions.useAmp(MotionPrimitive::SNAP_TO_XYZ_RPY) ? "true" : "false");
-                SMPL_DEBUG_NAMED(PI_LOGGER, "    thresh: %0.3f", actions.ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY));
-            } else if (ait->type == MotionPrimitive::LONG_DISTANCE ||
-                ait->type == MotionPrimitive::SHORT_DISTANCE)
-            {
-                SMPL_DEBUG_STREAM_NAMED(PI_LOGGER, "    action: " << ait->action);
-            }
-        }
-        */
-
         //////////////
         // Planning //
         //////////////
@@ -472,17 +382,6 @@ int MsgSubscriber::plan_mrmha(
         moveit_msgs::MotionPlanResponse res;
 
         ph.param("allowed_planning_time", req.allowed_planning_time, 30.0);
-        req.goal_constraints.resize(1);
-        if(planning_mode == "BASE")
-            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.2, 0.2);
-        else
-            FillGoalConstraint(goal_state, planning_frame, req.goal_constraints[0], 0.40, 2*3.14);
-
-        req.group_name = robot_config.group_name;
-        req.max_acceleration_scaling_factor = 1.0;
-        req.max_velocity_scaling_factor = 1.0;
-        req.num_planning_attempts = 1;
-
 
         std::vector<std::unique_ptr<RobotHeuristic>> heurs;
         auto planner = constructPlanner( heurs, space, grid, planning_config );
@@ -491,11 +390,20 @@ int MsgSubscriber::plan_mrmha(
         planner->set_initialsolution_eps(10);
         planner->set_search_mode(false);
 
-        //if (planning_mode == "BASE")
-        //    throw "Not Implemented";
-        //else
-        //    req.planner_id = "mrmhastar.euclid.euclid.arm_retract.manip_mr";
-        req.start_state = start_state;
+        smpl::GoalConstraint goal;
+        goal.pose = goal_pose;
+        goal.xyz_tolerance[0] = 0.2;
+        goal.xyz_tolerance[1] = 0.2;
+        goal.xyz_tolerance[2] = 0.2;
+        goal.rpy_tolerance[0] = 0.7;
+        goal.rpy_tolerance[1] = 0.7;
+        goal.rpy_tolerance[2] = 0.7;
+
+        std::vector<smpl::RobotHeuristic*> hs;
+        for(auto& h: heurs)
+            hs.push_back(h.get());
+        setGoal( goal, space.get(), hs, planner.get() );
+        setStart( start_state, rm.get(), space.get(), hs, planner.get() );
 
         // plan
         //ROS_INFO("Calling solve...");
@@ -503,44 +411,6 @@ int MsgSubscriber::plan_mrmha(
         //planning_scene.robot_state = start_state;
         //if (!planner.solve(planning_scene, req, res)) {
         //    ROS_ERROR("Failed to plan.");
-
-            // XXX
-            /*
-            auto bfs_fullbody_base_poses = (dynamic_cast<smpl::BfsFullbodyHeuristic*>(planner.m_heuristics.begin()->second.get()))->m_heuristic_base_poses;
-            int i = 0;
-            //for( auto base_pose : bfs_fullbody_base_poses ){
-            auto base_pose = bfs_fullbody_base_poses[0];
-                smpl::RobotState state( rm->jointCount(), 0 );
-                state[0] = base_pose[0];
-                state[1] = base_pose[1];
-                state[2] = base_pose[2];
-                ROS_ERROR("%d dofs and base is %f, %f, %f", state.size(), state[0], state[1], state[2]);
-                auto markers = cc.getCollisionRobotVisualization( state );
-                for( auto& marker : markers.markers )
-                    marker.ns = "ik_base" + std::to_string(i);
-                ROS_INFO("Visualizing base position.");
-                SV_SHOW_DEBUG_NAMED( "ik_base", markers );
-                i++;
-            }*/
-            //return 1;
-        }
-        // XXX
-        // For BFS Fullbody heuristic.
-        /*
-        auto bfs_fullbody_base_poses = (dynamic_cast<smpl::BfsFullbodyHeuristic*>(planner.m_heuristics.begin()->second.get()))->m_heuristic_base_poses;
-        for( auto base_pose : bfs_fullbody_base_poses ){
-            smpl::RobotState state( rm->jointCount(), 0 );
-            state[0] = base_pose[0];
-            state[1] = base_pose[1];
-            state[2] = base_pose[2];
-            auto markers = cc.getCollisionRobotVisualization( state );
-            for( auto& marker : markers.markers )
-                marker.ns = "ik_base";
-            ROS_INFO("Visualizing base position.");
-            SV_SHOW_INFO( marker );
-            visualizer.visualize(smpl::visual::Level::Info, marker);
-        }
-        */
 
 
     /*
@@ -607,4 +477,5 @@ int MsgSubscriber::plan_mrmha(
         }
     }
     */
+    }
 }

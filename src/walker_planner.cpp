@@ -1,4 +1,7 @@
 #include "walker_planner.h"
+#include <smpl/ros/planner_interface.h>
+
+using namespace smpl;
 
 MsgSubscriber::MsgSubscriber(ros::NodeHandle nh, ros::NodeHandle ph) {
     m_nh = nh;
@@ -134,6 +137,183 @@ octomap_msgs::OctomapWithPose MsgSubscriber::subscribeOctomap(ros::NodeHandle nh
 
 geometry_msgs::Pose MsgSubscriber::subscribeGrasp(ros::NodeHandle nh) {
     return m_grasp;
+}
+
+
+template <class T>
+static auto ParseMapFromString(const std::string& s)
+    -> std::unordered_map<std::string, T>
+{
+    std::unordered_map<std::string, T> map;
+    std::istringstream ss(s);
+    std::string key;
+    T value;
+    while (ss >> key >> value) {
+        map.insert(std::make_pair(key, value));
+    }
+    return map;
+}
+
+bool IsMultiDOFJointVariable(
+    const std::string& name,
+    std::string* joint_name,
+    std::string* local_name)
+{
+    auto slash_pos = name.find_last_of('/');
+    if (slash_pos != std::string::npos) {
+        if (joint_name != NULL) {
+            *joint_name = name.substr(0, slash_pos);
+        }
+        if (local_name != NULL) {
+            *local_name = name.substr(slash_pos + 1);
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
+std::vector<double> getResolutions(
+        smpl::RobotModel* robot,
+        const PlannerConfig& params ){
+
+    auto resolutions = std::vector<double>(robot->jointVariableCount());
+
+    std::string disc_string = params.discretization;
+    if (disc_string.empty()) {
+        ROS_ERROR("Parameter 'discretization' not found in planning params");
+    }
+
+    auto disc = ParseMapFromString<double>(disc_string);
+
+    for (size_t vidx = 0; vidx < robot->jointVariableCount(); ++vidx) {
+        auto& vname = robot->getPlanningJoints()[vidx];
+        std::string joint_name, local_name;
+        if (IsMultiDOFJointVariable(vname, &joint_name, &local_name)) {
+            // adjust variable name if a variable of a multi-dof joint
+            auto mdof_vname = joint_name + "_" + local_name;
+            auto dit = disc.find(mdof_vname);
+            if (dit == end(disc)) {
+                ROS_ERROR("Discretization for variable '%s' not found in planning parameters", vname.c_str());
+            }
+            resolutions[vidx] = dit->second;
+        } else {
+            auto dit = disc.find(vname);
+            if (dit == end(disc)) {
+                ROS_ERROR("Discretization for variable '%s' not found in planning parameters", vname.c_str());
+            }
+            resolutions[vidx] = dit->second;
+        }
+
+        ROS_ERROR("resolution(%s) = %0.3f", vname.c_str(), resolutions[vidx]);
+    }
+
+    return resolutions;
+}
+
+bool setGoal(const smpl::GoalConstraint& goal,
+        ManipLattice* pspace,
+        std::vector<RobotHeuristic*>& heurs,
+        SBPLPlanner* planner ){
+
+        double yaw, pitch, roll;
+        angles::get_euler_zyx(goal.pose.rotation(), yaw, pitch, roll);
+
+    // set sbpl environment goal
+    if (!pspace->setGoal(goal)) {
+        ROS_ERROR("Failed to set goal");
+        return false;
+    }
+
+    for (auto& h : heurs) {
+        h->updateGoal(goal);
+    }
+
+    // set planner goal
+    auto goal_id = pspace->getGoalStateID();
+    if (goal_id == -1) {
+        ROS_ERROR("No goal state has been set");
+        return false;
+    }
+
+    if (planner->set_goal(goal_id) == 0) {
+        ROS_ERROR("Failed to set planner goal state");
+        return false;
+    }
+
+    return true;
+}
+
+// Convert the input robot state to an SMPL robot state and update the start
+// state in the graph, heuristic, and search.
+bool setStart(const moveit_msgs::RobotState& state,
+        smpl::RobotModel* robot,
+        ManipLattice* pspace,
+        std::vector<RobotHeuristic*>& heurs,
+        SBPLPlanner* planner ){
+
+    if (!state.multi_dof_joint_state.joint_names.empty()) {
+        auto& mdof_joint_names = state.multi_dof_joint_state.joint_names;
+        for (auto& joint_name : robot->getPlanningJoints()) {
+            auto it = std::find(begin(mdof_joint_names), end(mdof_joint_names), joint_name);
+            if (it != end(mdof_joint_names)) {
+                ROS_WARN("planner does not currently support planning for multi-dof joints. found '%s' in planning joints", joint_name.c_str());
+            }
+        }
+    }
+
+    RobotState initial_positions;
+    std::vector<std::string> missing;
+    if (!leatherman::getJointPositions(
+            state.joint_state,
+            state.multi_dof_joint_state,
+            robot->getPlanningJoints(),
+            initial_positions,
+            missing))
+    {
+        ROS_WARN_STREAM("start state is missing planning joints: " << missing);
+
+        moveit_msgs::RobotState fixed_state = state;
+        for (auto& variable : missing) {
+            ROS_WARN("  Assume position 0.0 for joint variable '%s'", variable.c_str());
+            fixed_state.joint_state.name.push_back(variable);
+            fixed_state.joint_state.position.push_back(0.0);
+        }
+
+        if (!leatherman::getJointPositions(
+                fixed_state.joint_state,
+                fixed_state.multi_dof_joint_state,
+                robot->getPlanningJoints(),
+                initial_positions,
+                missing))
+        {
+            return false;
+        }
+
+//        return false;
+    }
+
+    if (!pspace->setStart(initial_positions)) {
+        ROS_ERROR("Failed to set start state");
+        return false;
+    }
+
+    auto start_id = pspace->getStartStateID();
+    if (start_id == -1) {
+        ROS_ERROR("No start state has been set");
+        return false;
+    }
+
+    for (auto& h : heurs) {
+        h->updateStart(initial_positions);
+    }
+
+    if (planner->set_start(start_id) == 0) {
+        ROS_ERROR("Failed to set start state");
+        return false;
+    }
+
+    return true;
 }
 
 int MsgSubscriber::plan(
