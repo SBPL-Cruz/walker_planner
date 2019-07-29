@@ -86,12 +86,7 @@ void MsgSubscriber::occgridCallback(const nav_msgs::OccupancyGrid& msg) {
 
 
                         points.push_back(v);
-                        //if (planning_mode == "BASE") {
-                        //    points.push_back(v2);
-                        //    points.push_back(v3);
-                        //}
                     }
-                // }
             }
         }
     }
@@ -106,8 +101,7 @@ void MsgSubscriber::poseCallback(const geometry_msgs::PoseStamped grasp) {
 
     std::string planning_mode = "FULLBODY";
     ros::param::get("/walker_planner_mode", planning_mode);
-    if( ( planning_mode == "FULLBODY" ) && m_start_received &&
-            m_occgrid_received){// &&  m_octomap_received) {
+    if( ( planning_mode == "FULLBODY" ) && m_start_received){// && m_occgrid_received){// &&  m_octomap_received) {
         ROS_ERROR("Fullbody Planner Called.");
         m_octomap_received = false;
         m_start_received = false;
@@ -220,14 +214,18 @@ bool setGoal(const smpl::GoalConstraint& goal,
         angles::get_euler_zyx(goal.pose.rotation(), yaw, pitch, roll);
 
     // set sbpl environment goal
+    ROS_INFO("Setting goal in pspace");
     if (!pspace->setGoal(goal)) {
         ROS_ERROR("Failed to set goal");
         return false;
     }
 
+    ROS_INFO("Updating goal in heuristics.");
     for (auto& h : heurs) {
         h->updateGoal(goal);
     }
+    auto h = heurs[0]->GetGoalHeuristic(0);
+    ROS_ERROR("Computed heur: :%d", h);
 
     // set planner goal
     auto goal_id = pspace->getGoalStateID();
@@ -236,6 +234,7 @@ bool setGoal(const smpl::GoalConstraint& goal,
         return false;
     }
 
+    ROS_INFO("Setting planner Goal");
     if (planner->set_goal(goal_id) == 0) {
         ROS_ERROR("Failed to set planner goal state");
         return false;
@@ -817,7 +816,7 @@ void MsgSubscriber::publish_path(
 }
 
 int main(int argc, char* argv[]){
-    ros::init(argc, argv, "walker_interface_planner");
+    ros::init(argc, argv, "walker_planner");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);

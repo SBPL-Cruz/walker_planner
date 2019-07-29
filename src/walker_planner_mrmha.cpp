@@ -10,8 +10,7 @@
 
 using namespace smpl;
 
-
-std::unique_ptr<MRMHAPlanner> constructPlanner(
+bool constructHeuristics(
         std::vector<std::unique_ptr<RobotHeuristic>>& heurs,
         std::unique_ptr<ManipLattice>& pspace,
         smpl::OccupancyGrid& grid,
@@ -25,6 +24,7 @@ std::unique_ptr<MRMHAPlanner> constructPlanner(
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
         if (!h->init(pspace.get(), &grid)) {
+            ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
         heurs.push_back(std::move(h));
@@ -36,6 +36,7 @@ std::unique_ptr<MRMHAPlanner> constructPlanner(
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
         if (!h->init(pspace.get(), &grid)) {
+            ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
         heurs.push_back(std::move(h));
@@ -44,15 +45,7 @@ std::unique_ptr<MRMHAPlanner> constructPlanner(
     for (auto& entry : heurs) {
         pspace->insertHeuristic(entry.get());
     }
-
-    std::vector<Heuristic*> heur_ptrs;
-    for(auto& entry: heurs)
-        heur_ptrs.push_back(entry.get());
-
-    SMPL_INFO("Create planner");
-    auto planner = make_unique<MRMHAPlanner>( pspace.get(),
-            heur_ptrs[0], &(heur_ptrs[1]), heur_ptrs.size() - 1 );
-    return planner;
+    return true;
 }
 
 int MsgSubscriber::plan_mrmha(
@@ -257,7 +250,6 @@ int MsgSubscriber::plan_mrmha(
              read_grasp.orientation.z = q[2];
              read_grasp.orientation.w = q[3];
              tf::poseMsgToEigen( read_grasp, goal_pose);
-
          } else{
              tf::poseMsgToEigen( grasp, goal_pose );
          }
@@ -383,14 +375,28 @@ int MsgSubscriber::plan_mrmha(
 
         ph.param("allowed_planning_time", req.allowed_planning_time, 30.0);
 
-        std::vector<std::unique_ptr<RobotHeuristic>> heurs;
-        auto planner = constructPlanner( heurs, space, grid, planning_config );
+        std::vector<std::unique_ptr<smpl::RobotHeuristic>> heurs;
+        if(!constructHeuristics( heurs, space, grid, planning_config )){
+            ROS_ERROR("Could not construct heuristics.");
+            return 0;
+        }
+
+        ROS_INFO("Constructing Planner");
+        std::vector<Heuristic*> heur_ptrs;
+        int n_heurs = heurs.size();
+        for(auto& entry: heurs)
+            heur_ptrs.push_back(entry.get());
+
+        Heuristic** inad = heur_ptrs.data();
+        auto planner = make_unique<MRMHAPlanner>( space.get(),
+                heurs[0].get(), inad, n_heurs-1);
 
         planner->set_initial_mha_eps(10);
         planner->set_initialsolution_eps(10);
         planner->set_search_mode(false);
 
         smpl::GoalConstraint goal;
+        goal.type = smpl::GoalType::XYZ_RPY_GOAL;
         goal.pose = goal_pose;
         goal.xyz_tolerance[0] = 0.2;
         goal.xyz_tolerance[1] = 0.2;
@@ -402,15 +408,26 @@ int MsgSubscriber::plan_mrmha(
         std::vector<smpl::RobotHeuristic*> hs;
         for(auto& h: heurs)
             hs.push_back(h.get());
-        setGoal( goal, space.get(), hs, planner.get() );
-        setStart( start_state, rm.get(), space.get(), hs, planner.get() );
+
+        ROS_INFO("Setting Goal");
+        if(!setGoal( goal, space.get(), hs, planner.get() ))
+            return 0;
+        ROS_INFO("Setting Start");
+        if(!setStart( start_state, rm.get(), space.get(), hs, planner.get() ))
+            return 0;
 
         // plan
-        //ROS_INFO("Calling solve...");
-        //moveit_msgs::PlanningScene planning_scene;
-        //planning_scene.robot_state = start_state;
-        //if (!planner.solve(planning_scene, req, res)) {
-        //    ROS_ERROR("Failed to plan.");
+        ROS_INFO("Calling planner");
+        std::vector<int> soltn_ids;
+        int soltn_cost;
+
+        planner->force_planning_from_scratch();
+
+        // plan
+        auto success = planner->replan(10, &soltn_ids, &soltn_cost);
+        if(!success){
+            ROS_ERROR("Failed to plan.");
+        }
 
 
     /*
