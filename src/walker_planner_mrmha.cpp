@@ -5,6 +5,7 @@
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/graph/manip_lattice.h>
 #include <smpl/graph/manip_lattice_action_space.h>
+#include <smpl/graph/manip_lattice_multi_rep.h>
 
 #include "walker_planner.h"
 
@@ -12,7 +13,7 @@ using namespace smpl;
 
 bool constructHeuristics(
         std::vector<std::unique_ptr<RobotHeuristic>>& heurs,
-        std::unique_ptr<ManipLattice>& pspace,
+        std::unique_ptr<ManipLatticeMultiRep>& pspace,
         smpl::OccupancyGrid& grid,
         PlannerConfig& params ){
 
@@ -338,9 +339,12 @@ int MsgSubscriber::plan_mrmha(
 
         auto resolutions = getResolutions( rm.get(), planning_config );
         auto actions = make_unique<ManipLatticeActionSpace>();
-        auto space = make_unique<ManipLattice>();
+        auto space = make_unique<smpl::ManipLatticeMultiRep>();
 
-        if (!space->init( rm.get(), &cc, resolutions, actions.get() )) {
+        std::vector<ActionSpace*> v_actions;
+        v_actions.push_back(actions.get());
+        v_actions.push_back(actions.get());
+        if (!space->init( rm.get(), &cc, resolutions, v_actions )) {
             SMPL_ERROR("Failed to initialize Manip Lattice");
             return 1;
         }
