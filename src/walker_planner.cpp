@@ -106,11 +106,22 @@ void MsgSubscriber::poseCallback(const geometry_msgs::PoseStamped grasp) {
         m_octomap_received = false;
         m_start_received = false;
         m_grasp_received = false;
+
+        ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "right_palm_link");
+        ros::param::set("/test_walker_interface/robot_model/planning_joints", "x  y theta right_limb_j1  right_limb_j2 right_limb_j3 right_limb_j4 right_limb_j5 right_limb_j6 right_limb_j7" );
+        std::string pkg_path = ros::package::getPath("walker_planner");
+        ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker.mprim");
+
         plan(m_nh, m_ph, m_grasp);
     }
     else if( ( planning_mode == "BASE" ) && m_start_received  &&
             m_occgrid_received ) {
         ROS_ERROR("Base Planner Called.");
+
+        ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "base_link");
+        ros::param::set("/test_walker_interface/robot_model/planning_joints", "x y theta");
+        std::string pkg_path = ros::package::getPath("walker_planner");
+        ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker_base.mprim");
         plan(m_nh, m_ph, m_grasp);
     }
     else{
@@ -366,21 +377,6 @@ int MsgSubscriber::plan_mha(
 
         std::string planning_mode = "FULLBODY";
         ros::param::get("/walker_planner_mode", planning_mode);
-        if (planning_mode == "BASE") {
-            ROS_INFO("Switching to BASE planning mode.");
-            ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "base_link");
-            ros::param::set("/test_walker_interface/robot_model/planning_joints", "x y theta");
-            std::string pkg_path = ros::package::getPath("walker_planner");
-            ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker_base.mprim");
-        }
-        else {
-          ROS_INFO("Switching to FULLBODY planning mode.");
-          ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "right_palm_link");
-          ros::param::set("/test_walker_interface/robot_model/planning_joints", "x  y theta right_limb_j1  right_limb_j2 right_limb_j3 right_limb_j4 right_limb_j5 right_limb_j6 right_limb_j7" );
-          std::string pkg_path = ros::package::getPath("walker_planner");
-          ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker.mprim");
-        }
-
 
         // Reads planning_joints, frames.
         RobotModelConfig robot_config;

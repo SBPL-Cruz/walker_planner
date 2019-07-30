@@ -85,20 +85,6 @@ int MsgSubscriber::plan_mrmha(
 
         std::string planning_mode = "FULLBODY";
         ros::param::get("/walker_planner_mode", planning_mode);
-        if (planning_mode == "BASE") {
-            ROS_INFO("Switching to BASE planning mode.");
-            ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "base_link");
-            ros::param::set("/test_walker_interface/robot_model/planning_joints", "x y theta");
-            std::string pkg_path = ros::package::getPath("walker_planner");
-            ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker_base.mprim");
-        }
-        else {
-          ROS_INFO("Switching to FULLBODY planning mode.");
-          ros::param::set("/test_walker_interface/robot_model/chain_tip_link", "right_palm_link");
-          ros::param::set("/test_walker_interface/robot_model/planning_joints", "x  y theta right_limb_j1  right_limb_j2 right_limb_j3 right_limb_j4 right_limb_j5 right_limb_j6 right_limb_j7" );
-          std::string pkg_path = ros::package::getPath("walker_planner");
-          ros::param::set("/test_walker_interface/planning/mprim_filename", pkg_path + "/config/walker.mprim");
-        }
 
         // Reads planning_joints, frames.
         RobotModelConfig robot_config;
