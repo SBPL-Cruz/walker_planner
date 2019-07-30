@@ -50,18 +50,15 @@ class MsgSubscriber {
         int plan(
                 ros::NodeHandle nh,
                 ros::NodeHandle ph,
-                geometry_msgs::Pose grasp,
-                octomap_msgs::OctomapWithPose octomap);
+                geometry_msgs::Pose grasp );
         int plan_mha(
                 ros::NodeHandle nh,
                 ros::NodeHandle ph,
-                geometry_msgs::Pose grasp,
-                octomap_msgs::OctomapWithPose octomap);
+                geometry_msgs::Pose grasp );
         int plan_mrmha(
                 ros::NodeHandle nh,
                 ros::NodeHandle ph,
-                geometry_msgs::Pose grasp,
-                octomap_msgs::OctomapWithPose octomap );
+                geometry_msgs::Pose grasp );
 
         octomap_msgs::OctomapWithPose subscribeOctomap(ros::NodeHandle nh);
         geometry_msgs::Pose subscribeGrasp(ros::NodeHandle nh);

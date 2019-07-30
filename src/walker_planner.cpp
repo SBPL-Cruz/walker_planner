@@ -106,12 +106,12 @@ void MsgSubscriber::poseCallback(const geometry_msgs::PoseStamped grasp) {
         m_octomap_received = false;
         m_start_received = false;
         m_grasp_received = false;
-        plan(m_nh, m_ph, m_grasp, m_map_with_pose);
+        plan(m_nh, m_ph, m_grasp);
     }
     else if( ( planning_mode == "BASE" ) && m_start_received  &&
             m_occgrid_received ) {
         ROS_ERROR("Base Planner Called.");
-        plan(m_nh, m_ph, m_grasp, m_map_with_pose);
+        plan(m_nh, m_ph, m_grasp);
     }
     else{
         ROS_ERROR("Planner mode not understood.");
@@ -318,12 +318,11 @@ bool setStart(const moveit_msgs::RobotState& state,
 int MsgSubscriber::plan(
         ros::NodeHandle nh,
         ros::NodeHandle ph,
-        geometry_msgs::Pose grasp,
-        octomap_msgs::OctomapWithPose octomap ){
+        geometry_msgs::Pose grasp ){
     if( m_planner_mode == PLANNER_MODE::MHA )
-        plan_mha( nh, ph, grasp, octomap );
+        plan_mha( nh, ph, grasp );
     else if( m_planner_mode == PLANNER_MODE::MRMHA )
-        plan_mrmha( nh, ph, grasp, octomap );
+        plan_mrmha( nh, ph, grasp );
     else
         throw "Planner mode not understood.";
 }
@@ -331,8 +330,7 @@ int MsgSubscriber::plan(
 int MsgSubscriber::plan_mha(
         ros::NodeHandle nh,
         ros::NodeHandle ph,
-        geometry_msgs::Pose grasp,
-        octomap_msgs::OctomapWithPose octomap ){
+        geometry_msgs::Pose grasp ){
     int req, done;
     ros::param::get("/walker_planner_request", req);
     if (req) {
@@ -590,7 +588,7 @@ int MsgSubscriber::plan_mha(
         //    ros::Duration(1.0).sleep();
         //}
         if( planning_mode == "FULLBODY" ){
-            bool ret = scene.ProcessOctomapMsg(octomap);
+            bool ret = scene.ProcessOctomapMsg(m_map_with_pose);
             if(ret)
                 ROS_INFO("Succesfully added ocotmap");
             else

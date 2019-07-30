@@ -52,8 +52,7 @@ bool constructHeuristics(
 int MsgSubscriber::plan_mrmha(
         ros::NodeHandle nh,
         ros::NodeHandle ph,
-        geometry_msgs::Pose grasp,
-        octomap_msgs::OctomapWithPose octomap ){
+        geometry_msgs::Pose grasp ){
     int req, done;
     ros::param::get("/walker_planner_request", req);
     if (req) {
@@ -309,7 +308,7 @@ int MsgSubscriber::plan_mrmha(
         }
 
         if( planning_mode == "FULLBODY" ){
-            bool ret = scene.ProcessOctomapMsg(octomap);
+            bool ret = scene.ProcessOctomapMsg(m_map_with_pose);
             if(ret)
                 ROS_INFO("Succesfully added ocotmap");
             else
@@ -431,9 +430,9 @@ int MsgSubscriber::plan_mrmha(
         auto success = planner->replan(10, &soltn_ids, &soltn_cost);
         if(!success){
             ROS_ERROR("Failed to plan.");
+        }else{
+            ROS_INFO("Planning successful");
         }
-
-
     /*
         //-----------------Publishing path---------------------------
         std::vector<smpl::RobotState> path;
