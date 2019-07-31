@@ -2,6 +2,7 @@
 
 #include <sbpl/planners/mrmhaplanner.h>
 #include <smpl/heuristic/bfs_heuristic.h>
+#include <smpl/heuristic/arm_retract_heuristic.h>
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/graph/manip_lattice.h>
 #include <smpl/graph/manip_lattice_action_space.h>
@@ -31,12 +32,19 @@ bool constructHeuristics(
         heurs.push_back(std::move(h));
     }
 
-    // Need at least 2 heuristics for MR-MHA to make sense.
     {
         auto h = make_unique<BfsHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
         if (!h->init(pspace.get(), &grid)) {
+            ROS_ERROR("Could not initialize heuristic.");
+            return false;
+        }
+        //heurs.push_back(std::move(h));
+    }
+    {
+        auto h = make_unique<ArmRetractHeuristic>();
+        if (!h->init(pspace.get())) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -329,6 +337,7 @@ int MsgSubscriber::plan_mrmha(
         std::vector<ActionSpace*> v_actions;
         v_actions.push_back(actions.get());
         v_actions.push_back(actions.get());
+        v_actions.push_back(actions.get());
         if (!space->init( rm.get(), &cc, resolutions, v_actions )) {
             SMPL_ERROR("Failed to initialize Manip Lattice");
             return 1;
@@ -359,10 +368,6 @@ int MsgSubscriber::plan_mrmha(
         // Planning //
         //////////////
 
-        moveit_msgs::MotionPlanRequest req;
-        moveit_msgs::MotionPlanResponse res;
-
-        ph.param("allowed_planning_time", req.allowed_planning_time, 30.0);
 
         std::vector<std::unique_ptr<smpl::RobotHeuristic>> heurs;
         if(!constructHeuristics( heurs, space, grid, planning_config )){
@@ -373,15 +378,14 @@ int MsgSubscriber::plan_mrmha(
         ROS_INFO("Constructing Planner");
         std::vector<Heuristic*> heur_ptrs;
         int n_heurs = heurs.size();
-        for(auto& entry: heurs)
-            heur_ptrs.push_back(entry.get());
+        for(int i=1; i<n_heurs; i++)
+            heur_ptrs.push_back(heurs[i].get());
 
         Heuristic** inad = heur_ptrs.data();
         auto planner = make_unique<MRMHAPlanner>( space.get(),
                 heurs[0].get(), inad, n_heurs-1);
-
-        planner->set_initial_mha_eps(10);
-        planner->set_initialsolution_eps(10);
+        planner->set_initialsolution_eps(2000);
+        planner->set_initial_mha_eps(50);
         planner->set_search_mode(false);
 
         smpl::GoalConstraint goal;
@@ -413,7 +417,10 @@ int MsgSubscriber::plan_mrmha(
         planner->force_planning_from_scratch();
 
         // plan
-        auto success = planner->replan(10, &soltn_ids, &soltn_cost);
+        double allowed_planning_time;
+        ph.param("allowed_planning_time", allowed_planning_time, 30.0);
+
+        auto success = planner->replan(allowed_planning_time, &soltn_ids, &soltn_cost);
         if(!success){
             ROS_ERROR("Failed to plan.");
         }else{
