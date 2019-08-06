@@ -39,7 +39,7 @@ required="true" /> -->
             kinematics_frame:
                 planar_1
             chain_tip_link:
-                right_palm_link
+                right_palm_dummy_link
         </rosparam>
 
         <!-- collision checking -->
@@ -49,8 +49,8 @@ required="true" /> -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
         <param name="planning/mprim_filenames" value="$(find
 walker_planner)/config/walker_multi_rep.mprim,$(find
-walker_planner)/config/walker_multi_rep_base.mprim,$(find
-walker_planner)/config/walker_multi_rep_right_arm.mprim"/>
+walker_planner)/config/walker_multi_rep.mprim,$(find
+walker_planner)/config/walker_multi_rep.mprim"/>
 
         <param name="planning/mprim_filename" value="$(find
         walker_planner)/config/walker.mprim"/>
