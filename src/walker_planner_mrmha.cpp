@@ -1,7 +1,10 @@
  #include <tf2/LinearMath/Quaternion.h>
 
+#include <smpl/search/awastar.h>
 #include <sbpl/planners/mrmhaplanner.h>
+#include <sbpl/planners/araplanner.h>
 #include <smpl/heuristic/bfs_heuristic.h>
+#include <smpl/heuristic/euclid_dist_heuristic.h>
 #include <smpl/heuristic/arm_retract_heuristic.h>
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/graph/manip_lattice.h>
@@ -29,19 +32,19 @@ bool constructHeuristics(
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
-        heurs.push_back(std::move(h));
+        //heurs.push_back(std::move(h));
     }
 
     {
-        auto h = make_unique<BfsHeuristic>();
-        h->setCostPerCell(params.cost_per_cell);
-        h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid)) {
+        auto h = make_unique<EuclidDistHeuristic>();
+        if (!h->init(pspace.get())) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
-        //heurs.push_back(std::move(h));
+        h->setWeightRot(0.1);
+        heurs.push_back(std::move(h));
     }
+    /*
     {
         auto h = make_unique<ArmRetractHeuristic>();
         if (!h->init(pspace.get())) {
@@ -50,6 +53,7 @@ bool constructHeuristics(
         }
         heurs.push_back(std::move(h));
     }
+    */
 
     for (auto& entry : heurs) {
         pspace->insertHeuristic(entry.get());
@@ -266,10 +270,12 @@ int MsgSubscriber::plan_mrmha(
         //        scene.ProcessCollisionObjectMsg(object);
         //    }
         //}
+        /*
         auto objects = GetMultiRoomMapCollisionCubes(planning_frame, 20, 15, .8);
         for (auto& object : objects) {
             scene.ProcessCollisionObjectMsg(object);
         }
+        */
 
         ROS_INFO("Setting up robot model");
         auto rm = SetupRobotModel(robot_description, robot_config);
@@ -325,10 +331,11 @@ int MsgSubscriber::plan_mrmha(
         ///////////////////
 
         PlannerConfig planning_config;
-        if (!ReadPlannerConfig(ros::NodeHandle("~planning"), planning_config)) {
+        if (!ReadPlannerConfig(ros::NodeHandle("~planning"), planning_config)){
             ROS_ERROR("Failed to read planner config");
             return 1;
         }
+        planning_config.cost_per_cell = 1000;
 
         auto resolutions = getResolutions( rm.get(), planning_config );
         auto actions = make_unique<ManipLatticeActionSpace>();
@@ -359,7 +366,7 @@ int MsgSubscriber::plan_mrmha(
         actions->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
         actions->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
         actions->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
-
+        // XXX Loads from filename
         if (!actions->load(planning_config.mprim_filename)) {
             return 1;
         }
@@ -382,10 +389,13 @@ int MsgSubscriber::plan_mrmha(
             heur_ptrs.push_back(heurs[i].get());
 
         Heuristic** inad = heur_ptrs.data();
-        auto planner = make_unique<MRMHAPlanner>( space.get(),
-                heurs[0].get(), inad, n_heurs-1);
-        planner->set_initialsolution_eps(2000);
-        planner->set_initial_mha_eps(50);
+        //auto planner = make_unique<MRMHAPlanner>( space.get(),
+        //        heurs[0].get(), inad, n_heurs-1);
+        //auto planner = make_unique<MHAPlanner>( space.get(),
+        //        heurs[0].get(), inad, n_heurs-1 );
+        auto planner = make_unique<AWAStar>( space.get(), heurs[0].get() );
+        planner->set_initialsolution_eps(10);
+        //planner->set_initial_mha_eps(50);
         planner->set_search_mode(false);
 
         smpl::GoalConstraint goal;

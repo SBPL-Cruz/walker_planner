@@ -221,8 +221,8 @@ bool setGoal(const smpl::GoalConstraint& goal,
         std::vector<RobotHeuristic*>& heurs,
         SBPLPlanner* planner ){
 
-        double yaw, pitch, roll;
-        angles::get_euler_zyx(goal.pose.rotation(), yaw, pitch, roll);
+    double yaw, pitch, roll;
+    angles::get_euler_zyx(goal.pose.rotation(), yaw, pitch, roll);
 
     // set sbpl environment goal
     ROS_INFO("Setting goal in pspace");
