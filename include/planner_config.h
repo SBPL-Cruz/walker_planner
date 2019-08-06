@@ -2,6 +2,7 @@
 #define PLANNER_CONFIG_H
 
 #include <string>
+#include <sstream>
 #include <thread>
 #include <vector>
 #include <ros/ros.h>
@@ -63,5 +64,14 @@ template <typename T, typename... Args>
 inline std::unique_ptr<T> make_unique(Args&&... args){
     return std::move(std::unique_ptr<T>(new T(args...)));
 }
+
+template <typename T>
+void printVector(std::vector<T> v){
+    std::stringstream ss;
+    for( auto& ele: v )
+        ss<<ele<<", ";
+    ROS_INFO("%s", ss.str().c_str());
+}
+
 
 #endif

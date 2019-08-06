@@ -12,6 +12,7 @@
 #include <smpl/graph/manip_lattice_multi_rep.h>
 
 #include "walker_planner.h"
+#include <smpl/utils.h>
 
 using namespace smpl;
 
@@ -41,7 +42,7 @@ bool constructHeuristics(
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
-        h->setWeightRot(0.1);
+        h->setWeightRot(0.01);
         heurs.push_back(std::move(h));
     }
     /*
@@ -435,6 +436,32 @@ int MsgSubscriber::plan_mrmha(
             ROS_ERROR("Failed to plan.");
         }else{
             ROS_INFO("Planning successful");
+            ROS_INFO("Solution Cost: %d \n", soltn_cost);
+            ROS_INFO("Animate path");
+            std::vector<RobotState> soltn_path;
+            space->extractPath( soltn_ids, soltn_path );
+
+            visualization_msgs::MarkerArray whole_path;
+            std::vector<visualization_msgs::Marker> m_all;
+
+            int idx = 0;
+            for( int pidx=0; pidx<soltn_ids.size(); pidx++ ){
+                auto& state = soltn_path[pidx];
+                auto markers = cc.getCollisionRobotVisualization(state);
+                for (auto& m : markers.markers) {
+                    m.ns = "path_animation";
+                    m.id = idx;
+                    idx++;
+                    whole_path.markers.push_back(m);
+                }
+                visualizer.visualize(smpl::visual::Level::Info, markers);
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            }
+
+            ROS_INFO("Solution Path:");
+            for( auto& state: soltn_path ){
+                printVector<double>(state);
+            }
         }
     /*
         //-----------------Publishing path---------------------------
@@ -464,21 +491,6 @@ int MsgSubscriber::plan_mrmha(
             ROS_INFO("    %s: %0.3f", entry.first.c_str(), entry.second);
         }
 
-        ROS_INFO("Animate path");
-
-        size_t pidx = 0;
-        //while (ros::ok()) {
-            auto& point = res.trajectory.joint_trajectory.points[pidx];
-            auto markers = cc.getCollisionRobotVisualization(point.positions);
-            for (auto& m : markers.markers) {
-                m.ns = "path_animation";
-            }
-            SV_SHOW_INFO(markers);
-            visualizer.visualize(smpl::visual::Level::Info, markers);
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            pidx++;
-            pidx %= res.trajectory.joint_trajectory.points.size();
-        //}
         //SV_SHOW_INFO(markers);
         //visualizer.visualize(smpl::visual::Level::Info, markers);
         //std::this_thread::sleep_for(std::chrono::milliseconds(200));
