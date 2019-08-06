@@ -3,15 +3,15 @@ initial_configuration:
     - { name: x, position: 5.0 }
     - { name: y, position: 4.0 }
     - { name: theta, position: 1.57 }
-    - { name: head_j1,   position: 0.0 }
-    - { name: head_j2,   position: 0.0 }
-    - { name: right_limb_j1, position: -1.0 }
-    - { name: right_limb_j2, position: -1.0 }
-    - { name: right_limb_j3, position: 0.0 }
-    - { name: right_limb_j4, position: 0.0 }
-    - { name: right_limb_j5, position: 0.0 }
-    - { name: right_limb_j6, position: 0.0 }
-    - { name: right_limb_j7, position: 0.0 }
+    - { name: head_yaw,   position: 0.0 }
+    - { name: head_pitch,   position: 0.0 }
+    - { name: right_j1, position: -0.0 }
+    - { name: right_j2, position: -0.0 }
+    - { name: right_j3, position: 0.0 }
+    - { name: right_j4, position: 0.0 }
+    - { name: right_j5, position: 0.0 }
+    - { name: right_j6, position: 0.0 }
+    - { name: right_j7, position: 0.0 }
 
 goal:
   x: 5.00
