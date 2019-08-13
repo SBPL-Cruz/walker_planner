@@ -1,11 +1,14 @@
  #include <tf2/LinearMath/Quaternion.h>
 
-#include <smpl/search/awastar.h>
+#include <smpl/search/arastar.h>
 #include <sbpl/planners/mrmhaplanner.h>
-#include <sbpl/planners/araplanner.h>
 #include <smpl/heuristic/bfs_heuristic.h>
+#include <smpl/heuristic/bfs_fullbody_heuristic.h>
 #include <smpl/heuristic/euclid_dist_heuristic.h>
+#include <smpl/heuristic/euclid_diffdrive_heuristic.h>
 #include <smpl/heuristic/arm_retract_heuristic.h>
+#include <smpl/heuristic/base_rot_euclidean_heuristic.h>
+#include <smpl/heuristic/base_rot_bfs_heuristic.h>
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/graph/manip_lattice.h>
 #include <smpl/graph/manip_lattice_action_space.h>
@@ -20,11 +23,35 @@ bool constructHeuristics(
         std::vector<std::unique_ptr<RobotHeuristic>>& heurs,
         std::unique_ptr<ManipLatticeMultiRep>& pspace,
         smpl::OccupancyGrid& grid,
+        std::unique_ptr<smpl::KDLRobotModel>& rm,
+        const Eigen::Affine3d& goal,
         PlannerConfig& params ){
 
     SMPL_INFO("Initialize Heuristics");
 
+    //Compute a feasible base location.
+    std::vector<int> base_x, base_y;
+
     heurs.clear();
+    {
+        auto h = make_unique<EuclidDistHeuristic>();
+        if (!h->init(pspace.get())) {
+            ROS_ERROR("Could not initialize heuristic.");
+            return false;
+        }
+        h->setWeightRot(0.01);
+        //heurs.push_back(std::move(h));
+    }
+    {
+        auto h = make_unique<EuclidDiffHeuristic>();
+        if (!h->init(pspace.get())) {
+            ROS_ERROR("Could not initialize heuristic.");
+            return false;
+        }
+        h->setWeightRot(0.01);
+        //heurs.push_back(std::move(h));
+    }
+
     {
         auto h = make_unique<BfsHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
@@ -35,16 +62,18 @@ bool constructHeuristics(
         }
         //heurs.push_back(std::move(h));
     }
-
     {
-        auto h = make_unique<EuclidDistHeuristic>();
-        if (!h->init(pspace.get())) {
+        auto h = make_unique<BfsFullbodyHeuristic>();
+        h->setCostPerCell(params.cost_per_cell);
+        h->setInflationRadius(params.inflation_radius);
+        if (!h->init(pspace.get(), &grid)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
-        h->setWeightRot(0.01);
+        SV_SHOW_INFO(h->get2DMapVisualization());
         heurs.push_back(std::move(h));
     }
+
     /*
     {
         auto h = make_unique<ArmRetractHeuristic>();
@@ -56,11 +85,101 @@ bool constructHeuristics(
     }
     */
 
+    {
+        auto h = make_unique<BaseRotEuclideanHeuristic>();
+        if (!h->init(pspace.get(), 1.57)) {
+            ROS_ERROR("Could not initialize heuristic.");
+            return false;
+        }
+        h->setWeightRot(0.01);
+        //heurs.push_back(std::move(h));
+    }
+
+    {
+        auto h = make_unique<BaseRotBfsHeuristic>();
+        if (!h->init(pspace.get(), &grid, 1.57)) {
+            ROS_ERROR("Could not initialize heuristic.");
+            return false;
+        }
+        h->setCostPerCell(params.cost_per_cell);
+        h->setInflationRadius(params.inflation_radius);
+        //heurs.push_back(std::move(h));
+    }
     for (auto& entry : heurs) {
         pspace->insertHeuristic(entry.get());
     }
     return true;
 }
+/*
+void visualizeRadiusAroundGoal(int x0, int y0, int radius) {
+    std::vector<int> circle_x;
+    std::vector<int> circle_y;
+    double res = m_occupancy_grid->getResolution();
+    int discrete_radius = m_radius/res;
+    getBresenhamCirclePoints(x0, y0, discrete_radius, circle_x, circle_y);
+
+    // geometry_msgs::PolygonStamped circle;
+
+    // circle.header.frame_id = "/map";
+    // circle.header.stamp = ros::Time::now();
+    std::vector<geometry_msgs::Point> circle_points;
+
+    for (size_t i = 0; i < circle_x.size(); ++i) {
+        // Prune the points to display only the ones that are within the
+        // threshold
+        if (m_grid[circle_x[i]][circle_y[i]] < costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
+            geometry_msgs::Point out_pt;
+            out_pt.x = circle_x[i]*res;
+            out_pt.y = circle_y[i]*res;
+            out_pt.z = 0.0;
+            circle_points.push_back(out_pt);
+        }
+    }
+    std::stringstream ss;
+    ss<< "radius_around_goal";
+    Visualizer::pviz->visualizeLine(
+        circle_points, ss.str(), x0 + y0, 114, 0.01);
+}
+*/
+
+void getBresenhamCirclePoints( int x0,
+        int y0,
+        int radius,
+        std::vector<int>& ret_x,
+        std::vector<int>& ret_y ){
+    int x = 0;
+    int y = radius;
+    int delta = 2 - 2 * radius;
+    int err = 0;
+    ret_x.clear();
+    ret_y.clear();
+    while(y >= 0){
+        ret_x.push_back(x0 + x);
+        ret_x.push_back(x0 - x);
+        ret_x.push_back(x0 + x);
+        ret_x.push_back(x0 - x);
+        ret_y.push_back(y0 - y);
+        ret_y.push_back(y0 - y);
+        ret_y.push_back(y0 + y);
+        ret_y.push_back(y0 + y);
+        err = 2 * (delta + y) - 1;
+        if(delta < 0 && err <= 0){
+                x = x + 1;
+                delta = delta + 2 * x + 1;
+                continue;
+        }
+        err = 2 * (delta - x) - 1;
+        if(delta > 0 && err > 0){
+                y = y - 1;
+                delta = delta + 1 - 2 * y;
+                continue;
+        }
+        x = x + 1;
+        delta = delta + 2 * (x - y);
+        y = y - 1;
+    }
+}
+
 
 int MsgSubscriber::plan_mrmha(
         ros::NodeHandle nh,
@@ -271,12 +390,10 @@ int MsgSubscriber::plan_mrmha(
         //        scene.ProcessCollisionObjectMsg(object);
         //    }
         //}
-        /*
         auto objects = GetMultiRoomMapCollisionCubes(planning_frame, 20, 15, .8);
         for (auto& object : objects) {
             scene.ProcessCollisionObjectMsg(object);
         }
-        */
 
         ROS_INFO("Setting up robot model");
         auto rm = SetupRobotModel(robot_description, robot_config);
@@ -336,7 +453,7 @@ int MsgSubscriber::plan_mrmha(
             ROS_ERROR("Failed to read planner config");
             return 1;
         }
-        planning_config.cost_per_cell = 1000;
+        planning_config.cost_per_cell = 50;
 
         auto resolutions = getResolutions( rm.get(), planning_config );
         auto actions = make_unique<ManipLatticeActionSpace>();
@@ -378,7 +495,7 @@ int MsgSubscriber::plan_mrmha(
 
 
         std::vector<std::unique_ptr<smpl::RobotHeuristic>> heurs;
-        if(!constructHeuristics( heurs, space, grid, planning_config )){
+        if(!constructHeuristics( heurs, space, grid, rm, goal_pose, planning_config )){
             ROS_ERROR("Could not construct heuristics.");
             return 0;
         }
@@ -388,15 +505,18 @@ int MsgSubscriber::plan_mrmha(
         int n_heurs = heurs.size();
         for(int i=1; i<n_heurs; i++)
             heur_ptrs.push_back(heurs[i].get());
+        ROS_INFO("Number of inadmissible heuristics: %d", n_heurs-1);
 
         Heuristic** inad = heur_ptrs.data();
         //auto planner = make_unique<MRMHAPlanner>( space.get(),
         //        heurs[0].get(), inad, n_heurs-1);
         //auto planner = make_unique<MHAPlanner>( space.get(),
-        //        heurs[0].get(), inad, n_heurs-1 );
-        auto planner = make_unique<AWAStar>( space.get(), heurs[0].get() );
-        planner->set_initialsolution_eps(10);
-        //planner->set_initial_mha_eps(50);
+                //heurs[0].get(), inad, n_heurs-1 );
+        auto planner = make_unique<ARAStar>( space.get(), heurs[0].get() );
+        planner->force_planning_from_scratch();
+        //planner->set_initial_mha_eps(4);
+        planner->set_initialsolution_eps(3);
+        planner->setTargetEpsilon(3);
         planner->set_search_mode(false);
 
         smpl::GoalConstraint goal;
@@ -420,6 +540,7 @@ int MsgSubscriber::plan_mrmha(
         if(!setStart( start_state, rm.get(), space.get(), hs, planner.get() ))
             return 0;
 
+        SV_SHOW_INFO(dynamic_cast<BfsFullbodyHeuristic*>(hs[0])->get2DValuesVisualization());
         // plan
         ROS_INFO("Calling planner");
         std::vector<int> soltn_ids;
@@ -490,12 +611,6 @@ int MsgSubscriber::plan_mrmha(
         for (auto& entry : planning_stats) {
             ROS_INFO("    %s: %0.3f", entry.first.c_str(), entry.second);
         }
-
-        //SV_SHOW_INFO(markers);
-        //visualizer.visualize(smpl::visual::Level::Info, markers);
-        //std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        //pidx++;
-        //pidx %= res.trajectory.joint_trajectory.points.size();
 
         ros::param::set("/walker_planner_done", 1);
         // Reset flags
