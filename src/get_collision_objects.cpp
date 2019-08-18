@@ -112,7 +112,8 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     const std::string& frame_id,
     const double x_max,
     const double y_max,
-    const double door_width){
+    const double door_width,
+    int n_tables){
     // Wall Thickness
     const double th = 0.05;
     // Wall Height
@@ -233,6 +234,18 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     dims[1] = th;
     dims[2] = ht;
     objs.push_back(GetCollisionCube(pose, dims, frame_id, object_id));
+
+    //Tables
+    if(n_tables > 0){
+        object_id = "table1";
+        pose.position.x = alley_right_wall_x + common_wall_length;
+        pose.position.y = map_half_y/2;
+        pose.position.z = 0.30;
+        dims[0] = 1;
+        dims[1] = 1;
+        dims[2] = 0.60;
+        objs.push_back(GetCollisionCube(pose, dims, frame_id, object_id));
+    }
 
     // First Column
     object_id = "wall10";

@@ -21,4 +21,5 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     const std::string& frame_id,
     const double x_max,
     const double y_max,
-    const double door_width);
+    const double door_width,
+    int n_tables);
