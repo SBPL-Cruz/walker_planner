@@ -470,60 +470,46 @@ int MsgSubscriber::plan_mrmha(
         planning_config.cost_per_cell = 1000;
 
         auto resolutions = getResolutions( rm.get(), planning_config );
-        auto actions_full = make_unique<ManipLatticeActionSpace>();
-        auto actions_base = make_unique<ManipLatticeActionSpace>();
+        auto multi_action_space = make_unique<ManipLatticeMultiActionSpace>(3);
         auto space = make_unique<smpl::ManipLatticeMultiRep>();
 
-        std::vector<ActionSpace*> v_actions;
-        v_actions.push_back(actions_full.get());
-        v_actions.push_back(actions_base.get());
-        v_actions.push_back(actions_full.get());
-        if (!space->init( rm.get(), &cc, resolutions, v_actions )) {
+        //XXX Assuming:
+        //1. Anchor get full
+        //2. Inad1 gets arm
+        //3. Inad2 gets base
+        if (!space->init( rm.get(), &cc, resolutions, multi_action_space.get() )) {
             SMPL_ERROR("Failed to initialize Manip Lattice");
             return 1;
         }
 
-        for(auto& actions : v_actions){
-            if (!actions->init(space.get())) {
-                SMPL_ERROR("Failed to initialize Manip Lattice Action Space");
-                return 1;
-            }
+        if (!multi_action_space->init(space.get())) {
+            SMPL_ERROR("Failed to initialize Manip Lattice Multi Action Space");
+            return 1;
         }
-
-        space->setVisualizationFrameId(grid.getReferenceFrame());
-
-        actions_full->useMultipleIkSolutions(planning_config.use_multiple_ik_solutions);
-        actions_full->useAmp(MotionPrimitive::SNAP_TO_XYZ, planning_config.use_xyz_snap_mprim);
-        actions_full->useAmp(MotionPrimitive::SNAP_TO_RPY, planning_config.use_rpy_snap_mprim);
-        actions_full->useAmp(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.use_xyzrpy_snap_mprim);
-        actions_full->useAmp(MotionPrimitive::SHORT_DISTANCE, planning_config.use_short_dist_mprims);
-        actions_full->ampThresh(MotionPrimitive::SNAP_TO_XYZ, planning_config.xyz_snap_dist_thresh);
-        actions_full->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
-        actions_full->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
-        actions_full->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
-        actions_base->useMultipleIkSolutions(planning_config.use_multiple_ik_solutions);
-        actions_base->useAmp(MotionPrimitive::SNAP_TO_XYZ, planning_config.use_xyz_snap_mprim);
-        actions_base->useAmp(MotionPrimitive::SNAP_TO_RPY, planning_config.use_rpy_snap_mprim);
-        actions_base->useAmp(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.use_xyzrpy_snap_mprim);
-        actions_base->useAmp(MotionPrimitive::SHORT_DISTANCE, planning_config.use_short_dist_mprims);
-        actions_base->ampThresh(MotionPrimitive::SNAP_TO_XYZ, planning_config.xyz_snap_dist_thresh);
-        actions_base->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
-        actions_base->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
-        actions_base->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
 
         // XXX Loads from filename
         std::vector<std::string> mprim_filenames;
         std::stringstream ss(planning_config.mprim_filenames);
         std::string temp;
-        while(getline(ss, temp, ','))
+        while(getline(ss, temp, ',')){
             mprim_filenames.push_back(temp);
+            ROS_ERROR("mprim_filename: %s", temp.c_str());
+        }
+        for( int i=0; i<3; i++ )
+            if(!multi_action_space->load(i, mprim_filenames[i]))
+                return 1;
 
-        if (!actions_full->load(mprim_filenames[0])) {
-                return 1;
-        }
-        if (!actions_base->load(mprim_filenames[1])) {
-                return 1;
-        }
+        space->setVisualizationFrameId(grid.getReferenceFrame());
+
+        multi_action_space->useMultipleIkSolutions(planning_config.use_multiple_ik_solutions);
+        multi_action_space->useAmp(MotionPrimitive::SNAP_TO_XYZ, planning_config.use_xyz_snap_mprim);
+        multi_action_space->useAmp(MotionPrimitive::SNAP_TO_RPY, planning_config.use_rpy_snap_mprim);
+        multi_action_space->useAmp(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.use_xyzrpy_snap_mprim);
+        multi_action_space->useAmp(MotionPrimitive::SHORT_DISTANCE, planning_config.use_short_dist_mprims);
+        multi_action_space->ampThresh(MotionPrimitive::SNAP_TO_XYZ, planning_config.xyz_snap_dist_thresh);
+        multi_action_space->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
+        multi_action_space->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
+        multi_action_space->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
 
         //////////////
         // Planning //
