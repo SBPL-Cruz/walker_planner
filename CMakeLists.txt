@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(walker_planner)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++14)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -95,3 +95,10 @@ add_executable( walker_planner src/walker_planner.cpp src/walker_planner_mrmha.c
                 src/planner_config.cpp src/collision_space_scene.cpp src/get_collision_objects.cpp)
 target_link_libraries(walker_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 add_dependencies(walker_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_executable( test_motion_planner src/test_motion_planner.cpp
+        src/collision_space_scene.cpp src/planner_config.cpp)
+target_link_libraries(test_motion_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+add_dependencies( test_motion_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+
+
