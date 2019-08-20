@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <ros/ros.h>
 
 #include <smpl/types.h>
 #include <smpl/angles.h>
@@ -42,7 +43,7 @@ namespace MPlanner {
 
             virtual bool updateStart(const smpl::RobotState&);
             virtual bool updateGoal(const smpl::GoalConstraint&);
-            virtual bool updatePlannerParams(PlannerParams&);
+            virtual bool updatePlannerParams(const PlannerParams&);
             virtual bool plan(PlannerSolution& planner_soltn);
 
             smpl::RobotModel* robot(){ return m_env_ptr->robot(); }
@@ -156,7 +157,7 @@ namespace MPlanner {
         }
 
     template <typename Search, typename Env>
-        bool MotionPlanner<Search, Env>::updatePlannerParams(PlannerParams& m_params){
+        bool MotionPlanner<Search, Env>::updatePlannerParams(const PlannerParams& m_params){
             m_search_ptr->set_initialsolution_eps(m_params.eps);
             m_search_ptr->set_initial_mha_eps(m_params.eps_mha);
             m_search_ptr->set_search_mode(m_params.search_mode);
