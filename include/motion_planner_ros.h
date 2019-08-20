@@ -58,7 +58,7 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
     bool updateGoal(const smpl::GoalConstraint&);
 
     //Get occGrid and objects and add to occupancyGrid.
-    std::unique_ptr<MotionPlanner> m_planner;
+    std::unique_ptr<MotionPlanner> m_planner_ptr;
     std::vector<MPlanner::PlannerSolution> m_planner_soltns;
 };
 
@@ -75,6 +75,11 @@ MotionPlannerROS<SP, EP, Planner>::MotionPlannerROS(ros::NodeHandle _nh) :
 }
 
 template <typename SP, typename EP, typename Planner>
+bool MotionPlannerROS<SP, EP, Planner>::setPlannerParams(const MPlanner::PlannerParams& _params){
+    return m_planner_ptr->updatePlannerParams(_params);
+}
+
+template <typename SP, typename EP, typename Planner>
 bool MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
     if(this->canCallPlanner()){
         // XXX The map/environment should be updated automatically??
@@ -82,7 +87,7 @@ bool MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
         this->updateStart(this->getStart(_ep));
         this->updateGoal(this->getGoal(_ep));
         MPlanner::PlannerSolution soltn;
-        if(!m_planner->plan(soltn)){
+        if(!m_planner_ptr->plan(soltn)){
             ROS_WARN("Planning Episode %d Failed", _ep);
             return false;
         } else{
@@ -101,7 +106,7 @@ bool MotionPlannerROS<SP, EP, Planner>::updateStart(const moveit_msgs::RobotStat
     if (!leatherman::getJointPositions(
             _start.joint_state,
             _start.multi_dof_joint_state,
-            m_planner->robot()->getPlanningJoints(),
+            m_planner_ptr->robot()->getPlanningJoints(),
             initial_positions,
             missing)){
         ROS_WARN_STREAM("start state is missing planning joints: " << missing);
@@ -116,7 +121,7 @@ bool MotionPlannerROS<SP, EP, Planner>::updateStart(const moveit_msgs::RobotStat
         if (!leatherman::getJointPositions(
                 fixed_state.joint_state,
                 fixed_state.multi_dof_joint_state,
-                m_planner->robot->getPlanningJoints(),
+                m_planner_ptr->robot->getPlanningJoints(),
                 initial_positions,
                 missing)){
             return false;
@@ -124,12 +129,12 @@ bool MotionPlannerROS<SP, EP, Planner>::updateStart(const moveit_msgs::RobotStat
     }
 
     SP::updateStart(_start);
-    return m_planner->updateStart(initial_positions);
+    return m_planner_ptr->updateStart(initial_positions);
 }
 
 template <typename SP, typename EP, typename Planner>
 bool MotionPlannerROS<SP, EP, Planner>::updateGoal(const smpl::GoalConstraint& _goal){
-    m_planner->updateGoal(_goal);
+    m_planner_ptr->updateGoal(_goal);
 }
 
 
@@ -138,7 +143,7 @@ struct Callbacks {
     Callbacks( ros::NodeHandle );
     bool canCallPlanner() const;
     bool updateMap(PlanningEpisode);
-    bool updateStart(const moveit_msgs::RobotState&, const smpl::RobotModel*);
+    bool updateStart(const moveit_msgs::RobotState&, smpl::KDLRobotModel*);
     bool updateGoal(const smpl::GoalConstraint&);
 
     private:
@@ -163,6 +168,8 @@ struct Callbacks {
     ros::Subscriber m_sub_pose;
     ros::Subscriber m_sub_start;
 
+    ros::Publisher m_path_pub;
+
     std::unique_ptr<CollisionSpaceScene> m_collision_scene;
     std::shared_ptr<smpl::OccupancyGrid> m_grid;
 
@@ -171,6 +178,8 @@ struct Callbacks {
     //geometry_msgs::Pose m_grasp;
     //geometry_msgs::Pose m_start_base;
     std::vector<smpl::Vector3> m_occgrid_points;
+
+    std::vector<smpl::RobotState> m_path_cached;
 };
 
 
