@@ -29,8 +29,8 @@ bool constructHeuristics(
 
     //Compute a feasible base location.
     std::vector<int> base_x, base_y;
-
     heurs.clear();
+
     {
         auto h = std::make_unique<smpl::BfsHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
@@ -91,7 +91,7 @@ class ReadExperimentFromFile {
 
     ros::NodeHandle m_nh;
     std::vector<moveit_msgs::RobotState> m_start_states;
-    std::vector<smpl::GoalConstraint> m_goal_states;
+    std::vector<smpl::GoalConstraint> m_goal_constraints;
 
 };
 
@@ -101,6 +101,40 @@ ReadExperimentFromFile::ReadExperimentFromFile(ros::NodeHandle _nh) : m_nh{_nh}{
         ROS_ERROR("Failed to get initial configuration.");
     }
     m_start_states.push_back(start_state);
+
+    smpl::Affine3 goal_pose;
+
+    std::vector<double> goal_state( 6, 0 );
+    m_nh.param("goal/x", goal_state[0], 0.0);
+    m_nh.param("goal/y", goal_state[1], 0.0);
+    m_nh.param("goal/z", goal_state[2], 0.0);
+    m_nh.param("goal/roll", goal_state[3], 0.0);
+    m_nh.param("goal/pitch", goal_state[4], 0.0);
+    m_nh.param("goal/yaw", goal_state[5], 0.0);
+
+    geometry_msgs::Pose read_grasp;
+    read_grasp.position.x = goal_state[0];
+    read_grasp.position.y = goal_state[1];
+    read_grasp.position.z = goal_state[2];
+    tf::Quaternion q;
+    q.setRPY( goal_state[3], goal_state[4], goal_state[5] );
+    read_grasp.orientation.x = q[0];
+    read_grasp.orientation.y = q[1];
+    read_grasp.orientation.z = q[2];
+    read_grasp.orientation.w = q[3];
+    tf::poseMsgToEigen( read_grasp, goal_pose);
+
+    smpl::GoalConstraint goal;
+    goal.type = smpl::GoalType::XYZ_RPY_GOAL;
+    goal.pose = goal_pose;
+    goal.xyz_tolerance[0] = 0.13;
+    goal.xyz_tolerance[1] = 0.13;
+    goal.xyz_tolerance[2] = 0.13;
+    goal.rpy_tolerance[0] = 3.14;
+    goal.rpy_tolerance[1] = 3.14;
+    goal.rpy_tolerance[2] = 3.14;
+
+    m_goal_constraints.push_back(goal);
 }
 
 moveit_msgs::RobotState ReadExperimentFromFile::getStart(PlanningEpisode _ep){
@@ -108,7 +142,7 @@ moveit_msgs::RobotState ReadExperimentFromFile::getStart(PlanningEpisode _ep){
 }
 
 smpl::GoalConstraint ReadExperimentFromFile::getGoal(PlanningEpisode _ep){
-    return m_goal_states.back();
+    return m_goal_constraints.back();
 }
 
 int main(int argc, char** argv){
@@ -116,6 +150,8 @@ int main(int argc, char** argv){
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);
+    smpl::VisualizerROS visualizer(nh, 100);
+    smpl::viz::set_visualizer(&visualizer);
 
     /////////////////
     // Robot Model //
@@ -185,7 +221,7 @@ int main(int argc, char** argv){
 
     // This whole manage storage for all the scene objects and must outlive
     // its associated CollisionSpace instance.
-    CollisionSpaceScene scene;
+    auto scene_ptr = std::make_unique<CollisionSpaceScene>();
 
     smpl::collision::CollisionModelConfig cc_conf;
     if (!smpl::collision::CollisionModelConfig::Load(ph, cc_conf)) {
@@ -206,6 +242,7 @@ int main(int argc, char** argv){
         return 1;
     }
     cc.setPadding(0.02);
+    cc.setWorldToModelTransform(Eigen::Affine3d::Identity());
 
     //auto marker = cc.getCollisionRobotVisualization(start_state.joint_state.position);
     //marker[0].ns = "Start state";
@@ -223,7 +260,7 @@ int main(int argc, char** argv){
     planning_config.cost_per_cell = 1000;
     ROS_INFO("Initialize scene");
 
-    scene.SetCollisionSpace(&cc);
+    scene_ptr->SetCollisionSpace(&cc);
 
     ROS_INFO("Setting up robot model");
     auto rm = SetupRobotModel(robot_description, robot_config);
@@ -234,13 +271,14 @@ int main(int argc, char** argv){
 
     rm->printRobotModelInformation();
 
-    cc.setWorldToModelTransform(Eigen::Affine3d::Identity());
 
     SV_SHOW_INFO(grid_ptr->getDistanceFieldVisualization(0.2));
 
     SV_SHOW_INFO(cc.getCollisionRobotVisualization());
     SV_SHOW_INFO(cc.getCollisionWorldVisualization());
     SV_SHOW_INFO(cc.getOccupiedVoxelsVisualization());
+
+    ros::Duration(1.0).sleep();
 
     auto resolutions = getResolutions( rm.get(), planning_config );
     auto multi_action_space = std::make_unique<smpl::ManipLatticeMultiActionSpace>(3);
@@ -293,9 +331,13 @@ int main(int argc, char** argv){
         return 0;
     }
 
-    std::vector<std::unique_ptr<smpl::RobotHeuristic>> inad_heurs;
-    for(auto it = heurs.begin() + 1; it != heurs.end(); it++)
-        inad_heurs.push_back(std::move(*it));
+    ROS_ERROR("Num heurs: %d", heurs.size());
+    assert(heurs[0] != nullptr);
+    std::vector<Heuristic*> inad_heurs;
+
+    Heuristic* anchor_heur = heurs[0].get();
+    for(int i=1; i<heurs.size(); i++)
+        inad_heurs.push_back(heurs[i].get());
 
     //ROS_INFO("Constructing Planner");
     //std::vector<Heuristic*> heur_ptrs;
@@ -310,13 +352,14 @@ int main(int argc, char** argv){
     MPlanner::PlannerParams planner_params = { 10, 5, 2, false };
 
     auto mplanner = std::make_unique<MotionPlanner>();
-    mplanner->init(std::move(space), std::move(heurs[0]), std::move(inad_heurs), planner_params );
+    mplanner->init(space, anchor_heur, inad_heurs, planner_params );
 
-    MotionPlannerROS< Callbacks, ReadExperimentFromFile, MotionPlanner > mplanner_ros(nh);
-    mplanner_ros.setPlannerParams(planner_params);
+    MotionPlannerROS< Callbacks, ReadExperimentFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), std::move(scene_ptr), std::move(mplanner), grid_ptr);
 
-    while(ros::ok()) {
+    ExecutionStatus status = ExecutionStatus::WAITING;
+    while(status == ExecutionStatus::WAITING) {
         loop_rate.sleep();
+        status = mplanner_ros.execute(0);
         ros::spinOnce();
     }
 }
