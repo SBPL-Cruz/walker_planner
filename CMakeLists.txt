@@ -96,8 +96,12 @@ add_executable( walker_planner src/walker_planner.cpp src/walker_planner_mrmha.c
 target_link_libraries(walker_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 add_dependencies(walker_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_executable( test_motion_planner src/test_motion_planner.cpp
-        src/collision_space_scene.cpp src/planner_config.cpp)
+add_executable( test_motion_planner
+    src/test_motion_planner.cpp
+    src/motion_planner_ros.cpp
+    src/collision_space_scene.cpp
+    src/planner_config.cpp
+    src/get_collision_objects.cpp)
 target_link_libraries(test_motion_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 add_dependencies( test_motion_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 
