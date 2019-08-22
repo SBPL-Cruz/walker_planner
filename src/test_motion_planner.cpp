@@ -276,7 +276,6 @@ int main(int argc, char** argv){
 
     SV_SHOW_INFO(cc.getCollisionRobotVisualization());
     SV_SHOW_INFO(cc.getCollisionWorldVisualization());
-    SV_SHOW_INFO(cc.getOccupiedVoxelsVisualization());
 
     ros::Duration(1.0).sleep();
 
@@ -349,7 +348,7 @@ int main(int argc, char** argv){
     //Heuristic** inad = heur_ptrs.data();
 
     using MotionPlanner = MPlanner::MotionPlanner<MRMHAPlanner, smpl::ManipLatticeMultiRep>;
-    MPlanner::PlannerParams planner_params = { 10, 5, 2, false };
+    MPlanner::PlannerParams planner_params = { 30, 1.5, 2, false };
 
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(space, anchor_heur, inad_heurs, planner_params );
@@ -361,6 +360,26 @@ int main(int argc, char** argv){
         loop_rate.sleep();
         status = mplanner_ros.execute(0);
         ros::spinOnce();
+    }
+    if(status == ExecutionStatus::SUCCESS){
+        auto plan = mplanner_ros.getPlan(0).robot_states;
+
+        visualization_msgs::MarkerArray whole_path;
+        std::vector<visualization_msgs::Marker> m_all;
+
+        int idx = 0;
+        for( int pidx=0; pidx<plan.size(); pidx++ ){
+            auto& state = plan[pidx];
+            auto markers = cc.getCollisionRobotVisualization(state);
+            for (auto& m : markers.markers) {
+                m.ns = "path_animation";
+                m.id = idx;
+                idx++;
+                whole_path.markers.push_back(m);
+            }
+            visualizer.visualize(smpl::visual::Level::Info, markers);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
     }
 }
 
