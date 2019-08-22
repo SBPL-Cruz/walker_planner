@@ -48,9 +48,9 @@ required="true" /> -->
         <!-- planner params -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
         <param name="planning/mprim_filenames" value="$(find
-walker_planner)/config/walker_multi_rep.mprim,$(find
-walker_planner)/config/walker_multi_rep_base.mprim,$(find
-walker_planner)/config/walker_multi_rep.mprim"/>
+        walker_planner)/config/walker_multi_rep.mprim,$(find
+        walker_planner)/config/walker_multi_rep.mprim,$(find
+        walker_planner)/config/walker_multi_rep_base.mprim"/>
 
         <param name="planning/mprim_filename" value="$(find
         walker_planner)/config/walker_multi_rep.mprim"/>
@@ -69,4 +69,4 @@ walker_planner)/config/walker_multi_rep.mprim"/>
         <!-- 3. scenario -->
 
     </node>
-<
+</launch>
