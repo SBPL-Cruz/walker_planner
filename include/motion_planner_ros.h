@@ -43,13 +43,23 @@ enum PLANNER_ID {
     MRMHA
 };
 
+enum ExecutionStatus {
+    SUCCESS,
+    FAILURE,
+    WAITING
+};
+
 template < typename SceneUpdatePolicy, typename ExperimentPolicy, typename MotionPlanner >
 class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
     public:
 
-    MotionPlannerROS( ros::NodeHandle _nh );
+    MotionPlannerROS( ros::NodeHandle _nh,
+            smpl::KDLRobotModel*,
+            std::unique_ptr<CollisionSpaceScene>,
+            std::unique_ptr<MotionPlanner>,
+            std::shared_ptr<smpl::OccupancyGrid>);
     bool setPlannerParams(const MPlanner::PlannerParams&);
-    bool execute(PlanningEpisode);
+    ExecutionStatus execute(PlanningEpisode);
     std::vector<smpl::RobotState> getPlan(PlanningEpisode);
 
     private:
@@ -60,12 +70,18 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
     //Get occGrid and objects and add to occupancyGrid.
     std::unique_ptr<MotionPlanner> m_planner_ptr;
     std::vector<MPlanner::PlannerSolution> m_planner_soltns;
+    smpl::KDLRobotModel* m_rm_ptr;
 };
 
 
 template <typename SP, typename EP, typename Planner>
-MotionPlannerROS<SP, EP, Planner>::MotionPlannerROS(ros::NodeHandle _nh) :
-        SP(_nh), EP(_nh) {
+MotionPlannerROS<SP, EP, Planner>::MotionPlannerROS(ros::NodeHandle _nh,
+            smpl::KDLRobotModel* _rm,
+            std::unique_ptr<CollisionSpaceScene> _scene,
+            std::unique_ptr<Planner> _planner,
+            std::shared_ptr<smpl::OccupancyGrid> _grid_ptr ) :
+        SP(_nh, std::move(_scene), _grid_ptr), EP(_nh), m_rm_ptr{_rm},
+        m_planner_ptr{std::move(_planner)} {
     ROS_INFO("Initialize visualizer");
     //smpl::VisualizerROS visualizer(_nh, 100);
     //smpl::viz::set_visualizer(&visualizer);
@@ -80,22 +96,23 @@ bool MotionPlannerROS<SP, EP, Planner>::setPlannerParams(const MPlanner::Planner
 }
 
 template <typename SP, typename EP, typename Planner>
-bool MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
+ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
     if(this->canCallPlanner()){
         // XXX The map/environment should be updated automatically??
-        this->updateMap();
-        this->updateStart(this->getStart(_ep));
-        this->updateGoal(this->getGoal(_ep));
+        this->updateMap(_ep);
+        updateStart(this->getStart(_ep));
+        updateGoal(this->getGoal(_ep));
         MPlanner::PlannerSolution soltn;
         if(!m_planner_ptr->plan(soltn)){
             ROS_WARN("Planning Episode %d Failed", _ep);
-            return false;
+            return ExecutionStatus::FAILURE;
         } else{
             m_planner_soltns.push_back(soltn);
-            return true;
+            return ExecutionStatus::SUCCESS;
         }
     } else{
         ROS_WARN("Can't call planner");
+        return ExecutionStatus::WAITING;
     }
 }
 
@@ -121,14 +138,14 @@ bool MotionPlannerROS<SP, EP, Planner>::updateStart(const moveit_msgs::RobotStat
         if (!leatherman::getJointPositions(
                 fixed_state.joint_state,
                 fixed_state.multi_dof_joint_state,
-                m_planner_ptr->robot->getPlanningJoints(),
+                m_planner_ptr->robot()->getPlanningJoints(),
                 initial_positions,
                 missing)){
             return false;
         }
     }
 
-    SP::updateStart(_start);
+    SP::updateStart(_start, m_rm_ptr);
     return m_planner_ptr->updateStart(initial_positions);
 }
 
@@ -140,7 +157,9 @@ bool MotionPlannerROS<SP, EP, Planner>::updateGoal(const smpl::GoalConstraint& _
 
 struct Callbacks {
 
-    Callbacks( ros::NodeHandle );
+    Callbacks( ros::NodeHandle,
+            std::unique_ptr<CollisionSpaceScene>,
+            std::shared_ptr<smpl::OccupancyGrid> );
     bool canCallPlanner() const;
     bool updateMap(PlanningEpisode);
     bool updateStart(const moveit_msgs::RobotState&, smpl::KDLRobotModel*);

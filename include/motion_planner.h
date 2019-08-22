@@ -37,8 +37,8 @@ namespace MPlanner {
             //~MotionPlanner();
 
             virtual bool init(std::shared_ptr<Env> _env,
-                    std::unique_ptr<smpl::RobotHeuristic> _anchor,
-                    std::vector<std::unique_ptr<smpl::RobotHeuristic>> m_inad,
+                    Heuristic* _anchor,
+                    std::vector<Heuristic*>& m_inad,
                     PlannerParams&);
 
             virtual bool updateStart(const smpl::RobotState&);
@@ -51,8 +51,8 @@ namespace MPlanner {
             private:
             std::unique_ptr<Search> m_search_ptr = nullptr;
             std::shared_ptr<Env> m_env_ptr = nullptr;
-            std::unique_ptr<smpl::RobotHeuristic> m_anchor_heur_ptr = nullptr;
-            std::vector<std::unique_ptr<smpl::RobotHeuristic>> m_inad_heurs;
+            Heuristic* m_anchor_heur_ptr = nullptr;
+            std::vector<Heuristic*> m_inad_heurs;
 
             smpl::RobotState m_start_state;
             smpl::GoalConstraint m_goal_constraints;
@@ -71,20 +71,18 @@ namespace MPlanner {
     template <typename Search, typename Env>
         bool MotionPlanner<Search, Env>::init(
                 std::shared_ptr<Env> _env_ptr,
-                std::unique_ptr<smpl::RobotHeuristic> _anchor_ptr,
-                std::vector<std::unique_ptr<smpl::RobotHeuristic>> _inad_heurs,
+                Heuristic* _anchor_ptr,
+                std::vector<Heuristic*>& _inad_heurs,
                 PlannerParams& m_params){
             SMPL_INFO("MotionPlanner::init");
             m_env_ptr = _env_ptr;
-            m_anchor_heur_ptr = std::move(_anchor_ptr);
-            m_inad_heurs = std::move(_inad_heurs);
+            m_anchor_heur_ptr = _anchor_ptr;
+            for(auto h : _inad_heurs)
+                m_inad_heurs.push_back(h);
 
-            std::vector<Heuristic*> inad_heurs;
-            for(auto& h : m_inad_heurs)
-                inad_heurs.push_back(h.get());
             // Implicit Requirement from Search Class
             m_search_ptr = std::make_unique<Search>( m_env_ptr.get(),
-                    m_anchor_heur_ptr.get(), inad_heurs.data(), inad_heurs.size() );
+                    m_anchor_heur_ptr, m_inad_heurs.data(), m_inad_heurs.size() );
             updatePlannerParams(m_params);
         }
 
@@ -105,9 +103,9 @@ namespace MPlanner {
                 return false;
             }
 
-            m_anchor_heur_ptr->updateStart(_start_state);
+            dynamic_cast<smpl::RobotHeuristic*>(m_anchor_heur_ptr)->updateStart(_start_state);
             for (auto& h : m_inad_heurs) {
-                h->updateStart(_start_state);
+                dynamic_cast<smpl::RobotHeuristic*>(h)->updateStart(_start_state);
             }
 
             if (m_search_ptr->set_start(start_id) == 0) {
@@ -135,9 +133,10 @@ namespace MPlanner {
 
             ROS_INFO("Updating goal in heuristics.");
             ROS_INFO("Goal: %f, %f", _goal_constraint.pose.translation()[0], _goal_constraint.pose.translation()[1]);
-            m_anchor_heur_ptr->updateGoal(_goal_constraint);
+            assert(m_anchor_heur_ptr != nullptr);
+            dynamic_cast<smpl::RobotHeuristic*>(m_anchor_heur_ptr)->updateGoal(_goal_constraint);
             for (auto& h : m_inad_heurs) {
-                h->updateGoal(_goal_constraint);
+                dynamic_cast<smpl::RobotHeuristic*>(h)->updateGoal(_goal_constraint);
             }
 
             // set planner goal
