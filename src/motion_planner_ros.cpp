@@ -4,7 +4,11 @@
 
 using namespace smpl;
 
-Callbacks::Callbacks(ros::NodeHandle _nh) : m_nh{_nh} {
+Callbacks::Callbacks(ros::NodeHandle _nh,
+        std::unique_ptr<CollisionSpaceScene> _scene,
+        std::shared_ptr<smpl::OccupancyGrid> _grid_ptr )
+    : m_nh{_nh}, m_collision_scene{std::move(_scene)}, m_grid{_grid_ptr} {
+
     //m_start_received = false;
     m_octomap_received = false;
     //m_grasp_received = false;
@@ -41,7 +45,12 @@ bool Callbacks::updateMap(PlanningEpisode _ep){
         ROS_INFO("Could not added octomap");
         return false;
     }
+    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), 20, 15, .8, 1);
+    for (auto& object : objects) {
+        m_collision_scene->ProcessCollisionObjectMsg(object);
+    }
 
+    assert(m_grid != nullptr);
     m_grid->addPointsToField(m_occgrid_points);
 
     return true;
@@ -66,12 +75,12 @@ bool Callbacks::updateStart(const moveit_msgs::RobotState& _start,
 }
 
 bool Callbacks::updateGoal(const smpl::GoalConstraint& _goal){
-
+    return true;
 }
 
 void Callbacks::octomapCallback(const octomap_msgs::Octomap& msg) {
     ROS_ERROR("Octomap received");
-    m_map_with_pose.header.frame_id = "world";
+    m_map_with_pose.header.frame_id = "dummy_base";
     m_map_with_pose.octomap = msg;
 
     geometry_msgs::Point p;
