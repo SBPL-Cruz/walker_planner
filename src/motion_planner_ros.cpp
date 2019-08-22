@@ -53,6 +53,8 @@ bool Callbacks::updateMap(PlanningEpisode _ep){
     assert(m_grid != nullptr);
     m_grid->addPointsToField(m_occgrid_points);
 
+    SV_SHOW_INFO(m_collision_scene->getOccupiedVoxelsVisualization());
+
     return true;
 }
 

@@ -60,7 +60,7 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
             std::shared_ptr<smpl::OccupancyGrid>);
     bool setPlannerParams(const MPlanner::PlannerParams&);
     ExecutionStatus execute(PlanningEpisode);
-    std::vector<smpl::RobotState> getPlan(PlanningEpisode);
+    MPlanner::PlannerSolution getPlan(PlanningEpisode);
 
     private:
 
@@ -81,14 +81,7 @@ MotionPlannerROS<SP, EP, Planner>::MotionPlannerROS(ros::NodeHandle _nh,
             std::unique_ptr<Planner> _planner,
             std::shared_ptr<smpl::OccupancyGrid> _grid_ptr ) :
         SP(_nh, std::move(_scene), _grid_ptr), EP(_nh), m_rm_ptr{_rm},
-        m_planner_ptr{std::move(_planner)} {
-    ROS_INFO("Initialize visualizer");
-    //smpl::VisualizerROS visualizer(_nh, 100);
-    //smpl::viz::set_visualizer(&visualizer);
-
-    // Let publishers set up
-    //ros::Duration(1.0).sleep();
-}
+        m_planner_ptr{std::move(_planner)} {}
 
 template <typename SP, typename EP, typename Planner>
 bool MotionPlannerROS<SP, EP, Planner>::setPlannerParams(const MPlanner::PlannerParams& _params){
@@ -114,6 +107,11 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
         ROS_WARN("Can't call planner");
         return ExecutionStatus::WAITING;
     }
+}
+
+template <typename SP, typename EP, typename Planner>
+MPlanner::PlannerSolution MotionPlannerROS<SP, EP, Planner>::getPlan(PlanningEpisode _ep){
+    return m_planner_soltns[_ep];
 }
 
 template <typename SP, typename EP, typename Planner>
@@ -153,7 +151,6 @@ template <typename SP, typename EP, typename Planner>
 bool MotionPlannerROS<SP, EP, Planner>::updateGoal(const smpl::GoalConstraint& _goal){
     m_planner_ptr->updateGoal(_goal);
 }
-
 
 struct Callbacks {
 
