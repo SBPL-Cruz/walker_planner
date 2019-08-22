@@ -38,6 +38,14 @@ public:
 
     bool UpdatePlanningScene(const moveit_msgs::PlanningScene& scene);
 
+    inline auto getOccupiedVoxelsVisualization(){
+        return m_cspace->getOccupiedVoxelsVisualization();
+    }
+
+    inline auto getCollisionRobotVisualization(){
+        return m_cspace->getCollisionRobotVisualization();
+    }
+
 private:
 
     std::vector<std::unique_ptr<octomap::OcTree>> m_octrees;
