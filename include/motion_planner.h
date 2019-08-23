@@ -4,10 +4,12 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <chrono>
 #include <ros/ros.h>
 
 #include <smpl/types.h>
 #include <smpl/angles.h>
+#include <smpl/time.h>
 #include <smpl/graph/goal_constraint.h>
 #include <smpl/heuristic/robot_heuristic.h>
 #include <smpl/console/console.h>
@@ -17,6 +19,7 @@ namespace MPlanner {
     struct PlannerSolution {
         std::vector<smpl::RobotState> robot_states;
         int cost;
+        double planning_time;
     };
 
     struct PlannerParams{
@@ -170,7 +173,10 @@ namespace MPlanner {
             SMPL_INFO("plan");
             m_search_ptr->force_planning_from_scratch();
             std::vector<int> soltn_ids;
+            auto then = smpl::clock::now();
             bool success = m_search_ptr->replan( m_planning_time, &soltn_ids, &(_planner_soltn.cost) );
+            double planning_time = smpl::to_seconds(smpl::clock::now() - then);
+            _planner_soltn.planning_time = planning_time;
 
             if(!success){
                 SMPL_ERROR("Planning failed.");
