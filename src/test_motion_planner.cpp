@@ -127,12 +127,12 @@ ReadExperimentFromFile::ReadExperimentFromFile(ros::NodeHandle _nh) : m_nh{_nh}{
     smpl::GoalConstraint goal;
     goal.type = smpl::GoalType::XYZ_RPY_GOAL;
     goal.pose = goal_pose;
-    goal.xyz_tolerance[0] = 0.13;
-    goal.xyz_tolerance[1] = 0.13;
-    goal.xyz_tolerance[2] = 0.13;
-    goal.rpy_tolerance[0] = 3.14;
-    goal.rpy_tolerance[1] = 3.14;
-    goal.rpy_tolerance[2] = 3.14;
+    goal.xyz_tolerance[0] = 0.02;
+    goal.xyz_tolerance[1] = 0.02;
+    goal.xyz_tolerance[2] = 0.02;
+    goal.rpy_tolerance[0] = 0.10;
+    goal.rpy_tolerance[1] = 0.10;
+    goal.rpy_tolerance[2] = 0.10;
 
     m_goal_constraints.push_back(goal);
 }
@@ -257,7 +257,7 @@ int main(int argc, char** argv){
         ROS_ERROR("Failed to read planner config");
         return 1;
     }
-    planning_config.cost_per_cell = 1000;
+    planning_config.cost_per_cell = 500;
     ROS_INFO("Initialize scene");
 
     scene_ptr->SetCollisionSpace(&cc);
@@ -317,6 +317,7 @@ int main(int argc, char** argv){
     multi_action_space->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
     multi_action_space->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
     multi_action_space->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
+    ROS_ERROR("Use Snap: %d", planning_config.use_xyz_snap_mprim);
 
     ///////////////
     //Planning////
@@ -348,7 +349,7 @@ int main(int argc, char** argv){
     //Heuristic** inad = heur_ptrs.data();
 
     using MotionPlanner = MPlanner::MotionPlanner<MRMHAPlanner, smpl::ManipLatticeMultiRep>;
-    MPlanner::PlannerParams planner_params = { 30, 1.5, 2, false };
+    MPlanner::PlannerParams planner_params = { 30, 5.0, 6.0, false };
 
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(space, anchor_heur, inad_heurs, planner_params );
@@ -362,6 +363,9 @@ int main(int argc, char** argv){
         ros::spinOnce();
     }
     if(status == ExecutionStatus::SUCCESS){
+        ROS_INFO("----------------");
+        ROS_INFO("Planning Time: %f", mplanner_ros.getPlan(0).planning_time);
+        ROS_INFO("----------------");
         auto plan = mplanner_ros.getPlan(0).robot_states;
 
         visualization_msgs::MarkerArray whole_path;
