@@ -1,6 +1,7 @@
 #include <tf2/LinearMath/Quaternion.h>
 #include <sstream>
 #include <memory>
+#include <fstream>
 
 #include <ros/ros.h>
 #include <smpl/graph/manip_lattice_action_space.h>
@@ -127,12 +128,12 @@ ReadExperimentFromFile::ReadExperimentFromFile(ros::NodeHandle _nh) : m_nh{_nh}{
     smpl::GoalConstraint goal;
     goal.type = smpl::GoalType::XYZ_RPY_GOAL;
     goal.pose = goal_pose;
-    goal.xyz_tolerance[0] = 0.02;
-    goal.xyz_tolerance[1] = 0.02;
-    goal.xyz_tolerance[2] = 0.02;
-    goal.rpy_tolerance[0] = 0.10;
-    goal.rpy_tolerance[1] = 0.10;
-    goal.rpy_tolerance[2] = 0.10;
+    goal.xyz_tolerance[0] = 0.03;
+    goal.xyz_tolerance[1] = 0.03;
+    goal.xyz_tolerance[2] = 0.03;
+    goal.rpy_tolerance[0] = 0.30;
+    goal.rpy_tolerance[1] = 0.30;
+    goal.rpy_tolerance[2] = 0.30;
 
     m_goal_constraints.push_back(goal);
 }
@@ -143,6 +144,161 @@ moveit_msgs::RobotState ReadExperimentFromFile::getStart(PlanningEpisode _ep){
 
 smpl::GoalConstraint ReadExperimentFromFile::getGoal(PlanningEpisode _ep){
     return m_goal_constraints.back();
+}
+
+class ReadExperimentsFromFile {
+    public:
+
+    ReadExperimentsFromFile(ros::NodeHandle);
+    moveit_msgs::RobotState getStart(PlanningEpisode);
+    smpl::GoalConstraint getGoal(PlanningEpisode);
+
+    private:
+
+    ros::NodeHandle m_nh;
+    std::vector<moveit_msgs::RobotState> m_start_states;
+    std::vector<smpl::GoalConstraint> m_goal_constraints;
+
+    moveit_msgs::RobotState stringToRobotState(std::string, std::string);
+    bool init( std::string, std::string );
+};
+
+ReadExperimentsFromFile::ReadExperimentsFromFile(ros::NodeHandle _nh) : m_nh{_nh}{
+    std::string start_file, goal_file;
+    m_nh.getParam("robot_start_states_file", start_file);
+    m_nh.getParam("robot_goal_states_file", goal_file);
+    init(start_file, goal_file);
+}
+
+moveit_msgs::RobotState ReadExperimentsFromFile::stringToRobotState(
+        std::string _header, std::string _state_str){
+    moveit_msgs::RobotState robot_state;
+    // Assume space separated items.
+    std::stringstream header_stream(_header);
+    std::stringstream state_stream(_state_str);
+
+    std::string joint_name, joint_val;
+    while (header_stream >> joint_name){
+        robot_state.joint_state.name.push_back(joint_name);
+    }
+    while(state_stream >> joint_val){
+        ROS_ERROR("%s", joint_val.c_str());
+        robot_state.joint_state.position.push_back(std::stod(joint_val));
+    }
+
+    assert(robot_state.joint_state.position.size() == robot_state.joint_state.name.size());
+    return robot_state;
+}
+
+smpl::GoalConstraint stringToGoalConstraint(std::string _pose_str){
+
+    std::stringstream state_stream(_pose_str);
+
+    std::string pose_val;
+    std::vector<double> goal_state( 6, 0 );
+
+    state_stream >> pose_val;
+    goal_state[0] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[1] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[2] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[3] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[4] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[5] = std::stod(pose_val);
+
+    geometry_msgs::Pose read_grasp;
+    read_grasp.position.x = goal_state[0];
+    read_grasp.position.y = goal_state[1];
+    read_grasp.position.z = goal_state[2];
+
+    tf::Quaternion q;
+    q.setRPY( goal_state[3], goal_state[4], goal_state[5] );
+    read_grasp.orientation.x = q[0];
+    read_grasp.orientation.y = q[1];
+    read_grasp.orientation.z = q[2];
+    read_grasp.orientation.w = q[3];
+
+    smpl::Affine3 goal_pose;
+    tf::poseMsgToEigen( read_grasp, goal_pose);
+
+    smpl::GoalConstraint goal;
+    goal.type = smpl::GoalType::XYZ_RPY_GOAL;
+    goal.pose = goal_pose;
+    goal.xyz_tolerance[0] = 0.03;
+    goal.xyz_tolerance[1] = 0.03;
+    goal.xyz_tolerance[2] = 0.03;
+    goal.rpy_tolerance[0] = 0.30;
+    goal.rpy_tolerance[1] = 0.30;
+    goal.rpy_tolerance[2] = 0.30;
+
+    return goal;
+}
+
+bool ReadExperimentsFromFile::init( std::string _start_file, std::string _goal_file ){
+    //Read names of joints from the header.
+    std::ifstream start_stream;
+    start_stream.open(_start_file);
+    ROS_ERROR("%s", _start_file.c_str());
+    if(!start_stream)
+        throw "Could not read Start file.";
+    //std::string header;
+    char header[100];
+    start_stream.getline(header, 100, '\n');
+    std::string header_str(header);
+
+    std::string line_str;
+    char line[100];
+    while(start_stream.getline(line, 100, '\n')){
+        std::string line_str(line);
+        m_start_states.push_back(stringToRobotState( header_str, line_str ));
+    }
+
+    start_stream.close();
+
+    std::ifstream goal_stream;
+    goal_stream.open(_goal_file);
+    ROS_ERROR("%s", _goal_file.c_str());
+    if(!goal_stream)
+        throw "Could not read Goal file.";
+
+    char line2[100];
+    while(goal_stream.getline(line2, 100, '\n')){
+        std::string line_str(line2);
+        m_goal_constraints.push_back(stringToGoalConstraint(line_str));
+    }
+
+    goal_stream.close();
+
+    return true;
+}
+
+moveit_msgs::RobotState ReadExperimentsFromFile::getStart(PlanningEpisode _ep){
+    return m_start_states[_ep];
+}
+
+smpl::GoalConstraint ReadExperimentsFromFile::getGoal(PlanningEpisode _ep){
+    return m_goal_constraints[_ep];
+}
+
+void writePath(std::string _file_name, std::string _header, std::vector<smpl::RobotState> _path){
+    std::ofstream file;
+    file.open(_file_name, std::ios::out);
+    if(!file)
+        SMPL_ERROR("Could not open file.");
+    file<<_header<<"\n";
+
+    for(const auto& state : _path){
+        for(const auto& val : state){
+            file<<val<<" ";
+        }
+        file<<"\n";
+    }
+
+    file.close();
 }
 
 int main(int argc, char** argv){
@@ -349,41 +505,70 @@ int main(int argc, char** argv){
     //Heuristic** inad = heur_ptrs.data();
 
     using MotionPlanner = MPlanner::MotionPlanner<MRMHAPlanner, smpl::ManipLatticeMultiRep>;
-    MPlanner::PlannerParams planner_params = { 30, 5.0, 6.0, false };
+    int max_planning_time = 45;
+    double eps = 4.0;
+    double eps_mha = 6;
+    MPlanner::PlannerParams planner_params = { max_planning_time, eps, eps_mha, false };
 
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(space, anchor_heur, inad_heurs, planner_params );
 
-    MotionPlannerROS< Callbacks, ReadExperimentFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), std::move(scene_ptr), std::move(mplanner), grid_ptr);
+
+    //MotionPlannerROS< Callbacks, ReadExperimentFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), std::move(scene_ptr), std::move(mplanner), grid_ptr);
+    MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), std::move(scene_ptr), std::move(mplanner), grid_ptr);
 
     ExecutionStatus status = ExecutionStatus::WAITING;
-    while(status == ExecutionStatus::WAITING) {
+    PlanningEpisode ep = 0;
+    //while(status == ExecutionStatus::WAITING) {
+    std::string file_prefix = "paths/solution_path";
+    std::ofstream stats_file;
+    while(ep < 3){
         loop_rate.sleep();
-        status = mplanner_ros.execute(0);
-        ros::spinOnce();
-    }
-    if(status == ExecutionStatus::SUCCESS){
-        ROS_INFO("----------------");
-        ROS_INFO("Planning Time: %f", mplanner_ros.getPlan(0).planning_time);
-        ROS_INFO("----------------");
-        auto plan = mplanner_ros.getPlan(0).robot_states;
+        std::string file_suffix = std::to_string(ep) + ".txt";
+        status = mplanner_ros.execute(ep);
+    //}
+        if(status == ExecutionStatus::SUCCESS){
+            ROS_INFO("----------------");
+            ROS_INFO("Planning Time: %f", mplanner_ros.getPlan(ep).planning_time);
+            ROS_INFO("----------------");
+            auto plan = mplanner_ros.getPlan(ep).robot_states;
 
-        visualization_msgs::MarkerArray whole_path;
-        std::vector<visualization_msgs::Marker> m_all;
+            // Write to file.
+            stats_file.open("planning_stats.txt", std::ios::app);
+            stats_file<<std::to_string(ep)<<" "<<max_planning_time<<" ";
+            stats_file<<mplanner_ros.getPlan(ep).planning_time<<" "<<mplanner_ros.getPlan(ep).cost<<" ";
+            stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<<"\n";
+            stats_file.close();
 
-        int idx = 0;
-        for( int pidx=0; pidx<plan.size(); pidx++ ){
-            auto& state = plan[pidx];
-            auto markers = cc.getCollisionRobotVisualization(state);
-            for (auto& m : markers.markers) {
-                m.ns = "path_animation";
-                m.id = idx;
-                idx++;
-                whole_path.markers.push_back(m);
+            std::string file_name = file_prefix + file_suffix;
+            std::string header = "Solution Path";
+            SMPL_ERROR("%s", file_name.c_str());
+            writePath(file_name, header , plan);
+            //////////////
+
+            visualization_msgs::MarkerArray whole_path;
+            std::vector<visualization_msgs::Marker> m_all;
+
+            int idx = 0;
+            for( int pidx=0; pidx<plan.size(); pidx++ ){
+                auto& state = plan[pidx];
+                auto markers = cc.getCollisionRobotVisualization(state);
+                for (auto& m : markers.markers) {
+                    m.ns = "path_animation";
+                    m.id = idx;
+                    idx++;
+                    whole_path.markers.push_back(m);
+                }
+                visualizer.visualize(smpl::visual::Level::Info, markers);
+                //std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
-            visualizer.visualize(smpl::visual::Level::Info, markers);
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
+
+        if(status != ExecutionStatus::WAITING){
+            status = ExecutionStatus::WAITING;
+            ep++;
+        }
+        ros::spinOnce();
     }
 }
 
