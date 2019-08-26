@@ -59,8 +59,9 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
             std::unique_ptr<MotionPlanner>,
             std::shared_ptr<smpl::OccupancyGrid>);
     bool setPlannerParams(const MPlanner::PlannerParams&);
+    bool initExperiments(std::string, std::string);
     ExecutionStatus execute(PlanningEpisode);
-    MPlanner::PlannerSolution getPlan(PlanningEpisode);
+    inline MPlanner::PlannerSolution getPlan(PlanningEpisode) const;
 
     private:
 
@@ -89,12 +90,17 @@ bool MotionPlannerROS<SP, EP, Planner>::setPlannerParams(const MPlanner::Planner
 }
 
 template <typename SP, typename EP, typename Planner>
+bool MotionPlannerROS<SP, EP, Planner>::initExperiments(std::string _start, std::string _goal){
+    return this->init(_start, _goal);
+}
+
+template <typename SP, typename EP, typename Planner>
 ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
     if(this->canCallPlanner()){
         // XXX The map/environment should be updated automatically??
         this->updateMap(_ep);
-        updateStart(this->getStart(_ep));
         updateGoal(this->getGoal(_ep));
+        updateStart(this->getStart(_ep));
         MPlanner::PlannerSolution soltn;
         if(!m_planner_ptr->plan(soltn)){
             ROS_WARN("Planning Episode %d Failed", _ep);
@@ -110,7 +116,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
 }
 
 template <typename SP, typename EP, typename Planner>
-MPlanner::PlannerSolution MotionPlannerROS<SP, EP, Planner>::getPlan(PlanningEpisode _ep){
+MPlanner::PlannerSolution MotionPlannerROS<SP, EP, Planner>::getPlan(PlanningEpisode _ep) const{
     return m_planner_soltns[_ep];
 }
 
