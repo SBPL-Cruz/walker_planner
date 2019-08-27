@@ -100,6 +100,15 @@ add_executable( test_motion_planner
 target_link_libraries(test_motion_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 add_dependencies( test_motion_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 
+add_executable( test_mha_planner
+    src/test_mha_planner.cpp
+    src/motion_planner_ros.cpp
+    src/collision_space_scene.cpp
+    src/planner_config.cpp
+    src/get_collision_objects.cpp)
+target_link_libraries(test_mha_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+add_dependencies( test_mha_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+
 
 add_executable( test_ik
     src/test_ik.cpp
