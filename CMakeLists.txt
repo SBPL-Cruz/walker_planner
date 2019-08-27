@@ -82,15 +82,6 @@ add_executable(collision_model_visualizer src/collision_model_visualizer.cpp
     src/collision_space_scene.cpp)
 target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
 
-#add_executable(walker_interface_planner src/walker_interface_planner.cpp src/collision_space_scene.cpp)
-#add_dependencies(walker_interface_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-#target_link_libraries(walker_interface_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
-
-#add_executable(walker_interface_mrmha src/walker_interface_mrmha.cpp
-#        src/collision_space_scene.cpp src/get_collision_objects.cpp)
-#target_link_libraries(walker_interface_mrmha ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
-#add_dependencies(walker_interface_mrmha ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
 add_executable( test_motion_planner
     src/test_motion_planner.cpp
     src/motion_planner_ros.cpp
