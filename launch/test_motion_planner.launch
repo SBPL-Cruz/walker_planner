@@ -57,6 +57,8 @@ required="true" /> -->
 
         <param name="allowed_planning_time" value="60.0"/>
         <param name="read_goal_from_file" value="true"/>
+        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/walker_start_states.txt" />
+        <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/walker_goal_states.txt" />
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
