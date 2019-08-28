@@ -39,7 +39,7 @@ namespace MPlanner {
             MotionPlanner();
             //~MotionPlanner();
 
-            virtual bool init(std::shared_ptr<Env> _env,
+            virtual bool init(Env* _env,
                     Heuristic* _anchor,
                     std::vector<Heuristic*>& m_inad,
                     PlannerParams&);
@@ -53,7 +53,7 @@ namespace MPlanner {
 
             private:
             std::unique_ptr<Search> m_search_ptr = nullptr;
-            std::shared_ptr<Env> m_env_ptr = nullptr;
+            Env* m_env_ptr = nullptr;
             Heuristic* m_anchor_heur_ptr = nullptr;
             std::vector<Heuristic*> m_inad_heurs;
 
@@ -73,7 +73,7 @@ namespace MPlanner {
 
     template <typename Search, typename Env>
         bool MotionPlanner<Search, Env>::init(
-                std::shared_ptr<Env> _env_ptr,
+                Env* _env_ptr,
                 Heuristic* _anchor_ptr,
                 std::vector<Heuristic*>& _inad_heurs,
                 PlannerParams& m_params){
@@ -84,7 +84,7 @@ namespace MPlanner {
                 m_inad_heurs.push_back(h);
 
             // Implicit Requirement from Search Class
-            m_search_ptr = std::make_unique<Search>( m_env_ptr.get(),
+            m_search_ptr = std::make_unique<Search>( m_env_ptr,
                     m_anchor_heur_ptr, m_inad_heurs.data(), m_inad_heurs.size() );
             updatePlannerParams(m_params);
         }

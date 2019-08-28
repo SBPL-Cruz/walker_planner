@@ -5,9 +5,9 @@
 using namespace smpl;
 
 Callbacks::Callbacks(ros::NodeHandle _nh,
-        std::unique_ptr<CollisionSpaceScene> _scene,
-        std::shared_ptr<smpl::OccupancyGrid> _grid_ptr )
-    : m_nh{_nh}, m_collision_scene{std::move(_scene)}, m_grid{_grid_ptr} {
+        CollisionSpaceScene* _scene,
+        smpl::OccupancyGrid* _grid_ptr )
+    : m_nh{_nh}, m_collision_scene{_scene}, m_grid{_grid_ptr} {
 
     //m_start_received = false;
     m_octomap_received = false;
@@ -45,7 +45,7 @@ bool Callbacks::updateMap(PlanningEpisode _ep){
         ROS_INFO("Could not added octomap");
         return false;
     }
-    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), 20, 15, .8, 1);
+    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), 20, 15, .80, 1);
     for (auto& object : objects) {
         m_collision_scene->ProcessCollisionObjectMsg(object);
     }
