@@ -3,6 +3,7 @@
 
 // standard includes
 #include <stdlib.h>
+#include <unordered_map>
 
 //ROS
 #include <nav_msgs/OccupancyGrid.h>
@@ -70,7 +71,7 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
 
     //Get occGrid and objects and add to occupancyGrid.
     MotionPlanner* m_planner_ptr;
-    std::vector<MPlanner::PlannerSolution> m_planner_soltns;
+    std::unordered_map<PlanningEpisode, MPlanner::PlannerSolution> m_planner_soltns;
     smpl::KDLRobotModel* m_rm_ptr;
 };
 
@@ -100,14 +101,24 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
         // XXX The map/environment should be updated automatically??
         SMPL_INFO("Executing episode %d", _ep);
         this->updateMap(_ep);
+
+        //std::this_thread::sleep_for(std::chrono::seconds(2));
+
         updateGoal(this->getGoal(_ep));
+
+        // Allow heuristics to be computed.
+        //std::this_thread::sleep_for(std::chrono::seconds(5));
+
         updateStart(this->getStart(_ep));
         MPlanner::PlannerSolution soltn;
+
+        assert(m_planner_ptr != nullptr);
+
         if(!m_planner_ptr->plan(soltn)){
             ROS_WARN("Planning Episode %d Failed", _ep);
             return ExecutionStatus::FAILURE;
         } else{
-            m_planner_soltns.push_back(soltn);
+            m_planner_soltns.emplace(_ep, soltn);
             return ExecutionStatus::SUCCESS;
         }
     } else{
@@ -118,7 +129,8 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
 
 template <typename SP, typename EP, typename Planner>
 MPlanner::PlannerSolution MotionPlannerROS<SP, EP, Planner>::getPlan(PlanningEpisode _ep) const{
-    return m_planner_soltns[_ep];
+    const MPlanner::PlannerSolution soltn = m_planner_soltns.at(_ep);
+    return soltn;
 }
 
 template <typename SP, typename EP, typename Planner>
