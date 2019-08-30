@@ -8,24 +8,20 @@
 #include <smpl/graph/manip_lattice_multi_rep.h>
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/heuristic/bfs_heuristic.h>
-#include <smpl/heuristic/bfs_heuristic_rot.h>
 #include <smpl/heuristic/bfs_fullbody_heuristic.h>
 #include <smpl/heuristic/bfs_base_rot_heuristic.h>
 #include <smpl/heuristic/euclid_dist_heuristic.h>
 #include <smpl/heuristic/euclid_diffdrive_heuristic.h>
 #include <smpl/heuristic/arm_retract_heuristic.h>
-#include <smpl/heuristic/rotate_base_heuristic.h>
-#include <smpl/heuristic/base_rot_euclidean_heuristic.h>
-#include <smpl/heuristic/base_rot_bfs_heuristic.h>
 #include <sbpl/planners/mrmhaplanner.h>
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
 
 bool constructHeuristics(
         std::vector<std::unique_ptr<smpl::RobotHeuristic>>& heurs,
-        std::shared_ptr<smpl::ManipLattice> pspace,
-        smpl::OccupancyGrid& grid,
-        std::unique_ptr<smpl::KDLRobotModel>& rm,
+        smpl::ManipLattice* pspace,
+        smpl::OccupancyGrid* grid,
+        smpl::KDLRobotModel* rm,
         PlannerConfig& params ){
 
     SMPL_INFO("Initialize Heuristics");
@@ -38,17 +34,18 @@ bool constructHeuristics(
         auto h = std::make_unique<smpl::BfsHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid)) {
+        if (!h->init(pspace, grid)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
         heurs.push_back(std::move(h));
     }
+
     //{
     //    auto h = std::make_unique<smpl::BfsFullbodyHeuristic>();
     //    h->setCostPerCell(params.cost_per_cell);
     //    h->setInflationRadius(params.inflation_radius);
-    //    if (!h->init(pspace.get(), &grid)) {
+    //    if (!h->init(pspace, grid)) {
     //        ROS_ERROR("Could not initialize heuristic.");
     //        return false;
     //    }
@@ -57,10 +54,20 @@ bool constructHeuristics(
     //}
 
     {
+        auto h = std::make_unique<smpl::BfsHeuristic>();
+        h->setCostPerCell(params.cost_per_cell);
+        h->setInflationRadius(params.inflation_radius);
+        if (!h->init(pspace, grid)) {
+            ROS_ERROR("Could not initialize heuristic.");
+            return false;
+        }
+        //heurs.push_back(std::move(h));
+    }
+    {
         auto h = std::make_unique<smpl::BfsBaseRotHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid, 1.57)) {
+        if (!h->init(pspace, grid, 1.57)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -70,7 +77,7 @@ bool constructHeuristics(
         auto h = std::make_unique<smpl::BfsBaseRotHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid, 3.14)) {
+        if (!h->init(pspace, grid, 3.14)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -80,7 +87,7 @@ bool constructHeuristics(
         auto h = std::make_unique<smpl::BfsBaseRotHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid, 4.71)) {
+        if (!h->init(pspace, grid, 4.71)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -88,7 +95,7 @@ bool constructHeuristics(
     }
     {
         auto h = std::make_unique<smpl::EuclidDiffHeuristic>();
-        if (!h->init(pspace.get())) {
+        if (!h->init(pspace)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -98,7 +105,7 @@ bool constructHeuristics(
         auto h = std::make_unique<smpl::BfsFullbodyHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid)) {
+        if (!h->init(pspace, grid)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -107,7 +114,7 @@ bool constructHeuristics(
     }
     {
         auto h = std::make_unique<smpl::ArmRetractHeuristic>();
-        if (!h->init(pspace.get())) {
+        if (!h->init(pspace)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -317,10 +324,14 @@ bool ReadExperimentsFromFile::init( std::string _start_file, std::string _goal_f
 }
 
 moveit_msgs::RobotState ReadExperimentsFromFile::getStart(PlanningEpisode _ep){
+    if(_ep >= m_start_states.size())
+        throw "Not enough start states.";
     return m_start_states[_ep];
 }
 
 smpl::GoalConstraint ReadExperimentsFromFile::getGoal(PlanningEpisode _ep){
+    if(_ep >= m_goal_constraints.size())
+        throw "Not enough goal states.";
     return m_goal_constraints[_ep];
 }
 
@@ -408,7 +419,7 @@ int main(int argc, char** argv){
             max_distance);
 
     auto ref_counted = false;
-    auto grid_ptr = std::make_shared<smpl::OccupancyGrid>(df, ref_counted);
+    auto grid_ptr = std::make_unique<smpl::OccupancyGrid>(df, ref_counted);
 
     grid_ptr->setReferenceFrame(planning_frame);
     SV_SHOW_INFO(grid_ptr->getBoundingBoxVisualization());
@@ -421,6 +432,7 @@ int main(int argc, char** argv){
 
     // This whole manage storage for all the scene objects and must outlive
     // its associated CollisionSpace instance.
+    //auto scene_ptr = std::make_unique<CollisionSpaceScene>();
     auto scene_ptr = std::make_unique<CollisionSpaceScene>();
 
     smpl::collision::CollisionModelConfig cc_conf;
@@ -457,7 +469,7 @@ int main(int argc, char** argv){
         ROS_ERROR("Failed to read planner config");
         return 1;
     }
-    planning_config.cost_per_cell = 500;
+    planning_config.cost_per_cell = 1000;
     ROS_INFO("Initialize scene");
 
     scene_ptr->SetCollisionSpace(&cc);
@@ -481,7 +493,7 @@ int main(int argc, char** argv){
 
     auto resolutions = getResolutions( rm.get(), planning_config );
     auto action_space = std::make_unique<smpl::ManipLatticeActionSpace>();
-    auto space = std::make_shared<smpl::ManipLattice>();
+    auto space = std::make_unique<smpl::ManipLattice>();
 
     if (!space->init( rm.get(), &cc, resolutions, action_space.get() )) {
         SMPL_ERROR("Failed to initialize Manip Lattice");
@@ -516,7 +528,7 @@ int main(int argc, char** argv){
 
     std::vector<std::unique_ptr<smpl::RobotHeuristic>> heurs;
 
-    if(!constructHeuristics( heurs, space, *grid_ptr, rm, planning_config )){
+    if(!constructHeuristics( heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
@@ -530,16 +542,19 @@ int main(int argc, char** argv){
         inad_heurs.push_back(heurs[i].get());
 
     using MotionPlanner = MPlanner::MotionPlanner<MHAPlanner, smpl::ManipLattice>;
-    int max_planning_time = 300;
-    double eps = 20.0; double eps_mha = 2;
+    auto search_ptr = std::make_unique<MHAPlanner>(
+            space.get(), anchor_heur, inad_heurs.data(), inad_heurs.size());
+
+    int max_planning_time = 30;
+    double eps = 30.0;
+    double eps_mha = 2;
     MPlanner::PlannerParams planner_params = { max_planning_time, eps, eps_mha, false };
 
     auto mplanner = std::make_unique<MotionPlanner>();
-    mplanner->init(space, anchor_heur, inad_heurs, planner_params );
+    mplanner->init(search_ptr.get(), space.get(), anchor_heur, inad_heurs, planner_params);
 
-
-    //MotionPlannerROS< Callbacks, ReadExperimentFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), std::move(scene_ptr), std::move(mplanner), grid_ptr);
-    MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), std::move(scene_ptr), std::move(mplanner), grid_ptr);
+    MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner >
+            mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
     ExecutionStatus status = ExecutionStatus::WAITING;
     PlanningEpisode ep = 0;
@@ -584,7 +599,7 @@ int main(int argc, char** argv){
                     whole_path.markers.push_back(m);
                 }
                 visualizer.visualize(smpl::visual::Level::Info, markers);
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
         }
 
