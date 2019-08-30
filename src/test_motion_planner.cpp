@@ -2,27 +2,28 @@
 #include <sstream>
 #include <memory>
 #include <fstream>
+#include <stdlib.h>
+#include <time.h>
 
 #include <ros/ros.h>
 #include <smpl/graph/manip_lattice_action_space.h>
 #include <smpl/graph/manip_lattice_multi_rep.h>
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/heuristic/bfs_heuristic.h>
-#include <smpl/heuristic/bfs_heuristic_rot.h>
 #include <smpl/heuristic/bfs_fullbody_heuristic.h>
 #include <smpl/heuristic/euclid_dist_heuristic.h>
 #include <smpl/heuristic/euclid_diffdrive_heuristic.h>
 #include <smpl/heuristic/arm_retract_heuristic.h>
-#include <smpl/heuristic/base_rot_euclidean_heuristic.h>
 #include <smpl/heuristic/base_rot_bfs_heuristic.h>
 #include <sbpl/planners/mrmhaplanner.h>
+#include <sbpl/planners/types.h>
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
 
 bool constructHeuristics(
         std::vector<std::unique_ptr<smpl::RobotHeuristic>>& heurs,
-        std::shared_ptr<smpl::ManipLatticeMultiRep> pspace,
-        smpl::OccupancyGrid& grid,
+        smpl::ManipLatticeMultiRep* pspace,
+        smpl::OccupancyGrid* grid,
         std::unique_ptr<smpl::KDLRobotModel>& rm,
         PlannerConfig& params ){
 
@@ -36,7 +37,17 @@ bool constructHeuristics(
         auto h = std::make_unique<smpl::BfsHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid)) {
+        if (!h->init(pspace, grid)) {
+            ROS_ERROR("Could not initialize heuristic.");
+            return false;
+        }
+        heurs.push_back(std::move(h));
+    }
+    {
+        auto h = std::make_unique<smpl::BfsHeuristic>();
+        h->setCostPerCell(params.cost_per_cell);
+        h->setInflationRadius(params.inflation_radius);
+        if (!h->init(pspace, grid)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -46,7 +57,7 @@ bool constructHeuristics(
     //    auto h = std::make_unique<smpl::BfsFullbodyHeuristic>();
     //    h->setCostPerCell(params.cost_per_cell);
     //    h->setInflationRadius(params.inflation_radius);
-    //    if (!h->init(pspace.get(), &grid)) {
+    //    if (!h->init(pspace.get(), grid)) {
     //        ROS_ERROR("Could not initialize heuristic.");
     //        return false;
     //    }
@@ -55,20 +66,10 @@ bool constructHeuristics(
     //}
 
     {
-        auto h = std::make_unique<smpl::BfsHeuristicRot>();
-        h->setCostPerCell(params.cost_per_cell);
-        h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        heurs.push_back(std::move(h));
-    }
-    {
         auto h = std::make_unique<smpl::BfsFullbodyHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace.get(), &grid)) {
+        if (!h->init(pspace, grid)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
@@ -228,12 +229,12 @@ smpl::GoalConstraint stringToGoalConstraint(std::string _pose_str){
     smpl::GoalConstraint goal;
     goal.type = smpl::GoalType::XYZ_RPY_GOAL;
     goal.pose = goal_pose;
-    goal.xyz_tolerance[0] = 0.03;
-    goal.xyz_tolerance[1] = 0.03;
-    goal.xyz_tolerance[2] = 0.03;
-    goal.rpy_tolerance[0] = 0.30;
-    goal.rpy_tolerance[1] = 0.30;
-    goal.rpy_tolerance[2] = 0.30;
+    goal.xyz_tolerance[0] = 0.05;
+    goal.xyz_tolerance[1] = 0.05;
+    goal.xyz_tolerance[2] = 0.05;
+    goal.rpy_tolerance[0] = 3.30;
+    goal.rpy_tolerance[1] = 3.30;
+    goal.rpy_tolerance[2] = 3.30;
 
     return goal;
 }
@@ -301,8 +302,23 @@ void writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
     file.close();
 }
 
+class UniformlyRandomPolicy : public SchedulingPolicy {
+    public:
+        UniformlyRandomPolicy( int _num_queues, unsigned int _seed ) : SchedulingPolicy(_num_queues), m_seed{_seed} {
+            srand(_seed);
+        }
+    inline virtual int getNextQueue() override;
+
+    private:
+    unsigned int m_seed;
+};
+
+int UniformlyRandomPolicy::getNextQueue(){
+    return rand() % numQueues() + 1;
+}
+
 int main(int argc, char** argv){
-    ros::init(argc, argv, "motion_planner");
+    ros::init(argc, argv, "test_motion_planner");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);
@@ -364,7 +380,7 @@ int main(int argc, char** argv){
             max_distance);
 
     auto ref_counted = false;
-    auto grid_ptr = std::make_shared<smpl::OccupancyGrid>(df, ref_counted);
+    auto grid_ptr = std::make_unique<smpl::OccupancyGrid>(df, ref_counted);
 
     grid_ptr->setReferenceFrame(planning_frame);
     SV_SHOW_INFO(grid_ptr->getBoundingBoxVisualization());
@@ -437,7 +453,7 @@ int main(int argc, char** argv){
 
     auto resolutions = getResolutions( rm.get(), planning_config );
     auto multi_action_space = std::make_unique<smpl::ManipLatticeMultiActionSpace>(3);
-    auto space = std::make_shared<smpl::ManipLatticeMultiRep>();
+    auto space = std::make_unique<smpl::ManipLatticeMultiRep>();
 
     if (!space->init( rm.get(), &cc, resolutions, multi_action_space.get() )) {
         SMPL_ERROR("Failed to initialize Manip Lattice");
@@ -482,12 +498,12 @@ int main(int argc, char** argv){
 
     std::vector<std::unique_ptr<smpl::RobotHeuristic>> heurs;
 
-    if(!constructHeuristics( heurs, space, *grid_ptr, rm, planning_config )){
+    if(!constructHeuristics( heurs, space.get(), grid_ptr.get(), rm, planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
 
-    ROS_ERROR("Num heurs: %d", heurs.size());
+    //ROS_ERROR("Num heurs: %d", heurs.size());
     assert(heurs[0] != nullptr);
     std::vector<Heuristic*> inad_heurs;
 
@@ -495,27 +511,20 @@ int main(int argc, char** argv){
     for(int i=1; i<heurs.size(); i++)
         inad_heurs.push_back(heurs[i].get());
 
-    //ROS_INFO("Constructing Planner");
-    //std::vector<Heuristic*> heur_ptrs;
-    //int n_heurs = heurs.size();
-    //for(int i=1; i<n_heurs; i++)
-    //    heur_ptrs.push_back(heurs[i].get());
-    //ROS_INFO("Number of inadmissible heuristics: %d", n_heurs-1);
+    auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);
+    auto search_ptr = std::make_unique<MRMHAPlanner>(
+            space.get(), anchor_heur, inad_heurs.data(), inad_heurs.size(), uniformly_random_policy.get());
 
-    //Heuristic** inad = heur_ptrs.data();
-
-    using MotionPlanner = MPlanner::MotionPlanner<MRMHAPlanner, smpl::ManipLatticeMultiRep>;
     int max_planning_time = 45;
     double eps = 4.0;
     double eps_mha = 6;
     MPlanner::PlannerParams planner_params = { max_planning_time, eps, eps_mha, false };
 
+    using MotionPlanner = MPlanner::MotionPlanner<MRMHAPlanner, smpl::ManipLatticeMultiRep>;
     auto mplanner = std::make_unique<MotionPlanner>();
-    mplanner->init(space, anchor_heur, inad_heurs, planner_params );
+    mplanner->init(search_ptr.get(), space.get(), anchor_heur, inad_heurs, planner_params);
 
-
-    //MotionPlannerROS< Callbacks, ReadExperimentFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), std::move(scene_ptr), std::move(mplanner), grid_ptr);
-    MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), std::move(scene_ptr), std::move(mplanner), grid_ptr);
+    MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
     ExecutionStatus status = ExecutionStatus::WAITING;
     PlanningEpisode ep = 0;
