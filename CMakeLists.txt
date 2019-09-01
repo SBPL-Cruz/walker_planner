@@ -108,3 +108,6 @@ add_executable( test_ik
     src/get_collision_objects.cpp)
 target_link_libraries(test_ik ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 add_dependencies( test_ik ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_executable( test_start_goal_generator
+    test/test_start_goal_generator.cpp src/start_goal_generator.cpp)
+target_link_libraries(test_start_goal_generator ${catkin_LIBRARIES} smpl::smpl)
