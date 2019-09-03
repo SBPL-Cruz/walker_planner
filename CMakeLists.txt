@@ -101,12 +101,13 @@ target_link_libraries(test_mha_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_k
 add_dependencies( test_mha_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 
 
-add_executable( test_ik
-    src/test_ik.cpp
-    src/collision_space_scene.cpp
+add_executable(generate_start_goals
+    src/generate_start_goals.cpp
+    src/start_goal_generator.cpp
     src/planner_config.cpp
+    src/collision_space_scene.cpp
     src/get_collision_objects.cpp)
-target_link_libraries(test_ik ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+target_link_libraries(generate_start_goals ${catkin_LIBRARIES} smpl::smpl)
 add_dependencies( test_ik ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 add_executable( test_start_goal_generator
     test/test_start_goal_generator.cpp src/start_goal_generator.cpp)

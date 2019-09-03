@@ -46,6 +46,10 @@ public:
         return m_cspace->getCollisionRobotVisualization();
     }
 
+    inline auto getCollisionRobotVisualization(const std::vector<double>& vals){
+        return m_cspace->getCollisionRobotVisualization(vals);
+    }
+
 private:
 
     std::vector<std::unique_ptr<octomap::OcTree>> m_octrees;
