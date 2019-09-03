@@ -36,7 +36,7 @@ class StartGoalGenerator {
     bool addStartRegion(BoundedRegion&);
     bool addGoalRegion(BoundedRegion&);
     bool generate(int);
-    bool writeToFile(std::string, std::string);
+    bool writeToFile(std::string, std::string, std::string);
     void clear();
 
     private:

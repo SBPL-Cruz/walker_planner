@@ -73,39 +73,39 @@ bool StartGoalGenerator::generate(int _n){
     while(num_generated < _n && iters < max_iters){
         iters++;
         //Start
-        auto rand_start = m_start_region.getRandState();
-        //if(iters % 1 == 0){
-        //    ROS_INFO("Iter: %d", iters);
-        //    for(auto& val : rand_start)
-        //        ROS_INFO("%f ", val);
-        //}
+        bool found = false;
+        while(!found){
+            auto rand_start = m_start_region.getRandState();
 
-        if(!m_cc->isStateValid(rand_start))
-            continue;
+            if(m_cc->isStateValid(rand_start)){
+                m_start_states.push_back(rand_start);
+                found = true;
+            }
+        }
 
         //Goal
-        //auto rand_goal = m_goal_region.getRandState();
-        //int gx, gy, gz;
-        //std::cout<<rand_goal[0]<<" "<<rand_goal[1]<<" "<<rand_goal[2]<<"\n";
-        //ROS_ERROR("%f, %f, %f", rand_goal[0], rand_goal[1], rand_goal[2]);
-        //m_cc->grid()->worldToGrid(rand_goal[0], rand_goal[1], rand_goal[2],
-        //        gx, gy, gz);
-        //ROS_ERROR("%d, %d, %d", gx, gy, gz);
-        //if(m_cc->grid()->getDistance(gx, gy, gz) <= 0)
-        //    continue;
+        found = false;
+        while(!found){
+            auto rand_goal = m_goal_region.getRandState();
+            int gx, gy, gz;
+            m_cc->grid()->worldToGrid(rand_goal[0], rand_goal[1], rand_goal[2],
+                    gx, gy, gz);
+            if(m_cc->grid()->getDistance(gx, gy, gz) <= 0){
+                m_goal_poses.push_back(rand_goal);
+                found = true;
+            }
+        }
 
-        m_start_states.push_back(rand_start);
-        //m_goal_poses.push_back(rand_goal);
         num_generated++;
     }
-    ROS_WARN("Num generated: %d", num_generated);
+    //ROS_WARN("Num generated: %d", num_generated);
     if(num_generated != _n)
         return false;
     else
         return true;
 }
 
-bool StartGoalGenerator::writeToFile(std::string _start_file_name, std::string _goal_file_name){
+bool StartGoalGenerator::writeToFile(std::string _start_header, std::string _start_file_name, std::string _goal_file_name){
     {
         std::ofstream start_stream;
         start_stream.open(_start_file_name);
@@ -113,8 +113,7 @@ bool StartGoalGenerator::writeToFile(std::string _start_file_name, std::string _
             ROS_ERROR("Could not open start file.");
             return false;
         }
-        char header[] = "Start states\n";
-        start_stream << header;
+        start_stream << _start_header;
         for(auto& state : m_start_states){
             for(auto& val : state){
                 start_stream << val <<" ";
@@ -123,16 +122,21 @@ bool StartGoalGenerator::writeToFile(std::string _start_file_name, std::string _
         }
         start_stream.close();
     }
-    /*
     {
         std::ofstream goal_stream;
-        goal_stream.is_open(_goal_file_name);
-        (!goal_stream.open())
-            throw "Could not open goal file.";
-        char header[100] = "Goal Poses\n";
-        goal_stream << header;
+        goal_stream.open(_goal_file_name);
+        if(!goal_stream.is_open()){
+            ROS_ERROR("Could not open goal file.");
+            return false;
+        }
+        for(auto& pose : m_goal_poses){
+            for(auto& val : pose){
+                goal_stream << val <<" ";
+            }
+            goal_stream << "\n";
+        }
+        goal_stream.close();
     }
-    */
 
     return true;
 }
