@@ -168,21 +168,26 @@ int  main(int argc, char** argv){
 
         std::vector<double> lo(6, 0), hi(6, 0);
 
-        hi[0] = 0.5;
-        lo[1] = 2;
-        hi[1] = 3;
+        lo[0] = 5.0;
+        hi[0] = 5.5;
+        lo[1] = 6;
+        hi[1] = 7;
 
-        lo[2] = 0.7;
-        hi[2] = 0.7;
+        lo[2] = -3.14;
+        hi[2] = 3.14;
         for(int i=3; i<6; i++){
             lo[i] = -3.14;
             hi[i] = 3.14;
         }
+        goal_region.lo = lo;
+        goal_region.hi = hi;
         generator.addGoalRegion(goal_region);
     }
 
     auto status = generator.generate(10);
     ROS_ERROR("Status: %d", status);
-    generator.writeToFile("start_states.txt", "goal_states.txt");
+    generator.writeToFile(
+            "x y theta right_j1 right_j2 right_j3 right_j4 right_j5 right_j6 right_j7",
+            "start_states.txt", "goal_states.txt");
 }
 
