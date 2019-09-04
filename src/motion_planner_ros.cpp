@@ -37,6 +37,22 @@ bool Callbacks::canCallPlanner() const {
                 } );
 }
 
+MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh){
+    MultiRoomMapConfig config;
+    nh.param("map/seed", config.seed, 1000);
+    nh.param("map/x_max", config.x_max, 15.0);
+    nh.param("map/y_max", config.y_max, 15.0);
+    nh.param("map/h_max", config.h_max, 1.5);
+    nh.param("map/door_width", config.door_width, 1.0);
+    nh.param("map/alley_width", config.alley_width, 2.0);
+    nh.param("map/n_tables", config.n_tables, 2);
+    nh.param("map/min_table_len", config.min_table_len, 0.5);
+    nh.param("map/max_table_len", config.max_table_len, 1.0);
+    nh.param("map/table_height", config.table_height, 0.6);
+
+    return config;
+}
+
 bool Callbacks::updateMap(PlanningEpisode _ep){
     if(m_collision_scene->ProcessOctomapMsg(m_map_with_pose)){
         ROS_INFO("Succesfully added octomap");
@@ -45,7 +61,8 @@ bool Callbacks::updateMap(PlanningEpisode _ep){
         ROS_INFO("Could not added octomap");
         return false;
     }
-    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), 20, 15, .80, 1);
+    auto map_config = getMultiRoomMapConfig(m_nh);
+    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config);
     for (auto& object : objects) {
         m_collision_scene->ProcessCollisionObjectMsg(object);
     }
@@ -61,7 +78,12 @@ bool Callbacks::updateMap(PlanningEpisode _ep){
 bool Callbacks::updateStart(const moveit_msgs::RobotState& _start,
         smpl::KDLRobotModel* _rm_ptr){
     // Set reference state in the robot planning model...
+    auto marker = m_collision_scene->getCollisionRobotVisualization(_start.joint_state.position);
+    for(auto& m : marker.markers)
+        m.ns = "Start state";
+    SV_SHOW_INFO(marker);
     smpl::urdf::RobotState reference_state;
+
     InitRobotState(&reference_state, &_rm_ptr->m_robot_model);
     for (auto i = 0; i < _start.joint_state.name.size(); ++i) {
         auto* var = GetVariable(&_rm_ptr->m_robot_model, &_start.joint_state.name[i]);

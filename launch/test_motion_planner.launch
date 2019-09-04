@@ -57,13 +57,15 @@ required="true" /> -->
 
         <param name="allowed_planning_time" value="60.0"/>
         <param name="read_goal_from_file" value="true"/>
-        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/walker_start_states.txt" />
-        <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/walker_goal_states.txt" />
+        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/start_states.txt" />
+        <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/goal_states.txt" />
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
         <rosparam command="load" file="$(find
         walker_planner)/experiments/walker_goal_mrmha.yaml"/>
+
+        <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
 
         <!-- 2.2 world state -->
         <param name="object_filename" value="$(find walker_planner)/env/multi_rooms.env"/>
