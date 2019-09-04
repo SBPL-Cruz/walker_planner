@@ -21,17 +21,20 @@ namespace MPlanner {
         std::vector<smpl::RobotState> robot_states;
         int cost;
         double planning_time;
+        int num_expansions;
 
         PlannerSolution(){
             robot_states.resize(0);
             cost = 0;
             planning_time = 0;
+            num_expansions = 0;
         }
 
         PlannerSolution(const PlannerSolution& soltn){
             robot_states = soltn.robot_states;
             cost = soltn.cost;
             planning_time = soltn.planning_time;
+            num_expansions = soltn.num_expansions;
         }
     };
 
@@ -195,6 +198,7 @@ namespace MPlanner {
         bool success = m_search_ptr->replan( m_planning_time, &soltn_ids, &(_planner_soltn.cost) );
         double planning_time = smpl::to_seconds(smpl::clock::now() - then);
         _planner_soltn.planning_time = planning_time;
+        _planner_soltn.num_expansions = m_search_ptr->m_num_expansions;
 
         if(!success){
             SMPL_ERROR("Planning failed.");
