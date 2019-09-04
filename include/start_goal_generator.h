@@ -9,8 +9,6 @@
 #include <sbpl_kdl_robot_model/kdl_robot_model.h>
 #include <sbpl_collision_checking/collision_space.h>
 
-inline double getRandNum(double, double);
-
 // Helper Struct to let the user specify a Start region with respect to some
 // reference state.
 struct BoundedRegion {

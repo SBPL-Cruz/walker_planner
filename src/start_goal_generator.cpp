@@ -1,9 +1,6 @@
 #include <ros/ros.h>
 #include <start_goal_generator.h>
-
-double getRandNum(const double _lo, const double _hi ){
-    return _lo + static_cast <double> (rand()) /( static_cast <double> (RAND_MAX/(_hi-_lo)));
-}
+#include "utils.h"
 
 bool Region::isValid(std::vector<double> _state){
     assert(subregions.size());
@@ -80,7 +77,8 @@ bool StartGoalGenerator::generate(int _n){
             if(m_cc->isStateValid(rand_start)){
                 m_start_states.push_back(rand_start);
                 found = true;
-            }
+            } else
+                ROS_ERROR("Start in collision");
         }
 
         //Goal
@@ -90,7 +88,7 @@ bool StartGoalGenerator::generate(int _n){
             int gx, gy, gz;
             m_cc->grid()->worldToGrid(rand_goal[0], rand_goal[1], rand_goal[2],
                     gx, gy, gz);
-            if(m_cc->grid()->getDistance(gx, gy, gz) <= 0){
+            if(m_cc->grid()->getDistance(gx, gy, gz) > 0){
                 m_goal_poses.push_back(rand_goal);
                 found = true;
             }
