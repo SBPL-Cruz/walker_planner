@@ -42,6 +42,22 @@ struct PlannerConfig
     double inflation_radius;
 };
 
+struct MultiRoomMapConfig {
+    int seed = 1000;
+    //Map
+    double x_max = 15;
+    double y_max = 15;
+    double h_max = 1.5;
+    double door_width = 1.0;
+    double alley_width = 2.0;
+    //Tables
+    int n_tables = 0;
+    double min_table_len = 0.5;
+    double max_table_len = 1.0;
+    double table_height = 0.6;
+    double min_dist_bw_tables = 1.5;
+};
+
 void FillGoalConstraint(
     const std::vector<double>& pose,
     std::string frame_id,
@@ -59,6 +75,8 @@ bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config);
 
 auto SetupRobotModel(const std::string& urdf, const RobotModelConfig &config)
     -> std::unique_ptr<smpl::KDLRobotModel>;
+
+MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh);
 
 template <typename T, typename... Args>
 inline std::unique_ptr<T> make_unique(Args&&... args){

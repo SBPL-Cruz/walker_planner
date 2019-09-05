@@ -37,22 +37,6 @@ bool Callbacks::canCallPlanner() const {
                 } );
 }
 
-MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh){
-    MultiRoomMapConfig config;
-    nh.param("map/seed", config.seed, 1000);
-    nh.param("map/x_max", config.x_max, 15.0);
-    nh.param("map/y_max", config.y_max, 15.0);
-    nh.param("map/h_max", config.h_max, 1.5);
-    nh.param("map/door_width", config.door_width, 1.0);
-    nh.param("map/alley_width", config.alley_width, 2.0);
-    nh.param("map/n_tables", config.n_tables, 2);
-    nh.param("map/min_table_len", config.min_table_len, 0.5);
-    nh.param("map/max_table_len", config.max_table_len, 1.0);
-    nh.param("map/table_height", config.table_height, 0.6);
-
-    return config;
-}
-
 bool Callbacks::updateMap(PlanningEpisode _ep){
     if(m_collision_scene->ProcessOctomapMsg(m_map_with_pose)){
         ROS_INFO("Succesfully added octomap");
