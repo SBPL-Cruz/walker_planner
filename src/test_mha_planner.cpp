@@ -2,12 +2,14 @@
 #include <sstream>
 #include <memory>
 #include <fstream>
+#include <algorithm>
 
 #include <ros/ros.h>
 #include <smpl/graph/manip_lattice_action_space.h>
 #include <smpl/graph/manip_lattice_multi_rep.h>
 #include <smpl/graph/motion_primitive.h>
-#include <smpl/heuristic/bfs_heuristic.h>
+#include <smpl/heuristic/bfs_2d_heuristic.h>
+#include <smpl/heuristic/bfs_3d_heuristic.h>
 #include <smpl/heuristic/bfs_fullbody_heuristic.h>
 #include <smpl/heuristic/bfs_base_rot_heuristic.h>
 #include <smpl/heuristic/euclid_dist_heuristic.h>
@@ -16,6 +18,33 @@
 #include <sbpl/planners/mrmhaplanner.h>
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
+#include "utils.h"
+
+struct MotherHeuristic : public smpl::RobotHeuristic {
+
+    double getMetricStartDistance( double, double, double ){return 0.0;}
+    double getMetricGoalDistance( double, double, double ){return 0.0;}
+    Extension* getExtension(size_t class_code){
+        if (class_code == smpl::GetClassCode<smpl::RobotHeuristic>()) {
+            return this;
+        }
+        return nullptr;
+    }
+
+    virtual int GetGoalHeuristic(int) = 0;
+    int GetStartHeuristic(int state_id){return 0;}
+    int GetFromToHeuristic(int from_id, int to_id){return 0;}
+};
+
+bool areClose( const smpl::Affine3& a, const smpl::Affine3& b ){
+    auto trans_a = a.translation(), trans_b = b.translation();
+    auto rot_a = a.rotation(), rot_b = b.rotation();
+    if(euclidDist(trans_a.data(), trans_b.data(), 3) > 0.01)
+        return false;
+    if(euclidDist(rot_a.data(), rot_b.data(), 4) > 0.01)
+        return false;
+    return true;
+}
 
 bool constructHeuristics(
         std::vector<std::unique_ptr<smpl::RobotHeuristic>>& heurs,
@@ -26,12 +55,58 @@ bool constructHeuristics(
 
     SMPL_INFO("Initialize Heuristics");
 
+    struct AnchorHeuristic : public MotherHeuristic {
+
+        bool init( std::shared_ptr<smpl::Bfs2DHeuristic> _bfs_2d,
+                std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d ){
+            bfs_2d = _bfs_2d;
+            bfs_3d = _bfs_3d;
+            return true;
+        }
+        void updateGoal(const smpl::GoalConstraint& _goal) override {
+            if(areClose(_goal.pose, goal.pose))
+                return;
+            goal = _goal;
+            bfs_2d->updateGoal(_goal);
+            bfs_3d->updateGoal(_goal);
+        }
+
+        int GetGoalHeuristic(int state_id) override {
+            return std::max(bfs_2d->GetGoalHeuristic(state_id), bfs_3d->GetGoalHeuristic(state_id));
+        }
+
+        std::shared_ptr<smpl::Bfs2DHeuristic> bfs_2d;
+        std::shared_ptr<smpl::Bfs3DHeuristic> bfs_3d;
+        smpl::GoalConstraint goal;
+    };
+
+    auto bfs_2d = std::make_shared<smpl::Bfs2DHeuristic>();
+    bfs_2d->setCostPerCell(params.cost_per_cell);
+    bfs_2d->setInflationRadius(params.inflation_radius);
+    if (!bfs_2d->init(pspace, grid)) {
+        ROS_ERROR("Could not initialize heuristic.");
+        return false;
+    }
+
+    auto bfs_3d = std::make_shared<smpl::Bfs3DHeuristic>();
+    bfs_3d->setCostPerCell(params.cost_per_cell);
+    bfs_3d->setInflationRadius(params.inflation_radius);
+    if (!bfs_3d->init(pspace, grid)) {
+        ROS_ERROR("Could not initialize heuristic.");
+        return false;
+    }
+
     //Compute a feasible base location.
     std::vector<int> base_x, base_y;
     heurs.clear();
 
     {
-        auto h = std::make_unique<smpl::BfsHeuristic>();
+        auto anchor = std::make_unique<AnchorHeuristic>();
+        anchor->init( bfs_2d, bfs_3d );
+        heurs.push_back(std::move(anchor));
+    }
+    {
+        auto h = std::make_unique<smpl::Bfs3DHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
         if (!h->init(pspace, grid)) {
@@ -41,53 +116,12 @@ bool constructHeuristics(
         heurs.push_back(std::move(h));
     }
 
-    //{
-    //    auto h = std::make_unique<smpl::BfsFullbodyHeuristic>();
-    //    h->setCostPerCell(params.cost_per_cell);
-    //    h->setInflationRadius(params.inflation_radius);
-    //    if (!h->init(pspace, grid)) {
-    //        ROS_ERROR("Could not initialize heuristic.");
-    //        return false;
-    //    }
-    //    SV_SHOW_INFO(h->get2DMapVisualization());
-    //    heurs.push_back(std::move(h));
-    //}
-
-    {
-        auto h = std::make_unique<smpl::BfsHeuristic>();
-        h->setCostPerCell(params.cost_per_cell);
-        h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace, grid)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        //heurs.push_back(std::move(h));
-    }
-    {
+    int num_rot_heurs = 4;
+    for(int i=0; i<num_rot_heurs; i++){
         auto h = std::make_unique<smpl::BfsBaseRotHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace, grid, 1.57)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        heurs.push_back(std::move(h));
-    }
-    {
-        auto h = std::make_unique<smpl::BfsBaseRotHeuristic>();
-        h->setCostPerCell(params.cost_per_cell);
-        h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace, grid, 3.14)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        heurs.push_back(std::move(h));
-    }
-    {
-        auto h = std::make_unique<smpl::BfsBaseRotHeuristic>();
-        h->setCostPerCell(params.cost_per_cell);
-        h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace, grid, 4.71)) {
+        if (!h->init(pspace, grid, 2*3.14/num_rot_heurs*i)) {
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
