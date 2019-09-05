@@ -8,7 +8,120 @@
 #include "collision_space_scene.h"
 #include "get_collision_objects.h"
 
-int  main(int argc, char** argv){
+bool addStartGoalRegionsForDoor(
+        StartGoalGenerator& generator,
+        const smpl::urdf::URDFRobotModel* rm,
+        const std::vector<moveit_msgs::CollisionObject>& doors){
+    double door_x = doors[0].primitive_poses[0].position.x;
+    double door_y = doors[0].primitive_poses[0].position.y;
+
+    {
+        BoundedRegion start_region;
+        //std::vector<double> lo(rm->jointCount(), 0);
+        std::vector<double> lo(10, 0);
+        std::vector<double> hi(10, 0);
+        lo[0] = door_x - 0.5;
+        hi[0] = door_x + 0.5;
+        lo[1] = door_y - 1.3;
+        hi[1] = door_y - 0.3;
+        lo[2] = -3.14;
+        hi[2] = 3.14;
+        for(int i=3; i<10; i++){
+            hi[i] = rm->vprops[i].max_position;
+            lo[i] = rm->vprops[i].min_position;
+            ROS_INFO("%f, %f", lo[i], hi[i]);
+        }
+        start_region.lo = lo;
+        start_region.hi = hi;
+        generator.addStartRegion(start_region);
+    }
+
+    {
+        BoundedRegion goal_region;
+
+        std::vector<double> lo(6, 0), hi(6, 0);
+
+        lo[0] = door_x - 0.5;
+        hi[0] = door_x + 0.5;
+        lo[1] = door_y + 1;
+        hi[1] = door_y + 1.5;
+        lo[2] = 0.7;
+        hi[2] = 0.8;
+
+        for(int i=3; i<6; i++){
+            lo[i] = -3.14;
+            hi[i] = 3.14;
+        }
+        goal_region.lo = lo;
+        goal_region.hi = hi;
+        generator.addGoalRegion(goal_region);
+    }
+    return true;
+}
+
+bool addGoalRegionsForTable(
+        StartGoalGenerator& generator,
+        const smpl::urdf::URDFRobotModel* rm,
+        const std::vector<moveit_msgs::CollisionObject>& tables){
+
+    for(auto& table : tables ){
+        BoundedRegion goal_region;
+        std::vector<double> lo(6, 0), hi(6, 0);
+
+        double table_x = table.primitive_poses[0].position.x;
+        double table_y = table.primitive_poses[0].position.y;
+        double table_size_x = table.primitives[0].dimensions[0];
+        double table_size_y = table.primitives[0].dimensions[1];
+        double table_height = table.primitives[0].dimensions[2];
+
+        lo[0] = table_x - table_size_x/2;
+        hi[0] = table_x + table_size_x/2;
+        lo[1] = table_y - table_size_y/2;
+        hi[1] = table_y + table_size_y/2;
+        lo[2] = table_height + 0.1;
+        hi[2] = table_height + 0.2;
+
+        for(int i=3; i<6; i++){
+            lo[i] = -3.14;
+            hi[i] = 3.14;
+        }
+        goal_region.lo = lo;
+        goal_region.hi = hi;
+        generator.addGoalRegion(goal_region);
+    }
+    return true;
+}
+
+bool addStartRegionsForRoom1(
+        StartGoalGenerator& generator,
+        const smpl::urdf::URDFRobotModel* rm,
+        double map_x,
+        double map_y){
+
+    {
+        BoundedRegion start_region;
+        std::vector<double> lo(10, 0);
+        std::vector<double> hi(10, 0);
+        lo[0] = 0.5;
+        hi[0] = map_x/2 - 0.5;
+        lo[1] = 0.5;
+        hi[1] = map_y/3 - 0.5;
+        lo[2] = -3.14;
+        hi[2] = 3.14;
+        for(int i=3; i<10; i++){
+            hi[i] = rm->vprops[i].max_position;
+            lo[i] = rm->vprops[i].min_position;
+            ROS_INFO("%f, %f", lo[i], hi[i]);
+        }
+        start_region.lo = lo;
+        start_region.hi = hi;
+        generator.addStartRegion(start_region);
+    }
+    return true;
+}
+
+
+int main(int argc, char** argv){
     ros::init(argc, argv, "generate_start_goal");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
@@ -126,7 +239,10 @@ int  main(int argc, char** argv){
 
     scene_ptr->SetCollisionSpace(&cc);
 
-    auto objects = GetMultiRoomMapCollisionCubes(grid_ptr->getReferenceFrame(), 20, 15, .80, 1);
+    std::vector<moveit_msgs::CollisionObject> doors;
+    auto map_config = getMultiRoomMapConfig(ph);
+    //auto objects = GetMultiRoomMapCollisionCubes(doors, grid_ptr->getReferenceFrame(), map_config);
+    auto objects = GetMultiRoomMapCollisionCubes( grid_ptr->getReferenceFrame(), map_config );
     for (auto& object : objects) {
         scene_ptr->ProcessCollisionObjectMsg(object);
     }
@@ -139,55 +255,29 @@ int  main(int argc, char** argv){
     }
 
     StartGoalGenerator generator;
+
+    //Get table objects.
+    std::vector<moveit_msgs::CollisionObject> tables;
+    for(auto& obj : objects){
+        ROS_ERROR("%s", obj.id.c_str());
+        if(obj.id.compare( 0, 5, "table" ) == 0){
+            tables.push_back(obj);
+        }
+    }
+    ROS_INFO("%d tables found in map.", tables.size());
     generator.init(&cc, rm.get(), 1000);
+    //addStartGoalRegionsForDoor(generator, rm.get(), doors);
+    addStartRegionsForRoom1(generator, rm.get(), map_config.x_max, map_config.y_max);
+    addGoalRegionsForTable(generator, rm.get(), tables);
 
-    {
-        BoundedRegion start_region;
-        //std::vector<double> lo(rm->jointCount(), 0);
-        std::vector<double> lo(12, 0);
-        std::vector<double> hi(12, 0);
-        lo[0] = 4.8;
-        hi[0] = 5.2;
-        lo[1] = 3.8;
-        hi[1] = 4.2;
-        lo[2] = -3.14;
-        hi[2] = 3.14;
-        ROS_ERROR("vprops Size: %d", rm->vprops.size());
-        for(int i=5; i<10; i++){
-            hi[i] = rm->vprops[i].max_position;
-            lo[i] = rm->vprops[i].min_position;
-            ROS_INFO("%f, %f", lo[i], hi[i]);
-        }
-        start_region.lo = lo;
-        start_region.hi = hi;
-        generator.addStartRegion(start_region);
-    }
-
-    {
-        BoundedRegion goal_region;
-
-        std::vector<double> lo(6, 0), hi(6, 0);
-
-        lo[0] = 5.0;
-        hi[0] = 5.5;
-        lo[1] = 6;
-        hi[1] = 7;
-
-        lo[2] = -3.14;
-        hi[2] = 3.14;
-        for(int i=3; i<6; i++){
-            lo[i] = -3.14;
-            hi[i] = 3.14;
-        }
-        goal_region.lo = lo;
-        goal_region.hi = hi;
-        generator.addGoalRegion(goal_region);
-    }
-
-    auto status = generator.generate(10);
-    ROS_ERROR("Status: %d", status);
+    const int N = 50;
+    auto status = generator.generate(N);
+    if(status)
+        ROS_INFO("Generated %d start-goal pairs.", N);
+    else
+        ROS_ERROR("Could not generate start-goal pairs.");
     generator.writeToFile(
-            "x y theta right_j1 right_j2 right_j3 right_j4 right_j5 right_j6 right_j7",
+            "x y theta right_j1 right_j2 right_j3 right_j4 right_j5 right_j6 right_j7\n",
             "start_states.txt", "goal_states.txt");
 }
 
