@@ -36,15 +36,34 @@ struct MotherHeuristic : public smpl::RobotHeuristic {
     int GetFromToHeuristic(int from_id, int to_id){return 0;}
 };
 
-bool areClose( const smpl::Affine3& a, const smpl::Affine3& b ){
-    auto trans_a = a.translation(), trans_b = b.translation();
-    auto rot_a = a.rotation(), rot_b = b.rotation();
-    if(euclidDist(trans_a.data(), trans_b.data(), 3) > 0.01)
-        return false;
-    if(euclidDist(rot_a.data(), rot_b.data(), 4) > 0.01)
-        return false;
-    return true;
-}
+struct BfsHeuristic : public MotherHeuristic {
+
+    bool init( std::shared_ptr<smpl::Bfs2DHeuristic> _bfs_2d,
+            std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d ){
+        bfs_2d = _bfs_2d;
+        bfs_3d = _bfs_3d;
+        return true;
+    }
+
+    Extension* getExtension(size_t class_code){
+        if (class_code == smpl::GetClassCode<smpl::RobotHeuristic>()) {
+            return this;
+        }
+        return nullptr;
+    }
+
+    void updateGoal(const smpl::GoalConstraint& _goal) override {
+        if(areClose(_goal.pose, goal.pose))
+            return;
+        goal = _goal;
+        bfs_2d->updateGoal(_goal);
+        bfs_3d->updateGoal(_goal);
+    }
+
+    std::shared_ptr<smpl::Bfs2DHeuristic> bfs_2d;
+    std::shared_ptr<smpl::Bfs3DHeuristic> bfs_3d;
+    smpl::GoalConstraint goal;
+};
 
 bool constructHeuristics(
         std::vector<std::unique_ptr<smpl::RobotHeuristic>>& heurs,
@@ -54,30 +73,56 @@ bool constructHeuristics(
         PlannerConfig& params ){
 
     SMPL_INFO("Initialize Heuristics");
+    const int DefaultCostMultiplier = 1000;
 
-    struct AnchorHeuristic : public MotherHeuristic {
-
-        bool init( std::shared_ptr<smpl::Bfs2DHeuristic> _bfs_2d,
-                std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d ){
-            bfs_2d = _bfs_2d;
-            bfs_3d = _bfs_3d;
-            return true;
-        }
-        void updateGoal(const smpl::GoalConstraint& _goal) override {
-            if(areClose(_goal.pose, goal.pose))
-                return;
-            goal = _goal;
-            bfs_2d->updateGoal(_goal);
-            bfs_3d->updateGoal(_goal);
-        }
-
+    struct AnchorHeuristic : public BfsHeuristic {
         int GetGoalHeuristic(int state_id) override {
             return std::max(bfs_2d->GetGoalHeuristic(state_id), bfs_3d->GetGoalHeuristic(state_id));
         }
+    };
 
-        std::shared_ptr<smpl::Bfs2DHeuristic> bfs_2d;
-        std::shared_ptr<smpl::Bfs3DHeuristic> bfs_3d;
-        smpl::GoalConstraint goal;
+    struct EndEffHeuristic : public BfsHeuristic {
+        bool init(std::shared_ptr<smpl::Bfs2DHeuristic> _bfs_2d,
+                std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d){
+            if(!BfsHeuristic::init(_bfs_2d, _bfs_3d))
+                return false;
+            pose_ext = bfs_2d->planningSpace()->getExtension<smpl::PoseProjectionExtension>();
+            return true;
+        }
+
+        int GetGoalHeuristic(int state_id){
+            if (state_id == bfs_2d->planningSpace()->getGoalStateID()) {
+                return 0;
+            }
+            if(pose_ext == nullptr)
+                return 0;
+            smpl::Affine3 p;
+            if(!pose_ext->projectToPose(state_id, p))
+                return 0;
+
+            auto goal_pose = bfs_2d->planningSpace()->goal().pose;
+
+            smpl::Quaternion qa(p.rotation());
+            smpl::Quaternion qb(goal_pose.rotation());
+            double dot = qa.dot(qb);
+            if (dot < 0.0) {
+                qb = smpl::Quaternion(-qb.w(), -qb.x(), -qb.y(), -qb.z());
+                dot = qa.dot(qb);
+            }
+            int rot_dist = DefaultCostMultiplier*smpl::angles::normalize_angle(2.0 * std::acos(dot));
+
+            int base_dist = bfs_2d->GetGoalHeuristic(state_id);
+            int arm_dist = bfs_3d->GetGoalHeuristic(state_id);
+
+            int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
+            //ROS_ERROR("%d + %d + %d = %d", base_dist, arm_dist, rot_dist, heuristic);
+            return heuristic;
+        }
+
+        double base_coeff=0.5;
+        double arm_coeff=0.3;
+        double rot_coeff=0.2;
+        smpl::PoseProjectionExtension* pose_ext = nullptr;
     };
 
     auto bfs_2d = std::make_shared<smpl::Bfs2DHeuristic>();
@@ -106,6 +151,11 @@ bool constructHeuristics(
         heurs.push_back(std::move(anchor));
     }
     {
+        auto inad = std::make_unique<EndEffHeuristic>();
+        inad->init( bfs_2d, bfs_3d );
+        heurs.push_back(std::move(inad));
+    }
+    {
         auto h = std::make_unique<smpl::Bfs3DHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
         h->setInflationRadius(params.inflation_radius);
@@ -113,7 +163,7 @@ bool constructHeuristics(
             ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
-        heurs.push_back(std::move(h));
+        //heurs.push_back(std::move(h));
     }
 
     int num_rot_heurs = 4;
