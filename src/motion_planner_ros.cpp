@@ -38,13 +38,13 @@ bool Callbacks::canCallPlanner() const {
 }
 
 bool Callbacks::updateMap(PlanningEpisode _ep){
-    if(m_collision_scene->ProcessOctomapMsg(m_map_with_pose)){
-        ROS_INFO("Succesfully added octomap");
-    }
-    else{
-        ROS_INFO("Could not added octomap");
-        return false;
-    }
+    //if(m_collision_scene->ProcessOctomapMsg(m_map_with_pose)){
+    //    ROS_INFO("Succesfully added octomap");
+    //}
+    //else{
+    //    ROS_INFO("Could not added octomap");
+    //    return false;
+    //}
     auto map_config = getMultiRoomMapConfig(m_nh);
     auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config);
     for (auto& object : objects) {
