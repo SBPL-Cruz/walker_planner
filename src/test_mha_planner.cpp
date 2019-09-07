@@ -20,51 +20,6 @@
 #include "motion_planner_ros.h"
 #include "utils.h"
 
-struct MotherHeuristic : public smpl::RobotHeuristic {
-
-    double getMetricStartDistance( double, double, double ){return 0.0;}
-    double getMetricGoalDistance( double, double, double ){return 0.0;}
-    Extension* getExtension(size_t class_code){
-        if (class_code == smpl::GetClassCode<smpl::RobotHeuristic>()) {
-            return this;
-        }
-        return nullptr;
-    }
-
-    virtual int GetGoalHeuristic(int) = 0;
-    int GetStartHeuristic(int state_id){return 0;}
-    int GetFromToHeuristic(int from_id, int to_id){return 0;}
-};
-
-struct BfsHeuristic : public MotherHeuristic {
-
-    bool init( std::shared_ptr<smpl::Bfs2DHeuristic> _bfs_2d,
-            std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d ){
-        bfs_2d = _bfs_2d;
-        bfs_3d = _bfs_3d;
-        return true;
-    }
-
-    Extension* getExtension(size_t class_code){
-        if (class_code == smpl::GetClassCode<smpl::RobotHeuristic>()) {
-            return this;
-        }
-        return nullptr;
-    }
-
-    void updateGoal(const smpl::GoalConstraint& _goal) override {
-        if(areClose(_goal.pose, goal.pose))
-            return;
-        goal = _goal;
-        bfs_2d->updateGoal(_goal);
-        bfs_3d->updateGoal(_goal);
-    }
-
-    std::shared_ptr<smpl::Bfs2DHeuristic> bfs_2d;
-    std::shared_ptr<smpl::Bfs3DHeuristic> bfs_3d;
-    smpl::GoalConstraint goal;
-};
-
 bool constructHeuristics(
         std::vector<std::unique_ptr<smpl::RobotHeuristic>>& heurs,
         smpl::ManipLattice* pspace,
