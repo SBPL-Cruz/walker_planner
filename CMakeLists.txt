@@ -119,3 +119,10 @@ add_executable( test_fk
     src/motion_planner_ros.cpp
     src/get_collision_objects.cpp)
 target_link_libraries(test_fk ${catkin_LIBRARIES} smpl::smpl)
+add_executable( debug_planner
+    src/debug_planner.cpp
+    src/planner_config.cpp
+    src/collision_space_scene.cpp
+    src/motion_planner_ros.cpp
+    src/get_collision_objects.cpp)
+target_link_libraries(debug_planner ${catkin_LIBRARIES} smpl::smpl)
