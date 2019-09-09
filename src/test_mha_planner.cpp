@@ -36,6 +36,14 @@ bool constructHeuristics(
         int GetGoalHeuristic(int state_id) override {
             return std::max(bfs_3d_base->GetGoalHeuristic(state_id), bfs_3d->GetGoalHeuristic(state_id));
         }
+
+        double getMetricGoalDistance(double x, double y, double z) override {
+            return bfs_3d->getMetricGoalDistance(x, y, z);
+        }
+
+        double getMetricStartDistance(double x, double y, double z) override {
+            return bfs_3d->getMetricStartDistance(x, y, z);
+        }
     };
 
     struct EndEffHeuristic : public BfsHeuristic {
@@ -72,23 +80,130 @@ bool constructHeuristics(
             int arm_dist = bfs_3d->GetGoalHeuristic(state_id);
 
             int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
-            //ROS_ERROR("%d + %d + %d = %d", base_dist, arm_dist, rot_dist, heuristic);
+            //ROS_ERROR("%d + %d + %d = %d", int(base_coeff*base_dist), int(arm_coeff*arm_dist), int(rot_coeff*rot_dist), heuristic);
+            return heuristic;
+        }
+
+        double base_coeff=0.2;
+        double arm_coeff=10;
+        double rot_coeff=10;
+        smpl::PoseProjectionExtension* pose_ext = nullptr;
+    };
+
+    struct RetractArmHeuristic : public BfsHeuristic {
+        bool init(std::shared_ptr<smpl::Bfs3DBaseHeuristic> _bfs_3d_base,
+                std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d){
+            if(!BfsHeuristic::init(_bfs_3d_base, _bfs_3d))
+                return false;
+            return true;
+        }
+
+        int GetGoalHeuristic(int state_id){
+            if(state_id == 0)
+                return 0;
+
+            smpl::Vector3 p;
+            if(!bfs_3d->m_pp->projectToPoint(state_id, p)){
+                SMPL_ERROR("RetractArmHeuristic Could not project");
+                return 0;
+            }
+            auto retracted_robot_state = bfs_3d->planningSpace()->getExtension<smpl::ExtractRobotStateExtension>()->extractState(state_id);
+
+            /* End-effector distance
+            for(int i=3; i<retracted_robot_state.size(); i++)
+                retracted_robot_state[i] = 0;
+            smpl::Vector3 retracted_p;
+            if(!bfs_3d->m_pp->projectToPoint(retracted_robot_state, retracted_p)){
+                SMPL_ERROR("RetractArmHeuristic Could not project");
+                return 0;
+            }
+            int retract_heuristic = euclidDist(p.data(), retracted_p.data(), 3) * DefaultCostMultiplier;
+            */
+
+            // Norm of first 5 joints.
+            double norm = 0.0;
+            for(int i=3; i<8; i++)
+                norm += (retracted_robot_state[i]*retracted_robot_state[i]);
+            norm = sqrt(norm);
+            int retract_heuristic = DefaultCostMultiplier * norm;
+
+            int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
+
+            int heuristic = base_coeff*base_dist + retract_arm_coeff*retract_heuristic;
+            //ROS_ERROR("%d + %d = %d", base_dist, int(retract_arm_coeff*retract_heuristic), heuristic);
+
+            return heuristic;
+        }
+
+        double base_coeff = 0.0;
+        double retract_arm_coeff = 10.0;
+
+    };
+
+    struct ImprovedEndEffHeuristic : public BfsHeuristic {
+        bool init(std::shared_ptr<smpl::Bfs3DBaseHeuristic> _bfs_3d_base,
+                std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d,
+                std::shared_ptr<RetractArmHeuristic> _retract_arm){
+            if(!BfsHeuristic::init(_bfs_3d_base, _bfs_3d))
+                return false;
+            m_retract_arm_heur = _retract_arm;
+            pose_ext = bfs_3d->planningSpace()->getExtension<smpl::PoseProjectionExtension>();
+            return true;
+        }
+
+        int GetGoalHeuristic(int state_id){
+            if (state_id == bfs_3d->planningSpace()->getGoalStateID()) {
+                return 0;
+            }
+            if(pose_ext == nullptr)
+                return 0;
+            smpl::Affine3 p;
+            if(!pose_ext->projectToPose(state_id, p))
+                return 0;
+
+            auto goal_pose = bfs_3d->planningSpace()->goal().pose;
+
+            smpl::Quaternion qa(p.rotation());
+            smpl::Quaternion qb(goal_pose.rotation());
+            double dot = qa.dot(qb);
+            if (dot < 0.0) {
+                qb = smpl::Quaternion(-qb.w(), -qb.x(), -qb.y(), -qb.z());
+                dot = qa.dot(qb);
+            }
+            int rot_dist = DefaultCostMultiplier*smpl::angles::normalize_angle(2.0 * std::acos(dot));
+
+            int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
+            int arm_dist  = 0;
+            if(arm_dist > 10000){
+                arm_dist = m_retract_arm_heur->GetGoalHeuristic(state_id);
+                rot_dist = 0.0;
+            } else {
+                arm_dist = bfs_3d->GetGoalHeuristic(state_id);
+            }
+
+            int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
+            //ROS_ERROR("%d + %d + %d = %d", int(base_coeff*base_dist), int(arm_coeff*arm_dist), int(rot_coeff*rot_dist), heuristic);
             return heuristic;
         }
 
         double base_coeff=0.5;
-        double arm_coeff=0.0;
-        double rot_coeff=0.2;
+        double arm_coeff=10;
+        double rot_coeff=20;
+
+        std::shared_ptr<RetractArmHeuristic> m_retract_arm_heur;
         smpl::PoseProjectionExtension* pose_ext = nullptr;
     };
 
     struct BaseRotHeuristic : public BfsHeuristic {
         bool init(std::shared_ptr<smpl::Bfs3DBaseHeuristic> _bfs_3d_base,
                 std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d,
+                std::shared_ptr<RetractArmHeuristic> _retract_arm,
                 double _orientation){
             if(!BfsHeuristic::init(_bfs_3d_base, _bfs_3d))
                 return false;
+            m_retract_arm_heur = _retract_arm;
             orientation = _orientation;
+            return true;
         }
 
         int GetGoalHeuristic(int state_id){
@@ -99,70 +214,52 @@ bool constructHeuristics(
             int yaw_dist = DefaultCostMultiplier*smpl::angles::shortest_angle_dist(robot_state[2], orientation);
 
             int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
-            int heuristic = base_dist + orientation_coeff*yaw_dist;
-            //ROS_ERROR("%d + %d = %d", base_dist, yaw_dist, heuristic);
+            double arm_fold_heur = 0.0;
+            if(base_dist > 10000)
+                arm_fold_heur = m_retract_arm_heur->GetGoalHeuristic(state_id);
+
+            int heuristic = base_dist + orientation_coeff*yaw_dist + arm_fold_coeff*arm_fold_heur;
+            //ROS_ERROR("%d + %d + %d = %d", int(base_dist), int(orientation_coeff*yaw_dist), int(arm_fold_coeff*arm_fold_heur), heuristic);
             return heuristic;
         }
 
+        std::shared_ptr<RetractArmHeuristic> m_retract_arm_heur;
         double orientation = 0.0;
-        double orientation_coeff = 2.0;
+        double orientation_coeff = 5.0;
+        double arm_fold_coeff = 1.0;
     };
 
-    struct RetractArmHeuristic : public BfsHeuristic {
-        bool init(std::shared_ptr<smpl::Bfs3DBaseHeuristic> _bfs_3d_base,
-                std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d){
-            if(!BfsHeuristic::init(_bfs_3d_base, _bfs_3d))
-                return false;
-        }
-
-        int GetGoalHeuristic(int state_id){
-            if(state_id == 0)
-                return 0;
-            auto robot_state = (dynamic_cast<smpl::ManipLattice*>(
-                        bfs_3d->planningSpace()))->extractState(state_id);
-            double arm_norm = 0.0;
-            for(int i=3; i<robot_state.size(); i++){
-                arm_norm += (robot_state[i]*robot_state[i]);
-            }
-            arm_norm = sqrt(arm_norm);
-
-            int retract_heuristic = DefaultCostMultiplier * arm_norm;
-
-            int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
-
-            int heuristic = base_dist + retract_arm_coeff*base_dist;
-            //ROS_ERROR("%d + %d = %d", base_dist, retract_heuristic, heuristic);
-
-            return heuristic;
-        }
-
-        double retract_arm_coeff = 10.0;
-
-    };
 
     auto bfs_2d = std::make_unique<smpl::Bfs2DHeuristic>();
     bfs_2d->setCostPerCell(params.cost_per_cell);
-    bfs_2d->setInflationRadius(0.285);
+    bfs_2d->setInflationRadius(0.290);
     if (!bfs_2d->init(pspace, grid)) {
-        ROS_ERROR("Could not initialize heuristic.");
+        ROS_ERROR("Could not initialize Bfs2Dheuristic.");
         return false;
     }
 
     auto bfs_3d = std::make_shared<smpl::Bfs3DHeuristic>();
     bfs_3d->setCostPerCell(params.cost_per_cell);
-    bfs_3d->setInflationRadius(params.inflation_radius);
+    bfs_3d->setInflationRadius(0.02);
     if (!bfs_3d->init(pspace, grid)) {
-        ROS_ERROR("Could not initialize heuristic.");
+        ROS_ERROR("Could not initialize Bfs3Dheuristic.");
         return false;
     }
 
     auto bfs_3d_base = std::make_shared<smpl::Bfs3DBaseHeuristic>();
     bfs_3d_base->setCostPerCell(params.cost_per_cell);
-    bfs_3d_base->setInflationRadius(0.285);
+    bfs_3d_base->setInflationRadius(0.290);
     if (!bfs_3d_base->init(pspace, grid, 4)) {
-        ROS_ERROR("Could not initialize heuristic.");
+        ROS_ERROR("Could not initialize Bfs3DBaseHeuristic");
         return false;
     }
+
+    auto retract_arm = std::make_shared<RetractArmHeuristic>();
+    if(!retract_arm->init(bfs_3d_base, bfs_3d)){
+        ROS_ERROR("Could not initialize RetractArmHeuristic initialize");
+        return false;
+    }
+
 
     //Compute a feasible base location.
     std::vector<int> base_x, base_y;
@@ -173,12 +270,21 @@ bool constructHeuristics(
         anchor->init( bfs_3d_base, bfs_3d );
         heurs.push_back(std::move(anchor));
     }
-    //heurs.push_back(std::move(bfs_2d));
+    /*
     {
         auto inad = std::make_unique<EndEffHeuristic>();
         inad->init( bfs_3d_base, bfs_3d );
         heurs.push_back(std::move(inad));
+    }*/
+    {
+        auto inad = std::make_unique<ImprovedEndEffHeuristic>();
+        if(!inad->init( bfs_3d_base, bfs_3d, retract_arm )){
+            ROS_ERROR("Could not initialize ImprovedEndEffHeuristic.");
+            return false;
+        }
+        heurs.push_back(std::move(inad));
     }
+    /*
     {
         auto h = std::make_unique<smpl::Bfs3DHeuristic>();
         h->setCostPerCell(params.cost_per_cell);
@@ -189,12 +295,13 @@ bool constructHeuristics(
         }
         heurs.push_back(std::move(h));
     }
+    */
 
     int num_rot_heurs = 4;
     for(int i=0; i<num_rot_heurs; i++){
         auto h = std::make_unique<BaseRotHeuristic>();
-        if (!h->init(bfs_3d_base, bfs_3d, 6.28/num_rot_heurs*i)) {
-            ROS_ERROR("Could not initialize heuristic.");
+        if (!h->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i)) {
+            ROS_ERROR("Could not initialize BaseRotheuristic.");
             return false;
         }
         heurs.push_back(std::move(h));
@@ -218,25 +325,6 @@ bool constructHeuristics(
         //SV_SHOW_INFO(h->get2DMapVisualization());
         //heurs.push_back(std::move(h));
     }
-    {
-        auto h = std::make_unique<RetractArmHeuristic>();
-        if(!h->init(bfs_3d_base, bfs_3d)){
-            ROS_ERROR("Could not initialize heuristic");
-            return false;
-        }
-        heurs.push_back(std::move(h));
-    }
-    /*
-    {
-        auto h = std::make_unique<smpl::ArmRetractHeuristic>();
-        if (!h->init(pspace)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        heurs.push_back(std::move(h));
-    }
-    */
-
 
     for (auto& entry : heurs) {
         pspace->insertHeuristic(entry.get());
