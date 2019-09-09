@@ -48,9 +48,11 @@ bool addStartGoalRegionsForDoor(
         lo[2] = 0.7;
         hi[2] = 0.8;
 
-        for(int i=3; i<6; i++){
-            lo[i] = -3.14;
-            hi[i] = 3.14;
+        lo[3] = -3.14;
+        hi[3] = 3.14;
+        for(int i=4; i<6; i++){
+            lo[i] = -1.57;
+            hi[i] = 1.57;
         }
         goal_region.lo = lo;
         goal_region.hi = hi;
@@ -78,13 +80,19 @@ bool addGoalRegionsForTable(
         hi[0] = table_x + table_size_x/2;
         lo[1] = table_y - table_size_y/2;
         hi[1] = table_y + table_size_y/2;
-        lo[2] = table_height + 0.1;
-        hi[2] = table_height + 0.2;
+        lo[2] = table_height + 0.05;
+        hi[2] = table_height + 0.1;
 
-        for(int i=3; i<6; i++){
-            lo[i] = -3.14;
-            hi[i] = 3.14;
-        }
+        //roll = 0
+
+        // Pitch downward
+        lo[4] = 0;
+        hi[4] = 1.57;
+
+        //yaw all around
+        lo[5] = -3.14;
+        hi[5] = 3.14;
+
         goal_region.lo = lo;
         goal_region.hi = hi;
         generator.addGoalRegion(goal_region);

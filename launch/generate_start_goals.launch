@@ -46,6 +46,8 @@ required="true" /> -->
         <!-- collision checking -->
         <rosparam command="load" file="$(find walker_planner)/config/collision_model_walker.yaml"/>
 
+        <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
+
         <!-- planner params -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
         <param name="planning/mprim_filename" value="$(find
