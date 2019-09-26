@@ -46,7 +46,8 @@ bool Callbacks::updateMap(PlanningEpisode _ep){
     //    return false;
     //}
     auto map_config = getMultiRoomMapConfig(m_nh);
-    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config);
+    std::vector<moveit_msgs::CollisionObject> tmp;
+    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config, tmp);
     for (auto& object : objects) {
         m_collision_scene->ProcessCollisionObjectMsg(object);
     }
