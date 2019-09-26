@@ -59,4 +59,8 @@ inline bool areClose( const smpl::Affine3& a, const smpl::Affine3& b ){
     return true;
 }
 
+inline bool areClose(const double a, const double b){
+    return fabs(a - b) < 0.001;
+}
+
 #endif

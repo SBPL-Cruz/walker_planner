@@ -1,4 +1,4 @@
-#include "planner_config.h"
+#include "config/planner_config.h"
 
 void FillGoalConstraint(
     const std::vector<double>& pose,
@@ -117,7 +117,6 @@ bool ReadInitialConfiguration(
     return true;
 }
 
-
 bool ReadRobotModelConfig(const ros::NodeHandle &nh, RobotModelConfig &config)
 {
     if (!nh.getParam("group_name", config.group_name)) {
@@ -146,7 +145,6 @@ bool ReadRobotModelConfig(const ros::NodeHandle &nh, RobotModelConfig &config)
     nh.getParam("chain_tip_link", config.chain_tip_link);
     return true;
 }
-
 
 bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config)
 {
@@ -200,7 +198,39 @@ bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config)
     }
 
     if (!nh.getParam("short_dist_mprims_thresh", config.short_dist_mprims_thresh)) {
-        ROS_ERROR("Failed to read param 'use_xyz_snap_mprim' from the param server");
+        ROS_ERROR("Failed to read param 'short_dist_mprims_thresh' from the param server");
+        return false;
+    }
+    if (!nh.getParam("cost_per_cell", config.cost_per_cell)) {
+        ROS_ERROR("Failed to read param 'cost_per_cell' from the param server");
+        return false;
+    }
+
+    if(!nh.getParam("inflation_radius_2d", config.inflation_radius_2d)){
+        ROS_ERROR("Failed to read param 'inflation_radius_2d' from the param server");
+        return false;
+    }
+
+    if(!nh.getParam("inflation_radius_3d", config.inflation_radius_3d)){
+        ROS_ERROR("Failed to read param 'inflation_radius_3d' from the param server");
+        return false;
+    }
+
+    if(!nh.getParam("eps", config.eps)){
+        ROS_ERROR("Failed to read param 'eps' from the param server");
+        return false;
+    }
+
+    if(!nh.getParam("eps_mha", config.eps_mha)){
+        ROS_ERROR("Failed to read param 'eps_mha' from the param server");
+        return false;
+    }
+    if(!nh.getParam("planning_time", config.planning_time)){
+        ROS_ERROR("Failed to read param 'planning_time' from the param server");
+        return false;
+    }
+    if(!nh.getParam("num_planning_episodes", config.num_planning_episodes)){
+        ROS_ERROR("Failed to read param 'num_planning_episodes' from the param server");
         return false;
     }
 
@@ -218,7 +248,7 @@ auto SetupRobotModel(const std::string& urdf, const RobotModelConfig &config)
     ROS_INFO("Construct Generic KDL Robot Model");
     std::unique_ptr<smpl::KDLRobotModel> rm(new smpl::KDLRobotModel);
 
-    if (!rm->init(urdf, config.kinematics_frame, config.chain_tip_link)) {
+    if (!rm->init(urdf, config.kinematics_frame, config.chain_tip_link, 5)) {
         ROS_ERROR("Failed to initialize robot model.");
         return NULL;
     }

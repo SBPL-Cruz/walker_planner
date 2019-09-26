@@ -23,7 +23,7 @@
 #include <smpl/debug/visualizer_ros.h>
 #include <smpl_moveit_interface/planner/moveit_robot_model.h>
 
-#include "collision_space_scene.h"
+#include "config/collision_space_scene.h"
 
 void FillGoalConstraint(
     const std::vector<double>& pose,

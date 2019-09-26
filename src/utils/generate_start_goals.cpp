@@ -3,10 +3,11 @@
 
 #include <smpl/debug/visualizer_ros.h>
 #include <smpl/distance_map/euclid_distance_map.h>
-#include "planner_config.h"
-#include "start_goal_generator.h"
-#include "collision_space_scene.h"
-#include "get_collision_objects.h"
+
+#include "config/planner_config.h"
+#include "utils/start_goal_generator.h"
+#include "config/collision_space_scene.h"
+#include "config/get_collision_objects.h"
 
 bool addStartGoalRegionsForDoor(
         StartGoalGenerator& generator,
@@ -80,14 +81,14 @@ bool addGoalRegionsForTable(
         hi[0] = table_x + table_size_x/2;
         lo[1] = table_y - table_size_y/2;
         hi[1] = table_y + table_size_y/2;
-        lo[2] = table_height + 0.05;
-        hi[2] = table_height + 0.1;
+        lo[2] = table_height + 0.15;
+        hi[2] = table_height + 0.18;
 
         //roll = 0
 
         // Pitch downward
-        lo[4] = 0;
-        hi[4] = 1.57;
+        lo[4] = -0.7;
+        hi[4] = 0.70;
 
         //yaw all around
         lo[5] = -3.14;
@@ -250,7 +251,7 @@ int main(int argc, char** argv){
     std::vector<moveit_msgs::CollisionObject> doors;
     auto map_config = getMultiRoomMapConfig(ph);
     //auto objects = GetMultiRoomMapCollisionCubes(doors, grid_ptr->getReferenceFrame(), map_config);
-    auto objects = GetMultiRoomMapCollisionCubes( grid_ptr->getReferenceFrame(), map_config );
+    auto objects = GetMultiRoomMapCollisionCubes( grid_ptr->getReferenceFrame(), map_config, doors );
     for (auto& object : objects) {
         scene_ptr->ProcessCollisionObjectMsg(object);
     }

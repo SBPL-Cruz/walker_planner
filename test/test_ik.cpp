@@ -7,7 +7,6 @@
 #include <smpl/graph/manip_lattice_multi_rep.h>
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/heuristic/bfs_heuristic.h>
-#include <smpl/heuristic/bfs_heuristic_rot.h>
 #include <smpl/heuristic/bfs_fullbody_heuristic.h>
 #include <smpl/heuristic/euclid_dist_heuristic.h>
 #include <smpl/heuristic/euclid_diffdrive_heuristic.h>

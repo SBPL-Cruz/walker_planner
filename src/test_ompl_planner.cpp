@@ -31,9 +31,9 @@
 #include <smpl_ompl_interface/ompl_interface.h>
 #include <urdf_parser/urdf_parser.h>
 
-#include "planner_config.h"
-#include "collision_space_scene.h"
-#include "get_collision_objects.h"
+#include "config/planner_config.h"
+#include "config/collision_space_scene.h"
+#include "config/get_collision_objects.h"
 
 auto ConstructStateSpace(
     const urdf::ModelInterface& urdf,
@@ -306,13 +306,17 @@ int main(int argc, char* argv[])
 
     scene.SetCollisionSpace(&cc);
     auto map_config = getMultiRoomMapConfig(ph);
-    auto objects = GetMultiRoomMapCollisionCubes(grid.getReferenceFrame(), map_config);
+    std::vector<moveit_msgs::CollisionObject> tmp;
+    auto objects = GetMultiRoomMapCollisionCubes(grid.getReferenceFrame(), map_config, tmp);
     for (auto& object : objects) {
         scene.ProcessCollisionObjectMsg(object);
     }
 
     SV_SHOW_INFO(cc.getCollisionRobotVisualization());
     SV_SHOW_INFO(cc.getCollisionWorldVisualization());
+    SV_SHOW_INFO(grid.getOccupiedVoxelsVisualization());
+
+    ros::Duration(1.0).sleep();
 
     auto rm = SetupRobotModel(robot_description, robot_config);
     if (!rm) {
@@ -350,11 +354,11 @@ int main(int argc, char* argv[])
 
     cc.setWorldToModelTransform(Eigen::Affine3d::Identity());
 
-    SV_SHOW_INFO(grid.getDistanceFieldVisualization(0.2));
+    //SV_SHOW_INFO(grid.getDistanceFieldVisualization(0.2));
 
-    SV_SHOW_INFO(cc.getCollisionRobotVisualization());
-    SV_SHOW_INFO(cc.getCollisionWorldVisualization());
-    SV_SHOW_INFO(cc.getOccupiedVoxelsVisualization());
+    //SV_SHOW_INFO(cc.getCollisionRobotVisualization());
+    //SV_SHOW_INFO(cc.getCollisionWorldVisualization());
+    //SV_SHOW_INFO(cc.getOccupiedVoxelsVisualization());
 
     ///////////////////
     // Planner Setup //
@@ -461,7 +465,7 @@ int main(int argc, char* argv[])
     auto goal_condition = std::make_shared<smpl::PoseGoal>(
             ss.getSpaceInformation(), goal_pose);
 //    goal_condition->position_tolerance = Eigen::Vector3d(0.015, 0.015, 0.015);
-    goal_condition->position_tolerance = Eigen::Vector3d(1.32, 1.32, 1.32);
+    goal_condition->position_tolerance = Eigen::Vector3d(0.012, 0.012, 0.012);
     goal_condition->orientation_tolerance = Eigen::Vector3d(
             smpl::angles::to_radians(7.0),
             smpl::angles::to_radians(7.0),
@@ -521,6 +525,7 @@ int main(int argc, char* argv[])
     //ompl::base::PlannerPtr planner(new ompl::geometric::BITstar(ss.getSpaceInformation()));
     //planner->as<ompl::geometric::SBL>()->setProjectionEvaluator("fk");
     ompl::base::PlannerPtr planner(new ompl::geometric::RRT(ss.getSpaceInformation()));
+    dynamic_cast<ompl::geometric::RRT*>(planner.get())->setRange(0.1);
     ss.setPlanner(planner);
 
     ROS_INFO("Calling solve...");
@@ -555,6 +560,8 @@ int main(int argc, char* argv[])
     while (ros::ok()) {
         auto* state = ss.getSolutionPath().getState(pidx);
         auto point = smpl::MakeStateSMPL(state_space.get(), state);
+        //for(int i=0; i<point.size(); i++)
+            //ROS_ERROR("%f", point[i]);
         auto markers = cc.getCollisionRobotVisualization(point);
         for (auto& m : markers.markers) {
             m.ns = "path_animation";

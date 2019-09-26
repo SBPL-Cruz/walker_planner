@@ -39,7 +39,13 @@ struct PlannerConfig
     double xyzrpy_snap_dist_thresh;
     double short_dist_mprims_thresh;
     double cost_per_cell;
-    double inflation_radius;
+    double inflation_radius_2d;
+    double inflation_radius_3d;
+
+    double eps;
+    double eps_mha;
+    int planning_time;
+    int num_planning_episodes;
 };
 
 struct MultiRoomMapConfig {

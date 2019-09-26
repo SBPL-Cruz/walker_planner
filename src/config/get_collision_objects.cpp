@@ -1,5 +1,5 @@
-#include "get_collision_objects.h"
-#include "utils.h"
+#include "config/get_collision_objects.h"
+#include "utils/utils.h"
 
 moveit_msgs::CollisionObject GetCollisionCube(
     const geometry_msgs::Pose& pose,
@@ -111,7 +111,8 @@ std::vector<moveit_msgs::CollisionObject> GetCollisionObjects(
 
 std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     const std::string& frame_id,
-    const MultiRoomMapConfig config){
+    const MultiRoomMapConfig config,
+    std::vector<moveit_msgs::CollisionObject>& landmarks){
     srand(config.seed);
     // Wall Thickness
     const double th = 0.05;
@@ -190,6 +191,16 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     dims[2] = ht;
     objs.push_back(GetCollisionCube(pose, dims, frame_id, object_id));
 
+    //Door
+    object_id = "door1";
+    pose.position.x = map_half_x/2;
+    pose.position.y = map_third_y;
+    pose.position.z = 0;
+    dims[0] = door_width;
+    dims[1] = th;
+    dims[2] = ht;
+    landmarks.push_back(GetCollisionCube(pose, dims, frame_id, object_id));
+
     object_id = "wall4";
     pose.position.x = map_half_x - top_wall_length/2;
     pose.position.y = map_third_y;
@@ -245,9 +256,10 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     for(int i=0; i<n_tables; i++){
         object_id = "table" + std::to_string(i);
         bool no_overlap = false;
+        double offset = 0.4;
         while(!no_overlap){
-            pose.position.x = getRandNum( alley_right_wall_x + config.max_table_len/2, x_max - config.max_table_len/2 );
-            pose.position.y = getRandNum( config.max_table_len/2, map_half_y - config.max_table_len/2 );
+            pose.position.x = getRandNum( alley_right_wall_x + config.max_table_len/2 + offset, x_max - config.max_table_len/2 - offset );
+            pose.position.y = getRandNum( config.max_table_len/2 + offset, map_half_y - config.max_table_len/2 - offset );
             if(minDistFromEach(std::make_pair(pose.position.x, pose.position.y),
                         table_locs) > config.min_dist_bw_tables)
                 no_overlap = true;
@@ -292,6 +304,10 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
 
     return objs;
 }
+
+std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
+    std::vector<moveit_msgs::CollisionObject>& doors,
+    const std::string& frame_id,
     const double x_max,
     const double y_max,
     const double door_width,
@@ -367,6 +383,16 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     dims[1] = th;
     dims[2] = ht;
     objs.push_back(GetCollisionCube(pose, dims, frame_id, object_id));
+
+    //Door
+    object_id = "door1";
+    pose.position.x = map_half_x/2;
+    pose.position.y = map_third_y;
+    pose.position.z = 0;
+    dims[0] = door_width;
+    dims[1] = th;
+    dims[2] = ht;
+    doors.push_back(GetCollisionCube(pose, dims, frame_id, object_id));
 
     object_id = "wall4";
     pose.position.x = map_half_x - top_wall_length/2;

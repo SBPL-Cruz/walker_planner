@@ -18,7 +18,7 @@
 #include <smpl/types.h>
 #include <sbpl/planners/mrmhaplanner.h>
 
-#include "get_collision_objects.h"
+#include "config/get_collision_objects.h"
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
 
@@ -148,7 +148,8 @@ int main(int argc, char**argv){
     }
 
     auto map_config = getMultiRoomMapConfig(ph);
-    auto objects = GetMultiRoomMapCollisionCubes(grid_ptr->getReferenceFrame(), map_config);
+    std::vector<moveit_msgs::CollisionObject> tmp;
+    auto objects = GetMultiRoomMapCollisionCubes(grid_ptr->getReferenceFrame(), map_config, tmp);
     for(auto object : objects)
         scene_ptr->ProcessCollisionObjectMsg(object);
 

@@ -30,7 +30,7 @@ class Region {
 
 class StartGoalGenerator {
     public:
-    bool init( smpl::collision::CollisionSpace*, smpl::urdf::URDFRobotModel*, unsigned int seed );
+    bool init( smpl::collision::CollisionSpace*, smpl::KDLRobotModel*, unsigned int seed );
     bool addStartRegion(BoundedRegion&);
     bool addGoalRegion(BoundedRegion&);
     bool generate(int);
@@ -39,13 +39,14 @@ class StartGoalGenerator {
 
     private:
     smpl::collision::CollisionSpace* m_cc = nullptr;
-    smpl::urdf::URDFRobotModel* m_rm = nullptr;
+    smpl::KDLRobotModel* m_rm = nullptr;
 
     Region m_start_region;
     Region m_goal_region;
 
     std::vector<smpl::RobotState> m_start_states;
-    std::vector<std::vector<double>> m_goal_poses;
+    //std::vector<std::vector<double>> m_goal_poses;
+    std::vector<smpl::RobotState> m_goal_states;
 };
 
 #endif
