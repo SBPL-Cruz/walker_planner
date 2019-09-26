@@ -58,8 +58,7 @@ namespace MPlanner {
 
         virtual bool init(Search* _search,
                 Env* _env,
-                Heuristic* _anchor,
-                std::vector<Heuristic*>& m_inad,
+                std::vector<Heuristic*>& m_heurs,
                 PlannerParams&);
 
         virtual bool updateStart(const smpl::RobotState&);
@@ -72,8 +71,7 @@ namespace MPlanner {
         public:
         Search* m_search_ptr = nullptr;
         Env* m_env_ptr = nullptr;
-        Heuristic* m_anchor_heur_ptr = nullptr;
-        std::vector<Heuristic*> m_inad_heurs;
+        std::vector<Heuristic*> m_heurs;
 
         smpl::RobotState m_start_state;
         smpl::GoalConstraint m_goal_constraints;
@@ -94,15 +92,13 @@ namespace MPlanner {
     bool MotionPlanner<Search, Env>::
     init( Search* _search,
             Env* _env_ptr,
-            Heuristic* _anchor_ptr,
-            std::vector<Heuristic*>& _inad_heurs,
+            std::vector<Heuristic*>& _heurs,
             PlannerParams& _params ){
         SMPL_INFO("MotionPlanner::init");
         m_search_ptr = _search;
         m_env_ptr = _env_ptr;
-        m_anchor_heur_ptr = _anchor_ptr;
-        for(auto h : _inad_heurs)
-            m_inad_heurs.push_back(h);
+        for(auto h : _heurs)
+            m_heurs.push_back(h);
 
         updatePlannerParams(_params);
     }
@@ -124,8 +120,7 @@ namespace MPlanner {
             return false;
         }
 
-        dynamic_cast<smpl::RobotHeuristic*>(m_anchor_heur_ptr)->updateStart(_start_state);
-        for (auto& h : m_inad_heurs) {
+        for (auto& h : m_heurs) {
             dynamic_cast<smpl::RobotHeuristic*>(h)->updateStart(_start_state);
         }
 
@@ -154,9 +149,7 @@ namespace MPlanner {
 
         ROS_INFO("Updating goal in heuristics.");
         ROS_INFO("Goal: %f, %f", _goal_constraint.pose.translation()[0], _goal_constraint.pose.translation()[1]);
-        assert(m_anchor_heur_ptr != nullptr);
-        dynamic_cast<smpl::RobotHeuristic*>(m_anchor_heur_ptr)->updateGoal(_goal_constraint);
-        for (auto& h : m_inad_heurs) {
+        for (auto& h : m_heurs) {
             dynamic_cast<smpl::RobotHeuristic*>(h)->updateGoal(_goal_constraint);
         }
 

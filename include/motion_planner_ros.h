@@ -115,9 +115,9 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
         MPlanner::PlannerSolution soltn;
 
         assert(m_planner_ptr != nullptr);
-        auto heur = dynamic_cast<BfsHeuristic*>(m_planner_ptr->m_anchor_heur_ptr);
-        ROS_ERROR("BFS3DBase: %d", heur->bfs_3d_base->GetGoalHeuristic(1));
-        SV_SHOW_INFO(heur->bfs_3d_base->getValuesVisualization());
+        //auto heur = dynamic_cast<BfsHeuristic*>(m_planner_ptr->m_heurs[0]);
+        //ROS_ERROR("BFS3DBase: %d", heur->bfs_3d_base->GetGoalHeuristic(1));
+        //SV_SHOW_INFO(heur->bfs_3d_base->getValuesVisualization());
 
         if(!m_planner_ptr->plan(soltn)){
             ROS_WARN("Planning Episode %d Failed", _ep);

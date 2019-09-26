@@ -710,22 +710,25 @@ int main(int argc, char** argv){
     /////////////
 
 
-    std::vector<std::unique_ptr<smpl::RobotHeuristic>> heurs;
+    std::vector<std::unique_ptr<smpl::RobotHeuristic>> robot_heurs;
 
-    if(!constructHeuristics( heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    if(!constructHeuristics( robot_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
 
-    ROS_ERROR("Number of heuristics: %d", heurs.size());
-    assert(heurs.size() == multi_action_space->numReps());
+    ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
+    assert(robot_heurs.size() == multi_action_space->numReps());
 
-    assert(heurs[0] != nullptr);
-    std::vector<Heuristic*> inad_heurs;
+    assert(robot_heurs[0] != nullptr);
 
-    Heuristic* anchor_heur = heurs[0].get();
-    for(int i=1; i<heurs.size(); i++)
-        inad_heurs.push_back(heurs[i].get());
+    std::vector<Heuristic*> heurs;
+
+    for(int i=0; i < robot_heurs.size(); i++)
+        heurs.push_back(robot_heurs[i].get());
+
+    Heuristic* anchor_heur = heurs[0];
+    std::vector<Heuristic*> inad_heurs( heurs.begin() + 1, heurs.end() );
 
     auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100, space.get());
     auto search_ptr = std::make_unique<MRMHAPlanner>(
@@ -738,7 +741,7 @@ int main(int argc, char** argv){
 
     using MotionPlanner = MPlanner::MotionPlanner<MRMHAPlanner, smpl::ManipLatticeMultiRep>;
     auto mplanner = std::make_unique<MotionPlanner>();
-    mplanner->init(search_ptr.get(), space.get(), anchor_heur, inad_heurs, planner_params);
+    mplanner->init(search_ptr.get(), space.get(), heurs, planner_params);
 
     MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
