@@ -17,19 +17,19 @@
 #include <moveit_msgs/RobotState.h>
 #include <sbpl/planners/planner.h>
 #include <smpl/graph/manip_lattice.h>
-#include <smpl/heuristic/euclid_fullbody_heuristic.h>
-#include <smpl/heuristic/bfs_fullbody_heuristic.h>
 #include <smpl/spatial.h>
 #include <smpl/distance_map/edge_euclid_distance_map.h>
 #include <smpl/distance_map/euclid_distance_map.h>
 #include <smpl/ros/propagation_distance_field.h>
+#include <smpl/heuristic/mother_heuristic.h>
+#include <smpl/heuristic/bfs_2d_heuristic.h>
 #include <sbpl_collision_checking/collision_space.h>
 #include <smpl/debug/visualizer_ros.h>
 
 //Local
-#include "planner_config.h"
-#include "collision_space_scene.h"
-#include "get_collision_objects.h"
+#include "config/planner_config.h"
+#include "config/collision_space_scene.h"
+#include "config/get_collision_objects.h"
 
 //Publish Path
 #include "walker_planner/GraspPose.h"
@@ -95,6 +95,7 @@ bool MotionPlannerROS<SP, EP, Planner>::initExperiments(std::string _start, std:
     return this->init(_start, _goal);
 }
 
+
 template <typename SP, typename EP, typename Planner>
 ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
     if(this->canCallPlanner()){
@@ -110,9 +111,13 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
         //std::this_thread::sleep_for(std::chrono::seconds(5));
 
         updateStart(this->getStart(_ep));
+
         MPlanner::PlannerSolution soltn;
 
         assert(m_planner_ptr != nullptr);
+        auto heur = dynamic_cast<BfsHeuristic*>(m_planner_ptr->m_anchor_heur_ptr);
+        ROS_ERROR("BFS3DBase: %d", heur->bfs_3d_base->GetGoalHeuristic(1));
+        SV_SHOW_INFO(heur->bfs_3d_base->getValuesVisualization());
 
         if(!m_planner_ptr->plan(soltn)){
             ROS_WARN("Planning Episode %d Failed", _ep);

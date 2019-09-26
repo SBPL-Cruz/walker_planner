@@ -19,6 +19,7 @@ namespace MPlanner {
 
     struct PlannerSolution {
         std::vector<smpl::RobotState> robot_states;
+        std::vector<int> soltn_ids;
         int cost;
         double planning_time;
         int num_expansions;
@@ -68,7 +69,7 @@ namespace MPlanner {
 
         smpl::RobotModel* robot(){ return m_env_ptr->robot(); }
 
-        private:
+        public:
         Search* m_search_ptr = nullptr;
         Env* m_env_ptr = nullptr;
         Heuristic* m_anchor_heur_ptr = nullptr;
@@ -199,6 +200,7 @@ namespace MPlanner {
         double planning_time = smpl::to_seconds(smpl::clock::now() - then);
         _planner_soltn.planning_time = planning_time;
         _planner_soltn.num_expansions = m_search_ptr->m_num_expansions;
+        _planner_soltn.soltn_ids = soltn_ids;
 
         if(!success){
             SMPL_ERROR("Planning failed.");
