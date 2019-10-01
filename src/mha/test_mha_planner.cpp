@@ -934,7 +934,7 @@ int main(int argc, char** argv){
 
     std::vector<Heuristic*> heurs;
 
-    for(int i=0; i < heurs.size(); i++)
+    for(int i=0; i < robot_heurs.size(); i++)
         heurs.push_back(robot_heurs[i].get());
 
     Heuristic* anchor_heur = heurs[0];

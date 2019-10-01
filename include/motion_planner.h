@@ -192,7 +192,7 @@ namespace MPlanner {
         bool success = m_search_ptr->replan( m_planning_time, &soltn_ids, &(_planner_soltn.cost) );
         double planning_time = smpl::to_seconds(smpl::clock::now() - then);
         _planner_soltn.planning_time = planning_time;
-        _planner_soltn.num_expansions = m_search_ptr->m_num_expansions;
+        _planner_soltn.num_expansions = m_search_ptr->get_num_expansions();
         _planner_soltn.soltn_ids = soltn_ids;
 
         if(!success){
