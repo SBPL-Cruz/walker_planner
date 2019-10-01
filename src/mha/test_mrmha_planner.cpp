@@ -730,7 +730,7 @@ int main(int argc, char** argv){
     Heuristic* anchor_heur = heurs[0];
     std::vector<Heuristic*> inad_heurs( heurs.begin() + 1, heurs.end() );
 
-    auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100, space.get());
+    auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);
     auto search_ptr = std::make_unique<MRMHAPlanner>(
             space.get(), anchor_heur, inad_heurs.data(), inad_heurs.size(), uniformly_random_policy.get());
 

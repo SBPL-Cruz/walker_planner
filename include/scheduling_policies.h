@@ -6,6 +6,7 @@
 
 #include <smpl/types.h>
 #include <smpl/heuristic/mother_heuristic.h>
+#include <smpl/graph/manip_lattice_multi_rep.h>
 #include <sbpl_collision_checking/shapes.h>
 #include <sbpl/planners/scheduling_policy.h>
 #include "utils/utils.h"
@@ -58,10 +59,9 @@ class DecisionTreePolicy : public SchedulingPolicy {
 
 class UniformlyRandomPolicy : public SchedulingPolicy {
     public:
-        UniformlyRandomPolicy( int _num_queues, unsigned int _seed, smpl::ManipLatticeMultiRep* _manip_space_mr ) :
+        UniformlyRandomPolicy( int _num_queues, unsigned int _seed ) :
             SchedulingPolicy(_num_queues),
-            m_seed{_seed},
-            m_manip_space_mr{_manip_space_mr} {
+            m_seed{_seed}{
             srand(_seed);
         }
     //inline virtual int getNextQueue(const smpl::RobotState&) override;
@@ -71,7 +71,6 @@ class UniformlyRandomPolicy : public SchedulingPolicy {
 
     private:
     unsigned int m_seed;
-    smpl::ManipLatticeMultiRep* m_manip_space_mr;
 };
 
 /*
