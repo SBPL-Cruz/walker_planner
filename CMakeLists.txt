@@ -81,6 +81,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+set( PLANNERS
+    src/planners/rmhaplanner.cpp
+    src/planners/mrmhaplanner.cpp)
+
 add_executable(collision_model_visualizer src/debug/collision_model_visualizer.cpp
     src/config/collision_space_scene.cpp)
 target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
@@ -109,11 +113,12 @@ add_dependencies( test_mrmha_planner ${${PROJECT_NAME}_EXPORTED_TARGETS}
 
 add_executable( test_mrmha_rr_planner
     src/mha/test_mrmha_rr_planner.cpp
-    src/planners/mrmhaplanner.cpp
+    #src/planners/mrmhaplanner.cpp
     src/motion_planner_ros.cpp
     src/config/collision_space_scene.cpp
     src/config/planner_config.cpp
-    src/config/get_collision_objects.cpp)
+    src/config/get_collision_objects.cpp
+    ${PLANNERS})
 target_link_libraries(test_mrmha_rr_planner ${catkin_LIBRARIES} smpl::smpl
     ${orocos_kdl_LIBRARIES})
 add_dependencies( test_mrmha_rr_planner ${${PROJECT_NAME}_EXPORTED_TARGETS}
@@ -127,6 +132,16 @@ add_executable( test_mha_planner
     src/config/get_collision_objects.cpp)
 target_link_libraries(test_mha_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
 add_dependencies( test_mha_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+
+add_executable( test_rmha_planner
+    src/mha/test_rmha_planner.cpp
+    src/motion_planner_ros.cpp
+    src/config/collision_space_scene.cpp
+    src/config/planner_config.cpp
+    src/config/get_collision_objects.cpp
+    ${PLANNERS})
+target_link_libraries(test_rmha_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+add_dependencies( test_rmha_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 
 add_executable( test_ompl_planner
     src/test_ompl_planner.cpp
