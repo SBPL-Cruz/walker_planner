@@ -746,8 +746,8 @@ int main(int argc, char** argv){
     //while(status == ExecutionStatus::WAITING) {
     std::string file_prefix = "paths/solution_path";
     std::ofstream stats_file;
-    PlanningEpisode ep = 0;
-    while(ep < planning_config.num_planning_episodes){
+    PlanningEpisode ep = planning_config.start_planning_episode;
+    while(ep <= planning_config.end_planning_episode){
         loop_rate.sleep();
         std::string file_suffix = std::to_string(ep) + ".txt";
         status = mplanner_ros.execute(ep);

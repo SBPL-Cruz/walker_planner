@@ -229,8 +229,12 @@ bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config)
         ROS_ERROR("Failed to read param 'planning_time' from the param server");
         return false;
     }
-    if(!nh.getParam("num_planning_episodes", config.num_planning_episodes)){
-        ROS_ERROR("Failed to read param 'num_planning_episodes' from the param server");
+    if(!nh.getParam("start_planning_episode", config.start_planning_episode)){
+        ROS_ERROR("Failed to read param 'start_planning_episode' from the param server");
+        return false;
+    }
+    if(!nh.getParam("end_planning_episode", config.end_planning_episode)){
+        ROS_ERROR("Failed to read param 'end_planning_episode' from the param server");
         return false;
     }
 

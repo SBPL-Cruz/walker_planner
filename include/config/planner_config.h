@@ -45,7 +45,8 @@ struct PlannerConfig
     double eps;
     double eps_mha;
     int planning_time;
-    int num_planning_episodes;
+    int start_planning_episode;
+    int end_planning_episode;
 };
 
 struct MultiRoomMapConfig {
