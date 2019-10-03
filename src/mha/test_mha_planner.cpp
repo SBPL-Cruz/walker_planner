@@ -969,6 +969,7 @@ int main(int argc, char** argv){
     while(ep <= planning_config.end_planning_episode ){
         loop_rate.sleep();
         std::string file_suffix = std::to_string(ep) + ".txt";
+        space->clearStats();
         status = mplanner_ros.execute(ep);
     //}
         if(status == ExecutionStatus::SUCCESS){
@@ -982,6 +983,7 @@ int main(int argc, char** argv){
             auto plan_stats = mplanner_ros.getPlan(ep);
             stats_file<<std::to_string(ep)<<" "<<max_planning_time<<" ";
             stats_file<<plan_stats.planning_time << " " << plan_stats.num_expansions << " " << plan_stats.cost<<" ";
+            stats_file<<plan_stats.ik_computations<<" "<<plan_stats.ik_evaluations<<" "<<plan_stats.ik_valid<<" ";
             stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<<"\n";
             stats_file.close();
 
@@ -1012,7 +1014,7 @@ int main(int argc, char** argv){
             visualization_msgs::MarkerArray whole_path;
             std::vector<visualization_msgs::Marker> m_all;
 
-            /*
+            ///*
             int idx = 0;
             for( int pidx=0; pidx<plan.size(); pidx++ ){
                 auto& state = plan[pidx];
@@ -1026,7 +1028,7 @@ int main(int argc, char** argv){
                 visualizer.visualize(smpl::visual::Level::Info, markers);
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
-            */
+            //*/
         }
 
         if(status != ExecutionStatus::WAITING){

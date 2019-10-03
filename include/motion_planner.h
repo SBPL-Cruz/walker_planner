@@ -11,6 +11,7 @@
 #include <smpl/angles.h>
 #include <smpl/time.h>
 #include <smpl/graph/goal_constraint.h>
+#include <smpl/graph/motion_primitive.h>
 #include <smpl/heuristic/robot_heuristic.h>
 #include <smpl/console/console.h>
 #include <sbpl/planners/types.h>
@@ -23,12 +24,18 @@ namespace MPlanner {
         int cost;
         double planning_time;
         int num_expansions;
+        int ik_computations;
+        int ik_evaluations;
+        int ik_valid;
 
         PlannerSolution(){
             robot_states.resize(0);
             cost = 0;
             planning_time = 0;
             num_expansions = 0;
+            ik_computations = 0;
+            ik_evaluations = 0;
+            ik_valid = 0;
         }
 
         PlannerSolution(const PlannerSolution& soltn){
@@ -36,6 +43,9 @@ namespace MPlanner {
             cost = soltn.cost;
             planning_time = soltn.planning_time;
             num_expansions = soltn.num_expansions;
+            ik_computations = soltn.ik_computations;
+            ik_evaluations = soltn.ik_evaluations;
+            ik_valid = soltn.ik_valid;
         }
     };
 
@@ -194,6 +204,19 @@ namespace MPlanner {
         _planner_soltn.planning_time = planning_time;
         _planner_soltn.num_expansions = m_search_ptr->get_num_expansions();
         _planner_soltn.soltn_ids = soltn_ids;
+        _planner_soltn.ik_computations =
+            m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_RPY) +
+            m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_XYZ) +
+            m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_XYZ_RPY);
+        _planner_soltn.ik_evaluations =
+            m_env_ptr->getMprimEvaluations(smpl::MotionPrimitive::SNAP_TO_RPY) +
+            m_env_ptr->getMprimEvaluations(smpl::MotionPrimitive::SNAP_TO_XYZ) +
+            m_env_ptr->getMprimEvaluations(smpl::MotionPrimitive::SNAP_TO_XYZ_RPY);
+        _planner_soltn.ik_valid =
+            m_env_ptr->getMprimValid(smpl::MotionPrimitive::SNAP_TO_RPY) +
+            m_env_ptr->getMprimValid(smpl::MotionPrimitive::SNAP_TO_XYZ) +
+            m_env_ptr->getMprimValid(smpl::MotionPrimitive::SNAP_TO_XYZ_RPY);
+
 
         if(!success){
             SMPL_ERROR("Planning failed.");
