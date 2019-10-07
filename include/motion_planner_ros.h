@@ -77,13 +77,14 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
 
 
 template <typename SP, typename EP, typename Planner>
-MotionPlannerROS<SP, EP, Planner>::MotionPlannerROS(ros::NodeHandle _nh,
-            smpl::KDLRobotModel* _rm,
-            CollisionSpaceScene* _scene,
-            Planner* _planner,
-            smpl::OccupancyGrid* _grid_ptr ) :
-        SP(_nh, _scene, _grid_ptr), EP(_nh), m_rm_ptr{_rm},
-        m_planner_ptr{_planner} {}
+MotionPlannerROS<SP, EP, Planner>::MotionPlannerROS(
+        ros::NodeHandle _nh,
+        smpl::KDLRobotModel* _rm,
+        CollisionSpaceScene* _scene,
+        Planner* _planner,
+        smpl::OccupancyGrid* _grid_ptr ) :
+    SP(_nh, _scene, _grid_ptr), EP(_nh), m_rm_ptr{_rm},
+    m_planner_ptr{_planner} {}
 
 template <typename SP, typename EP, typename Planner>
 bool MotionPlannerROS<SP, EP, Planner>::setPlannerParams(const MPlanner::PlannerParams& _params){
@@ -139,7 +140,8 @@ MPlanner::PlannerSolution MotionPlannerROS<SP, EP, Planner>::getPlan(PlanningEpi
 }
 
 template <typename SP, typename EP, typename Planner>
-bool MotionPlannerROS<SP, EP, Planner>::updateStart(const moveit_msgs::RobotState& _start){
+bool MotionPlannerROS<SP, EP, Planner>::updateStart(
+        const moveit_msgs::RobotState& _start){
     smpl::RobotState initial_positions;
     std::vector<std::string> missing;
     if (!leatherman::getJointPositions(
