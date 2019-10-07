@@ -33,8 +33,12 @@ class StartGoalGenerator {
     bool init( smpl::collision::CollisionSpace*, smpl::KDLRobotModel*, unsigned int seed );
     bool addStartRegion(BoundedRegion&);
     bool addGoalRegion(BoundedRegion&);
-    bool generate(int);
-    bool writeToFile(std::string, std::string, std::string);
+    //* Generate N start-goal pairs uniformly randomly among the added start
+    //and goal regions.
+    bool generate(int N);
+    bool writeToFile(std::string start_header,
+            std::string start_file_name,
+            std::string goal_file_name);
     void clear();
 
     private:
