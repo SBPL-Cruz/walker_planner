@@ -2,19 +2,27 @@ planning:
   discretization:
     x    0.05
     y    0.05
-    theta    0.19625
-    right_j1    0.017453292519943295
-    right_j2    0.017453292519943295
-    right_j3    0.017453292519943295
-    right_j4    0.017453292519943295
-    right_j5    0.017453292519943295
-    right_j6    0.017453292519943295
-    right_j7    0.017453292519943295
+    theta 0.392699082
+    right_j1    0.087267 
+    right_j2    0.087267
+    right_j3    0.087267
+    right_j4    0.087267
+    right_j5    0.087267
+    right_j6    0.087267
+    right_j7    0.087267
   use_xyz_snap_mprim: true
   use_rpy_snap_mprim: true
   use_xyzrpy_snap_mprim: false
   use_short_dist_mprims: true
-  xyz_snap_dist_thresh: 0.4
-  rpy_snap_dist_thresh: 0.2
-  xyzrpy_snap_dist_thresh: 1.0
-  short_dist_mprims_thresh: 0.4
+  xyz_snap_dist_thresh: 0.1
+  rpy_snap_dist_thresh: .05
+  xyzrpy_snap_dist_thresh: 0.05
+  short_dist_mprims_thresh: 0.1
+  cost_per_cell: 500
+  inflation_radius_2d: 0.285
+  inflation_radius_3d: 0.02
+  eps: 10
+  eps_mha: 1.5
+  planning_time: 120
+  start_planning_episode: 0
+  end_planning_episode: 49
