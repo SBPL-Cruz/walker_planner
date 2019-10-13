@@ -2,29 +2,12 @@
 #define WALKER_MRMHAPLANNER_H
 
 #include <algorithm>
+#include <array>
 
 #include <sbpl/planners/planner.h>
 #include <sbpl/heuristics/heuristic.h>
-#include <sbpl/utils/heap.h>
-
-template <int N, int R>
-struct MRMHASearchState {
-    int call_number;
-    int state_id;
-    int g;
-    MRMHASearchState<N, R>* bp;
-    bool closed_in_anc;
-    std::array<int, R> closed_in_adds;
-
-    struct HeapData : public heap_element
-    {
-        MRMHASearchState<N, R>* me;
-        int h;
-        int f;
-    };
-
-    std::array<HeapData, N> od;
-};
+#include <smpl/heap/intrusive_heap.h>
+#include <smpl/console/console.h>
 
 /**
  * N : Number of queues
@@ -108,7 +91,32 @@ class MRMHAPlanner : public SBPLPlanner {
 
     private:
 
-    using MRMHASearchState_t = MRMHASearchState<N, R>;
+    struct MRMHASearchState {
+        int call_number;
+        int state_id;
+        int g;
+        MRMHASearchState* bp;
+        bool closed_in_anc;
+        std::array<int, R> closed_in_adds;
+
+        struct HeapData : public smpl::heap_element {
+            MRMHASearchState* me;
+            int h;
+            int f;
+        };
+
+        std::array<HeapData, N> od;
+    };
+
+    struct HeapCompare
+    {
+        bool operator()(
+            const typename MRMHASearchState::HeapData& s,
+            const typename MRMHASearchState::HeapData& t) const
+        {
+            return s.f < t.f;
+        }
+    };
 
     Heuristic* m_h_anchor;
     Heuristic** m_h_inads;
@@ -118,53 +126,82 @@ class MRMHAPlanner : public SBPLPlanner {
     std::array<std::array<int, N>, N> m_rep_dependency_matrix;
 
     ReplanParams m_params;
+    int m_call_number;
     double m_eps;
     double m_eps_mha;
+    double m_eps_satisfied;
 
-    MRMHASearchState_t* m_start_state;
-    MRMHASearchState_t* m_goal_state;
-    std::vector<MRMHASearchState_t> m_search_states;
+    MRMHASearchState* m_start_state;
+    MRMHASearchState* m_goal_state;
+    std::vector<MRMHASearchState> m_search_states;
+
+    typedef smpl::intrusive_heap<typename MRMHASearchState::HeapData, HeapCompare> CHeap;
     CHeap* m_open; ///< sequence of (m_h_count) open lists
 
     int m_num_expansions;
+    int m_max_expansions;
     double m_time_elapsed;
 
-    MRMHASearchState_t* get_state(int state_id);
-    void init_state(MRMHASearchState_t* state, size_t mha_state_idx, int state_id);
-    void reinit_state(MRMHASearchState_t* state);
+    bool check_params(const ReplanParams& params);
+    bool time_limit_reached();
+
+    MRMHASearchState* get_state(int state_id){
+        assert(state_id >= 0 && state_id < environment_->StateID2IndexMapping.size());
+        int* idxs = environment_->StateID2IndexMapping[state_id];
+        if (idxs[MHAMDP_STATEID2IND] == -1) {
+            MRMHASearchState s;
+
+            const size_t mha_state_idx = m_search_states.size();
+            init_state(&s, mha_state_idx, state_id);
+
+            // map graph state to search state
+            idxs[MHAMDP_STATEID2IND] = (int)mha_state_idx;
+
+            m_search_states.push_back(std::move(s));
+
+            return &(*m_search_states.back());
+        }
+        else {
+            int ssidx = idxs[MHAMDP_STATEID2IND];
+            return m_search_states[ssidx];
+        }
+    }
+
+    void init_state(MRMHASearchState* state, size_t mha_state_idx, int state_id);
+    void reinit_state(MRMHASearchState* state);
 
     void reinit_search() { clear_open_lists(); }
 
     void clear_open_lists();
     void clear();
-    int compute_key(MRMHASearchState_t* state, int hidx);
+    int compute_key(MRMHASearchState* state, int hidx);
 
-    MRMHASearchState_t* state_from_open_state(MRMHASearchState_t::HeapData* open_state){
+    MRMHASearchState* state_from_open_state(typename MRMHASearchState::HeapData* open_state){
         return open_state->me;
     }
 
+    int chooseInadQueue(){return 0;}
     int compute_heuristic(int state_id, int hidx);
-    void expand(MRMHASearchState_t* state, int hidx);
+    void expand(MRMHASearchState* state, int hidx);
 
     int get_minf(CHeap& pq) const {
         return pq.min()->f;
     }
-    void insert_or_update( MRMHASearchState_t* state, int hidx );
+    void insert_or_update( MRMHASearchState* state, int hidx );
 
     void extract_path(std::vector<int>* solution_path, int* solcost);
 
-    bool closed_in_anc_search(MRMHASearchState_t* state) const {
+    bool closed_in_anc_search(MRMHASearchState* state) const {
         return state->closed_in_anc;
     }
 
-    bool closed_in_add_search(MRMHASearchState_t* state, int rep_id) const {
-        return state->closed_in_adds[i];
+    bool closed_in_add_search(MRMHASearchState* state, int rep_id) const {
+        return state->closed_in_adds[rep_id];
     }
 
-    bool closed_in_any_search(MRMHASearchState_t* state) const {
-        return state->closed_in_anc|| std::any(state->closed_in_adds);
+    bool closed_in_any_search(MRMHASearchState* state) const {
+        return state->closed_in_anc|| std::any_of(state->closed_in_adds);
     }
-
 
 };
 
