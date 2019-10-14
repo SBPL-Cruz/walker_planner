@@ -5,7 +5,7 @@
 #include <smpl/time.h>
 #include "../mrmhaplanner.h"
 
-#define INFINITECOST std::numeric_limits<double>::max()
+#define INFINITECOST std::numeric_limits<int>::max()
 
 template <int N, int R, typename SP>
 MRMHAPlanner<N, R, SP>::MRMHAPlanner(
@@ -163,6 +163,25 @@ int MRMHAPlanner<N, R, SP>::replan(
 }
 
 template <int N, int R, typename SP>
+int MRMHAPlanner<N, R, SP>::set_goal(int _goal_stateID) {
+    m_goal_state = get_state(_goal_stateID);
+    if (!m_goal_state) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+template <int N, int R, typename SP>
+int MRMHAPlanner<N, R, SP>::set_start(int _start_stateID) {
+    m_start_state = get_state(_start_stateID);
+    if (!m_start_state) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+template <int N, int R, typename SP>
 bool MRMHAPlanner<N, R, SP>::check_params(const ReplanParams& _params){
     if (_params.initial_eps < 1.0) {
         SMPL_ERROR("Initial Epsilon must be greater than or equal to 1");
@@ -216,7 +235,7 @@ void MRMHAPlanner<N, R, SP>::init_state( MRMHASearchState* _state, size_t _mha_s
         _state->od[i].me = _state;
     }
 
-    SMPL_DEBUG_STREAM("Initialized state: " << *_state);
+    //SMPL_DEBUG_STREAM("Initialized state: " << *_state);
     for (int i = 0; i < num_heuristics(); ++i) {
         SMPL_DEBUG("  me[%d]: %p", i, _state->od[i].me);
         SMPL_DEBUG("  h[%d]: %d", i, _state->od[i].h);
@@ -240,7 +259,7 @@ void MRMHAPlanner<N, R, SP>::reinit_state(MRMHASearchState* _state){
             _state->od[i].f = INFINITECOST;
         }
 
-        SMPL_DEBUG_STREAM("Reinitialized state: " << *_state);
+        //SMPL_DEBUG_STREAM("Reinitialized state: " << *_state);
         for (int i = 0; i < num_heuristics(); ++i) {
             SMPL_DEBUG("  me[%d]: %p", i, _state->od[i].me);
             SMPL_DEBUG("  h[%d]: %d", i, _state->od[i].h);

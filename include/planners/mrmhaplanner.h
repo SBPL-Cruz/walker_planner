@@ -33,7 +33,7 @@ class MRMHAPlanner : public SBPLPlanner {
         std::array<std::array<int, R>, R> rep_dependency_matrix,
         SP* scheduling_policy );
 
-    virtual ~MRMHAPlanner();
+    virtual ~MRMHAPlanner(){  }
 
     /// Required from SBPLPlanner:
     //{
@@ -50,6 +50,21 @@ class MRMHAPlanner : public SBPLPlanner {
             int* soltn_cost) override;
     virtual int set_goal(int goal_stateID) override;
     virtual int set_start(int start_stateID) override;
+
+    virtual void set_initialsolution_eps(double eps) override {
+        m_eps = eps;
+    }
+
+    int set_initial_eps(double eps) {
+        set_initialsolution_eps(eps);
+        return true;
+    }
+
+    int set_initial_mha_eps(double eps_mha){
+        m_eps_mha = eps_mha;
+        return true;
+    }
+
     virtual int force_planning_from_scratch() override { return 0; }
     virtual int force_planning_from_scratch_and_free_memory() override { return 0; }
     virtual int set_search_mode(bool bSearchUntilFirstSolution) override {  }
@@ -66,14 +81,20 @@ class MRMHAPlanner : public SBPLPlanner {
         return m_num_expansions;
     }
 
+    int get_num_expansions() const {
+        return m_num_expansions;
+    }
+
     virtual double get_initial_eps() override {
         return get_solution_eps();
     }
 
-    virtual double get_initial_eps_planning_time() override;
+    virtual double get_initial_eps_planning_time() override {
+        return m_time_elapsed;
+    }
 
     virtual double get_final_eps_planning_time() override {
-        return get_initial_eps_planning_time;
+        return get_initial_eps_planning_time();
     }
 
     virtual int get_n_expands_init_solution() override {
@@ -123,7 +144,7 @@ class MRMHAPlanner : public SBPLPlanner {
     int m_h_count; // Num of inad heurs + 1
 
     std::array<int, N> m_rep_ids;
-    std::array<std::array<int, N>, N> m_rep_dependency_matrix;
+    std::array<std::array<int, R>, R> m_rep_dependency_matrix;
 
     ReplanParams m_params;
     int m_call_number;
@@ -159,11 +180,11 @@ class MRMHAPlanner : public SBPLPlanner {
 
             m_search_states.push_back(std::move(s));
 
-            return &(*m_search_states.back());
+            return &(*m_search_states.rbegin());
         }
         else {
             int ssidx = idxs[MHAMDP_STATEID2IND];
-            return m_search_states[ssidx];
+            return &(*(m_search_states.begin() + ssidx));
         }
     }
 
