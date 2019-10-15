@@ -18,6 +18,7 @@ MRMHAPlanner<N, R, SP>::MRMHAPlanner(
     m_h_anchor{_heurs[0]},
     m_h_inads{_heurs.data() + 1},
     m_h_count{N},
+    m_scheduling_policy{_scheduling_policy},
     m_rep_ids{_rep_ids},
     m_rep_dependency_matrix{_rep_dependency_matrix},
     m_params{0.0},
@@ -38,6 +39,9 @@ MRMHAPlanner<N, R, SP>::MRMHAPlanner(
     m_params.return_first_solution = false;
     m_params.max_time = 0.0;
     m_params.repair_time = 0.0;
+
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    m_generator.seed(seed);
 }
 
 template <int N, int R, typename SP>
@@ -115,8 +119,7 @@ int MRMHAPlanner<N, R, SP>::replan(
 
         // Picks a queue among all non-empty inadmissible queue.
         // If an inadmissible queue is empty, it is skipped.
-        int hidx = chooseInadQueue();
-
+        int hidx = chooseQueue();
         if (m_goal_state->g <= get_minf(m_open[hidx])) {
             // Solution found
             m_eps_satisfied = m_eps;
@@ -152,7 +155,6 @@ int MRMHAPlanner<N, R, SP>::replan(
     }
 
     return 0;
-
 }
 
 template <int N, int R, typename SP>
@@ -284,6 +286,34 @@ void MRMHAPlanner<N, R, SP>::clear(){
 template <int N, int R, typename SP>
 int MRMHAPlanner<N, R, SP>::compute_key( MRMHASearchState* _state, int _hidx ){
     return _state->g + (int)(m_eps * (double)_state->od[_hidx].h);
+}
+
+template <int N, int R, typename SP>
+int MRMHAPlanner<N, R, SP>::sampleIndex(const std::array<double, N>& _likelihoods){
+    std::array<int, N> counts;
+    // The anchor is supposed to have 0 likelihood.
+    for(int i = 0; i < _likelihoods.size(); i++)
+        counts[i] = 100*_likelihoods[i];
+    std::discrete_distribution<int> dist(counts.begin(), counts.end());
+    return dist(m_generator);
+}
+
+template <int N, int R, typename SP>
+int MRMHAPlanner<N, R, SP>::chooseQueue(){
+    std::array<double, N> queue_probs;
+    // Do not expand the anchor unless the algorithm requires so.
+    queue_probs[0] = 0.0;
+
+    for(int hidx = 1; hidx < num_heuristics(); ++hidx){
+        //Only makes sense if the queue is not empty.
+        if (!m_open[hidx].empty()){
+            double p = m_scheduling_policy->getActionSpaceProb(
+                    state_from_open_state(m_open[hidx].min())->state_id,
+                        hidx );
+            queue_probs[hidx] = p;
+        } 
+    }
+    return sampleIndex(queue_probs);
 }
 
 template <int N, int R, typename SP>

@@ -68,6 +68,10 @@ class MRMHAPlanner : public SBPLPlanner {
         return true;
     }
 
+    bool setSeed(int seed) {
+        m_generator.seed(seed);
+    }
+
     virtual int force_planning_from_scratch() override { return 0; }
     virtual int force_planning_from_scratch_and_free_memory() override { return 0; }
     virtual int set_search_mode(bool bSearchUntilFirstSolution) override {  }
@@ -145,6 +149,8 @@ class MRMHAPlanner : public SBPLPlanner {
     Heuristic* m_h_anchor;
     Heuristic** m_h_inads;
     int m_h_count; // Num of inad heurs + 1
+    SP* m_scheduling_policy;
+    std::default_random_engine m_generator;
 
     std::array<int, N> m_rep_ids;
     std::array<std::array<int, R>, R> m_rep_dependency_matrix;
@@ -205,7 +211,8 @@ class MRMHAPlanner : public SBPLPlanner {
         return open_state->me;
     }
 
-    int chooseInadQueue(){return 0;}
+    int sampleIndex(const std::array<double, N>& likelihoods);
+    int chooseQueue();
     int compute_heuristic(int state_id, int hidx);
     void expand(MRMHASearchState* state, int hidx);
 
