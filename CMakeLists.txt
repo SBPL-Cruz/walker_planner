@@ -123,7 +123,16 @@ target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
 #    ${orocos_kdl_LIBRARIES})
 #add_dependencies( test_mrmha_rr_planner ${${PROJECT_NAME}_EXPORTED_TARGETS}
 #    ${catkin_EXPORTED_TARGETS} )
-#
+
+add_executable( walker_planner
+    src/mha/walker_planner.cpp
+    src/motion_planner_ros.cpp
+    src/config/collision_space_scene.cpp
+    src/config/planner_config.cpp
+    src/config/get_collision_objects.cpp)
+target_link_libraries(walker_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+add_dependencies( walker_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+
 add_executable( test_mha_planner
     src/mha/test_mha_planner.cpp
     src/motion_planner_ros.cpp
