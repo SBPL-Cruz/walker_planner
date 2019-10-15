@@ -61,6 +61,7 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
             smpl::OccupancyGrid* );
     bool setPlannerParams(const MPlanner::PlannerParams&);
     bool initExperiments(std::string, std::string);
+    bool canCallPlanner() const;
     ExecutionStatus execute(PlanningEpisode);
     inline MPlanner::PlannerSolution getPlan(PlanningEpisode) const;
 
@@ -96,6 +97,12 @@ bool MotionPlannerROS<SP, EP, Planner>::initExperiments(std::string _start, std:
     return this->init(_start, _goal);
 }
 
+template <typename SP, typename EP, typename Planner>
+bool MotionPlannerROS<SP, EP, Planner>::canCallPlanner() const {
+    if(SP::canCallPlanner() && EP::canCallPlanner())
+        return true;
+    return false;
+} 
 
 template <typename SP, typename EP, typename Planner>
 ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
@@ -186,14 +193,12 @@ struct Callbacks {
     bool canCallPlanner() const;
     bool updateMap(PlanningEpisode);
     bool updateStart(const moveit_msgs::RobotState&, smpl::KDLRobotModel*);
-    bool updateGoal(const smpl::GoalConstraint&);
 
     private:
 
     void octomapCallback(const octomap_msgs::Octomap& msg);
     void occgridCallback(const nav_msgs::OccupancyGrid& msg);
     //void poseCallback(const geometry_msgs::PoseStamped grasp);
-    //void startCallback(const geometry_msgs::PoseWithCovarianceStamped start);
 
     private:
 
@@ -207,8 +212,6 @@ struct Callbacks {
 
     ros::Subscriber m_sub_octomap;
     ros::Subscriber m_sub_occgrid;
-    ros::Subscriber m_sub_pose;
-    ros::Subscriber m_sub_start;
 
     ros::Publisher m_path_pub;
 

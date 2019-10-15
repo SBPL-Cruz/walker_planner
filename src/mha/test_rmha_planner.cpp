@@ -535,6 +535,7 @@ class ReadExperimentFromFile {
     ReadExperimentFromFile(ros::NodeHandle);
     moveit_msgs::RobotState getStart(PlanningEpisode);
     smpl::GoalConstraint getGoal(PlanningEpisode);
+    bool canCallPlanner() const { return true; }
 
     private:
 
@@ -600,6 +601,7 @@ class ReadExperimentsFromFile {
     ReadExperimentsFromFile(ros::NodeHandle);
     moveit_msgs::RobotState getStart(PlanningEpisode);
     smpl::GoalConstraint getGoal(PlanningEpisode);
+    bool canCallPlanner() const { return true; }
 
     private:
 

@@ -18,14 +18,13 @@ Callbacks::Callbacks(ros::NodeHandle _nh,
     ros::param::set("/walker_planner_done", 0);
     m_path_pub = m_nh.advertise<walker_planner::Path1>("Robot_path", 1000);
     //m_sub_occgrid = m_nh.subscribe("/map", 1000, &Callbacks::occgridCallback, this);
-    //m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &Callbacks::octomapCallback, this);
+    m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &Callbacks::octomapCallback, this);
     //m_sub_start = m_nh.subscribe("/poseupdate", 1000, &Callbacks::startCallback, this);
     //m_sub_pose = m_nh.subscribe("/Grasps", 1000, &Callbacks::poseCallback, this);
 
-    m_status_variables = { //&m_start_received,
-            //&m_octomap_received,
+    m_status_variables = {
+            &m_octomap_received,
             //&m_occgrid_received
-            //&m_grasp_received
             };
 }
 
@@ -38,19 +37,19 @@ bool Callbacks::canCallPlanner() const {
 }
 
 bool Callbacks::updateMap(PlanningEpisode _ep){
-    //if(m_collision_scene->ProcessOctomapMsg(m_map_with_pose)){
-    //    ROS_INFO("Succesfully added octomap");
-    //}
-    //else{
-    //    ROS_INFO("Could not added octomap");
-    //    return false;
-    //}
-    auto map_config = getMultiRoomMapConfig(m_nh);
-    std::vector<moveit_msgs::CollisionObject> tmp;
-    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config, tmp);
-    for (auto& object : objects) {
-        m_collision_scene->ProcessCollisionObjectMsg(object);
+    if(m_collision_scene->ProcessOctomapMsg(m_map_with_pose)){
+        ROS_INFO("Succesfully added octomap");
     }
+    else{
+        ROS_INFO("Could not added octomap");
+        return false;
+    }
+    //auto map_config = getMultiRoomMapConfig(m_nh);
+    //std::vector<moveit_msgs::CollisionObject> tmp;
+    //auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config, tmp);
+    //for (auto& object : objects) {
+    //    m_collision_scene->ProcessCollisionObjectMsg(object);
+    //}
 
     assert(m_grid != nullptr);
     m_grid->addPointsToField(m_occgrid_points);
@@ -81,10 +80,6 @@ bool Callbacks::updateStart(const moveit_msgs::RobotState& _start,
     }
     SetReferenceState(_rm_ptr, GetVariablePositions(&reference_state));
     return m_collision_scene->SetRobotState(_start);
-}
-
-bool Callbacks::updateGoal(const smpl::GoalConstraint& _goal){
-    return true;
 }
 
 void Callbacks::octomapCallback(const octomap_msgs::Octomap& msg) {
