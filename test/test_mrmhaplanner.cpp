@@ -445,7 +445,7 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, "test_templated_mrmha_planner");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
-    ros::Rate loop_Rate(10);
+    ros::Rate loop_rate(10);
     smpl::VisualizerROS visualizer(nh, 100);
     smpl::viz::set_visualizer(&visualizer);
 
@@ -667,4 +667,58 @@ int main(int argc, char** argv) {
 
     MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
+    ExecutionStatus status = ExecutionStatus::WAITING;
+    //while(status == ExecutionStatus::WAITING) {
+    std::string file_prefix = "paths/solution_path";
+    std::ofstream stats_file;
+    PlanningEpisode ep = planning_config.start_planning_episode;
+    while(ep <= planning_config.end_planning_episode){
+        loop_rate.sleep();
+        std::string file_suffix = std::to_string(ep) + ".txt";
+        status = mplanner_ros.execute(ep);
+    //}
+        if(status == ExecutionStatus::SUCCESS){
+            ROS_INFO("----------------");
+            ROS_INFO("Planning Time: %f", mplanner_ros.getPlan(ep).planning_time);
+            ROS_INFO("----------------");
+            auto plan = mplanner_ros.getPlan(ep).robot_states;
+
+            // Write to file.
+            stats_file.open("planning_stats.txt", std::ios::app);
+            auto plan_stats = mplanner_ros.getPlan(ep);
+            stats_file<<std::to_string(ep)<<" "<<max_planning_time<<" ";
+            stats_file<<plan_stats.planning_time << " " << plan_stats.num_expansions << " " << plan_stats.cost<<" ";
+            stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<<"\n";
+            stats_file.close();
+
+            std::string file_name = file_prefix + file_suffix;
+            std::string header = "Solution Path";
+            SMPL_ERROR("%s", file_name.c_str());
+            writePath(file_name, header , plan);
+            //////////////
+
+            visualization_msgs::MarkerArray whole_path;
+            std::vector<visualization_msgs::Marker> m_all;
+
+            int idx = 0;
+            for( int pidx=0; pidx<plan.size(); pidx++ ){
+                auto& state = plan[pidx];
+                auto markers = cc.getCollisionRobotVisualization(state);
+                for (auto& m : markers.markers) {
+                    m.ns = "path_animation";
+                    m.id = idx;
+                    idx++;
+                    whole_path.markers.push_back(m);
+                }
+                visualizer.visualize(smpl::visual::Level::Info, markers);
+                //std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        }
+
+        if(status != ExecutionStatus::WAITING){
+            status = ExecutionStatus::WAITING;
+            ep++;
+        }
+        ros::spinOnce();
+    }
 }
