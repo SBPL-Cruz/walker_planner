@@ -10,9 +10,9 @@
 template <int N, int R, typename SP>
 MRMHAPlanner<N, R, SP>::MRMHAPlanner(
         DiscreteSpaceInformation* _env,
-        std::array<Heuristic*, N> _heurs,
-        std::array<int, N> _rep_ids,
-        std::array<std::array<int, R>, R> _rep_dependency_matrix,
+        std::array<Heuristic*, N>& _heurs,
+        std::array<int, N>& _rep_ids,
+        std::array<std::array<int, R>, R>& _rep_dependency_matrix,
         SP* _scheduling_policy) :
     SBPLPlanner(),
     m_h_anchor{_heurs[0]},
@@ -100,16 +100,9 @@ int MRMHAPlanner<N, R, SP>::replan(
     reinit_state(m_start_state);
     m_start_state->g = 0;
 
-    SMPL_INFO("Insert start state into OPEN and PSET");
-
-    // insert start state into OPEN with g(s) + h(s) as the priority
-    // insert start state into PSET and place in all RANK lists
-    m_start_state->od[0].f = compute_key(m_start_state, 0);
-    m_open[0].push(&m_start_state->od[0]);
-    for (int hidx = 1; hidx < num_heuristics(); ++hidx) {
+    for (int hidx = 0; hidx < num_heuristics(); ++hidx) {
         m_start_state->od[hidx].f = compute_key(m_start_state, hidx);
         m_open[hidx].push(&m_start_state->od[hidx]);
-        SMPL_INFO("Inserted start state %d into search %d with f = %d", m_start_state->state_id, hidx, m_start_state->od[hidx].f);
     }
 
     //reinitSearch();
@@ -164,6 +157,7 @@ int MRMHAPlanner<N, R, SP>::replan(
 
 template <int N, int R, typename SP>
 int MRMHAPlanner<N, R, SP>::set_goal(int _goal_stateID) {
+    SMPL_DEBUG("Planner set goal");
     m_goal_state = get_state(_goal_stateID);
     if (!m_goal_state) {
         return 0;
@@ -193,8 +187,8 @@ bool MRMHAPlanner<N, R, SP>::check_params(const ReplanParams& _params){
         return false;
     }
 
-    if (_params.dec_eps <= 0.0) {
-        SMPL_ERROR("Delta epsilon must be strictly positive");
+    if (_params.dec_eps < 0.0) {
+        SMPL_ERROR("Delta epsilon must be positive");
         return false;
     }
 
@@ -279,6 +273,8 @@ template <int N, int R, typename SP>
 void MRMHAPlanner<N, R, SP>::clear(){
     clear_open_lists();
 
+    for(int i = 0; i < m_search_states.size(); i++)
+        delete m_search_states[i];
     m_search_states.clear();
 
     m_start_state = nullptr;

@@ -28,12 +28,15 @@ class MRMHAPlanner : public SBPLPlanner {
     MRMHAPlanner(
         // Ideally, I should have a MultiRepDiscreteSpace
         DiscreteSpaceInformation* env,
-        std::array<Heuristic*, N> heurs,
-        std::array<int, N> rep_ids,
-        std::array<std::array<int, R>, R> rep_dependency_matrix,
+        std::array<Heuristic*, N>& heurs,
+        std::array<int, N>& rep_ids,
+        std::array<std::array<int, R>, R>& rep_dependency_matrix,
         SP* scheduling_policy );
 
-    virtual ~MRMHAPlanner(){  }
+    virtual ~MRMHAPlanner(){
+        clear();
+        delete[] m_open;
+    }
 
     /// Required from SBPLPlanner:
     //{
@@ -154,7 +157,7 @@ class MRMHAPlanner : public SBPLPlanner {
 
     MRMHASearchState* m_start_state;
     MRMHASearchState* m_goal_state;
-    std::vector<MRMHASearchState> m_search_states;
+    std::vector<MRMHASearchState*> m_search_states;
 
     typedef smpl::intrusive_heap<typename MRMHASearchState::HeapData, HeapCompare> CHeap;
     CHeap* m_open; ///< sequence of (m_h_count) open lists
@@ -170,21 +173,22 @@ class MRMHAPlanner : public SBPLPlanner {
         assert(state_id >= 0 && state_id < environment_->StateID2IndexMapping.size());
         int* idxs = environment_->StateID2IndexMapping[state_id];
         if (idxs[MHAMDP_STATEID2IND] == -1) {
-            MRMHASearchState s;
+            auto s = new MRMHASearchState;
 
             const size_t mha_state_idx = m_search_states.size();
-            init_state(&s, mha_state_idx, state_id);
+            init_state(s, mha_state_idx, state_id);
 
             // map graph state to search state
             idxs[MHAMDP_STATEID2IND] = (int)mha_state_idx;
 
-            m_search_states.push_back(std::move(s));
+            m_search_states.push_back(s);
 
-            return &(*m_search_states.rbegin());
+            return s;
+            //return &(*m_search_states.rbegin());
         }
         else {
             int ssidx = idxs[MHAMDP_STATEID2IND];
-            return &(*(m_search_states.begin() + ssidx));
+            return m_search_states[ssidx];
         }
     }
 
