@@ -55,7 +55,7 @@ class MRMHAPlanner : public SBPLPlanner {
     virtual int set_start(int start_stateID) override;
 
     virtual void set_initialsolution_eps(double eps) override {
-        m_eps = eps;
+        m_params.initial_eps = eps;
     }
 
     int set_initial_eps(double eps) {
