@@ -16,9 +16,11 @@
 #include <smpl/heuristic/arm_retract_heuristic.h>
 #include <smpl/heuristic/base_rot_bfs_heuristic.h>
 //#include <sbpl/planners/mrmhaplanner.h>
+#include <smpl/search/smhastar.h>
 #include <sbpl/planners/types.h>
 
 #include "planners/mrmhaplanner.h"
+#include "planners/mhaplanner.h"
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
 #include "scheduling_policies.h"
@@ -114,7 +116,7 @@ bool constructHeuristics(
 
             smpl::Vector3 p;
             if(!bfs_3d->m_pp->projectToPoint(state_id, p)){
-                SMPL_ERROR("RetractArmHeuristic Could not project");
+                ROS_ERROR("RetractArmHeuristic Could not project");
                 return 0;
             }
             auto retracted_robot_state = bfs_3d->planningSpace()->getExtension<smpl::ExtractRobotStateExtension>()->extractState(state_id);
@@ -428,7 +430,7 @@ void writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
     std::ofstream file;
     file.open(_file_name, std::ios::out);
     if(!file)
-        SMPL_ERROR("Could not open file.");
+        ROS_ERROR("Could not open file.");
     file<<_header<<"\n";
 
     for(const auto& state : _path){
@@ -574,16 +576,19 @@ int main(int argc, char** argv) {
     ros::Duration(1.0).sleep();
 
     auto resolutions = getResolutions( rm.get(), planning_config );
-    auto multi_action_space = std::make_unique<smpl::ManipLatticeMultiActionSpace>(NUM_ACTION_SPACES);
+    auto action_space = std::make_unique<smpl::ManipLatticeMultiActionSpace>(NUM_ACTION_SPACES);
     auto space = std::make_unique<smpl::ManipLatticeMultiRep>();
 
-    if (!space->init( rm.get(), &cc, resolutions, multi_action_space.get() )) {
-        SMPL_ERROR("Failed to initialize Manip Lattice");
+    //auto action_space = std::make_unique<smpl::ManipLatticeActionSpace>();
+    //auto space = std::make_unique<smpl::ManipLattice>();
+
+    if (!space->init( rm.get(), &cc, resolutions, action_space.get() )) {
+        ROS_ERROR("Failed to initialize Manip Lattice");
         return 1;
     }
 
-    if (!multi_action_space->init(space.get())) {
-        SMPL_ERROR("Failed to initialize Manip Lattice Multi Action Space");
+    if (!action_space->init(space.get())) {
+        ROS_ERROR("Failed to initialize Manip Lattice Multi Action Space");
         return 1;
     }
 
@@ -596,21 +601,26 @@ int main(int argc, char** argv) {
         ROS_ERROR("mprim_filename: %s", temp.c_str());
     }
     for( int i=0; i<NUM_ACTION_SPACES; i++ )
-        if(!multi_action_space->load(i, mprim_filenames[i]))
+        if(!action_space->load(i, mprim_filenames[i]))
             return 1;
+
+    //if(!action_space->load(mprim_filenames[0])){
+        //SMPL_ERROR("Failed to initialize Manip Lattice Action Space");
+        //return 1;
+    //}
 
     space->setVisualizationFrameId(grid_ptr->getReferenceFrame());
 
     using MotionPrimitive = smpl::MotionPrimitive;
-    multi_action_space->useMultipleIkSolutions(planning_config.use_multiple_ik_solutions);
-    multi_action_space->useAmp(MotionPrimitive::SNAP_TO_XYZ, planning_config.use_xyz_snap_mprim);
-    multi_action_space->useAmp(MotionPrimitive::SNAP_TO_RPY, planning_config.use_rpy_snap_mprim);
-    multi_action_space->useAmp(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.use_xyzrpy_snap_mprim);
-    multi_action_space->useAmp(MotionPrimitive::SHORT_DISTANCE, planning_config.use_short_dist_mprims);
-    multi_action_space->ampThresh(MotionPrimitive::SNAP_TO_XYZ, planning_config.xyz_snap_dist_thresh);
-    multi_action_space->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
-    multi_action_space->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
-    multi_action_space->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
+    action_space->useMultipleIkSolutions(planning_config.use_multiple_ik_solutions);
+    action_space->useAmp(MotionPrimitive::SNAP_TO_XYZ, planning_config.use_xyz_snap_mprim);
+    action_space->useAmp(MotionPrimitive::SNAP_TO_RPY, planning_config.use_rpy_snap_mprim);
+    action_space->useAmp(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.use_xyzrpy_snap_mprim);
+    action_space->useAmp(MotionPrimitive::SHORT_DISTANCE, planning_config.use_short_dist_mprims);
+    action_space->ampThresh(MotionPrimitive::SNAP_TO_XYZ, planning_config.xyz_snap_dist_thresh);
+    action_space->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
+    action_space->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
+    action_space->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
     ROS_ERROR("Use Snap: %d", planning_config.use_xyz_snap_mprim);
 
     ///////////////
@@ -646,23 +656,31 @@ int main(int argc, char** argv) {
     rep_ids[0] = (int)Fullbody;
     rep_ids[1] = (int)Fullbody;
 
+    // if aij = 1 :  closed in rep i => closed in rep j
     std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
-        rep_dependency_matrix = {{ {{1, 0, 0}},
+        rep_dependency_matrix = {{ {{1, 1, 1}},
                                   {{0, 1, 0}},
-                                  {{0, 0, 1}} }};
+                                  {{0, 1, 0}} }};
 
-    auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);
+    //auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);
+    auto round_robin_policy = std::make_unique<RoundRobinPolicy>(inad_heurs.size());
 
-    using Planner = MRMHAPlanner<NUM_QUEUES, NUM_ACTION_SPACES, UniformlyRandomPolicy>;
+    //using Planner = MRMHAPlanner<NUM_QUEUES, NUM_ACTION_SPACES, UniformlyRandomPolicy>;
+    using Planner = MRMHAPlanner<NUM_QUEUES, NUM_ACTION_SPACES, RoundRobinPolicy>;
+    //using Planner = MHAPlanner<NUM_QUEUES, RoundRobinPolicy>;
+    //auto search_ptr = std::make_unique<Planner>(
+    //        space.get(), heurs_array, rep_ids, rep_dependency_matrix, uniformly_random_policy.get() );
     auto search_ptr = std::make_unique<Planner>(
-            space.get(), heurs_array, rep_ids, rep_dependency_matrix, uniformly_random_policy.get() );
+            space.get(), heurs_array, rep_ids, rep_dependency_matrix, round_robin_policy.get() );
+    //auto search_ptr = std::make_unique<Planner>(space.get(), heurs_array, round_robin_policy.get());
 
     const int max_planning_time = planning_config.planning_time;
     const double eps = planning_config.eps;
     const double eps_mha = planning_config.eps_mha;
     MPlanner::PlannerParams planner_params = { max_planning_time, eps, eps_mha, false };
 
-    using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLatticeMultiRep>;
+    //using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLatticeMultiRep>;
+    using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLattice>;
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(search_ptr.get(), space.get(), heurs, planner_params);
 
@@ -674,6 +692,7 @@ int main(int argc, char** argv) {
     std::ofstream stats_file;
     PlanningEpisode ep = planning_config.start_planning_episode;
     while(ep <= planning_config.end_planning_episode){
+        ROS_ERROR("Episode: %d", ep);
         loop_rate.sleep();
         std::string file_suffix = std::to_string(ep) + ".txt";
         status = mplanner_ros.execute(ep);
@@ -694,7 +713,7 @@ int main(int argc, char** argv) {
 
             std::string file_name = file_prefix + file_suffix;
             std::string header = "Solution Path";
-            SMPL_ERROR("%s", file_name.c_str());
+            ROS_ERROR("%s", file_name.c_str());
             writePath(file_name, header , plan);
             //////////////
 
