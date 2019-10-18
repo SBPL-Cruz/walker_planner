@@ -114,11 +114,14 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
         //std::this_thread::sleep_for(std::chrono::seconds(2));
 
         updateGoal(this->getGoal(_ep));
+        ROS_WARN("Goal updated.");
 
         // Allow heuristics to be computed.
         //std::this_thread::sleep_for(std::chrono::seconds(5));
 
         updateStart(this->getStart(_ep));
+
+        ROS_WARN("Start updated.");
 
         MPlanner::PlannerSolution soltn;
 
@@ -131,6 +134,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
             ROS_WARN("Planning Episode %d Failed", _ep);
             return ExecutionStatus::FAILURE;
         } else{
+            ROS_WARN("Planning Episode %d Succeeded", _ep);
             m_planner_soltns.emplace(_ep, soltn);
             return ExecutionStatus::SUCCESS;
         }
