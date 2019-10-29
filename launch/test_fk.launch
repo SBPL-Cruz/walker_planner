@@ -47,13 +47,9 @@ required="true" /> -->
 
         <!-- planner params -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
-        <param name="planning/mprim_filename" value="$(find
-        walker_planner)/config/walker_multi_rep.mprim"/>
-
-        <param name="allowed_planning_time" value="300.0"/>
-        <param name="read_goal_from_file" value="true"/>
-        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/walker_start_states.txt" />
-        <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/walker_goal_states.txt" />
+        <param name="planning/mprim_filename" value="$(find walker_planner)/config/walker_right_arm.mprim"/>
+        <param name="allowed_planning_time" value="100.0"/>
+        <param name="read_goal_from_file" value="false"/>
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->

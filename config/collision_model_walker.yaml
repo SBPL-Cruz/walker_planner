@@ -31,7 +31,7 @@ robot_collision_model:
       spheres:
         - { name: t0, x: 0.0, y: 0.0, z: -0.03, radius: 0.19, priority: 1  }
         - { name: t1, x: 0.0, y: 0.0, z: -0.10, radius: 0.19, priority: 1  }
-        - { name: b0, x: 0.0, y: 0.0, z: -0.359, radius: 0.285, priority: 4 }
+        - { name: b0, x: 0.0, y: 0.0, z: -0.359, radius: 0.255, priority: 4 }
 
     - link_name: base_link
       auto: false
@@ -81,7 +81,9 @@ robot_collision_model:
       auto: false
       spheres:
           - { name: rp0, x: -0.01, y: -0.02, z: 0.02, radius: 0.055, priority: 2 }
-          - { name: rp1, x: -0.01, y: -0.1, z: 0.01, radius: 0.055, priority: 2 }
+          - { name: rp1, x: -0.01, y: -0.1, z: 0.01, radius: 0.060, priority: 2 }
+          # - { name: rp0, x: -0.01, y: -0.02, z: 0.02, radius: 0.055, priority: 2 }
+          # - { name: rp1, x: -0.01, y: -0.1, z: 0.01, radius: 0.055, priority: 2 }
           - { name: rp2, x: 0.05, y: -0.03, z: 0.03, radius: 0.03, priority: 2 }
     - link_name: left_limb_l1
       auto: false
