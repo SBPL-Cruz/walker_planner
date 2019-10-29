@@ -29,6 +29,10 @@ Callbacks::Callbacks(ros::NodeHandle _nh,
 }
 
 bool Callbacks::canCallPlanner() const {
+    int req;
+    ros::param::get("/walker_planner_request", req);
+    if(!req)
+        return false;
     return std::all_of(
             m_status_variables.begin(), m_status_variables.end(),
             [](bool* x){
@@ -51,7 +55,14 @@ bool Callbacks::updateMap(PlanningEpisode _ep){
         m_collision_scene->ProcessCollisionObjectMsg(object);
     }
 
-    //assert(m_grid != nullptr);
+    //std::string filename;
+    //ros::param::get("/walker_planner/object_filename", filename);
+    //ROS_DEBUG("Object filename: %s", filename.c_str());
+    //
+    //auto objects = GetCollisionObjects(filename, m_grid->getReferenceFrame());
+    //for (auto& object : objects)
+    //    m_collision_scene->ProcessCollisionObjectMsg(object);
+
     //m_grid->addPointsToField(m_occgrid_points);
 
     SV_SHOW_INFO(m_collision_scene->getOccupiedVoxelsVisualization());
@@ -83,7 +94,7 @@ bool Callbacks::updateStart(const moveit_msgs::RobotState& _start,
 }
 
 void Callbacks::octomapCallback(const octomap_msgs::Octomap& msg) {
-    ROS_ERROR("Octomap received");
+    ROS_WARN_ONCE("Octomap received");
     m_map_with_pose.header.frame_id = "dummy_base";
     m_map_with_pose.octomap = msg;
 
