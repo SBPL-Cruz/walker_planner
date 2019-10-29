@@ -237,6 +237,14 @@ bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config)
         ROS_ERROR("Failed to read param 'end_planning_episode' from the param server");
         return false;
     }
+    if(!nh.getParam("seed", config.seed)){
+        ROS_ERROR("Failed to read param 'seed' from the param server");
+        return false;
+    }
+    if(!nh.getParam("seeds", config.seeds)){
+        ROS_ERROR("Failed to read param 'seeds' from the param server");
+        return false;
+    }
 
     return true;
 }
@@ -272,7 +280,8 @@ MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh){
     nh.param("map/min_table_len", config.min_table_len, 0.0);
     nh.param("map/max_table_len", config.max_table_len, 0.0);
     nh.param("map/table_height", config.table_height, 0.0);
-
+    nh.param("map/n_objects", config.n_objects_per_table, 0);
+ 
     return config;
 }
 

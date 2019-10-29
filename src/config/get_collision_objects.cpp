@@ -125,6 +125,9 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     const double y_max = config.y_max;
     const double door_width = config.door_width;
     const int n_tables = config.n_tables;
+    const int n_objects = config.n_objects_per_table;
+    const double max_object_size = 0.15;
+    const double min_object_size = 0.05;
 
     std::string object_id;
     std::vector<moveit_msgs::CollisionObject> objs;
@@ -270,6 +273,19 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
         dims[2] = config.table_height;
         objs.push_back(GetCollisionCube(pose, dims, frame_id, object_id));
         table_locs.push_back(std::make_pair(pose.position.x, pose.position.y));
+
+        geometry_msgs::Pose obj_pose;
+        std::vector<double> obj_dims(3,0);
+        for(int j = 0; j < n_objects; j++){
+            object_id = "object" + std::to_string(i) + std::to_string(j);
+            obj_dims[0] = getRandNum( min_object_size, max_object_size );
+            obj_dims[1] = getRandNum( min_object_size, max_object_size );
+            obj_dims[2] = getRandNum( min_object_size, max_object_size );
+            obj_pose.position.x = getRandNum(pose.position.x - dims[0]/2 + obj_dims[0]/2, pose.position.x + dims[0]/2 - obj_dims[0]/2);
+            obj_pose.position.y = getRandNum(pose.position.y - dims[1]/2 + obj_dims[1]/2, pose.position.y + dims[1]/2 - obj_dims[1]/2);
+            obj_pose.position.z = dims[2] + obj_dims[2]/2;
+            objs.push_back(GetCollisionCube(obj_pose, obj_dims, frame_id, object_id));
+        }
     }
 
     // First Column
