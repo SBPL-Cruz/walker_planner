@@ -196,7 +196,6 @@ namespace MPlanner {
         SMPL_INFO("plan");
         assert(m_env_ptr != nullptr);
         assert(m_search_ptr != nullptr);
-        m_search_ptr->force_planning_from_scratch();
         std::vector<int> soltn_ids;
         auto then = smpl::clock::now();
         bool success = m_search_ptr->replan( m_planning_time, &soltn_ids, &(_planner_soltn.cost) );

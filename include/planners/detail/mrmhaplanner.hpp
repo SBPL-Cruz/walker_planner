@@ -289,8 +289,13 @@ template <int N, int R, typename SP>
 void MRMHAPlanner<N, R, SP>::clear(){
     clear_open_lists();
 
-    for(int i = 0; i < m_search_states.size(); i++)
+    for(int i = 0; i < m_search_states.size(); i++){
+        const int state_id = m_search_states[i]->state_id;
+        int* idxs = environment_->StateID2IndexMapping[state_id];
+        idxs[MHAMDP_STATEID2IND] = -1;
         delete m_search_states[i];
+    }
+
     m_search_states.clear();
 
     m_start_state = nullptr;

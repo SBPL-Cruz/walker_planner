@@ -72,7 +72,10 @@ class MRMHAPlanner : public SBPLPlanner {
         m_generator.seed(seed);
     }
 
-    virtual int force_planning_from_scratch() override { return 0; }
+    virtual int force_planning_from_scratch() override {
+        clear();
+    }
+
     virtual int force_planning_from_scratch_and_free_memory() override { return 0; }
     virtual int set_search_mode(bool bSearchUntilFirstSolution) override {  }
     virtual void costs_changed(StateChangeQuery const & stateChange) override {  }
