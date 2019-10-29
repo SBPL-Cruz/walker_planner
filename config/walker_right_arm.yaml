@@ -25,4 +25,11 @@ planning:
   eps_mha: 1.5
   planning_time: 120
   start_planning_episode: 0
-  end_planning_episode: 49
+  end_planning_episode: 0
+  seed: 100
+  seeds:
+      - 100
+      - 380
+      - 8349
+      - 7488
+      - 42839

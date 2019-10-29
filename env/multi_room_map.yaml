@@ -1,12 +1,13 @@
 map:
-    seed: 1000
+    seed: 9000
     x_max: 20
     y_max: 15
     h_max: 1.5
     door_width: 0.8
     alley_width: 2.0
-    n_tables: 4
-    min_table_len: 0.5
-    max_table_len: 1.0
-    table_height: 0.6
-    min_dist_bw_tables: 1.5
+    n_tables: 10
+    min_table_len: 0.4
+    max_table_len: 0.6
+    table_height: 0.70
+    min_dist_bw_tables: 0.2
+    n_objects: 4
