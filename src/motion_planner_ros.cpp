@@ -23,7 +23,7 @@ Callbacks::Callbacks(ros::NodeHandle _nh,
     //m_sub_pose = m_nh.subscribe("/Grasps", 1000, &Callbacks::poseCallback, this);
 
     m_status_variables = {
-            &m_octomap_received,
+            //&m_octomap_received,
             //&m_occgrid_received
             };
 }
@@ -37,22 +37,22 @@ bool Callbacks::canCallPlanner() const {
 }
 
 bool Callbacks::updateMap(PlanningEpisode _ep){
-    if(m_collision_scene->ProcessOctomapMsg(m_map_with_pose)){
-        ROS_INFO("Succesfully added octomap");
-    }
-    else{
-        ROS_INFO("Could not added octomap");
-        return false;
-    }
-    //auto map_config = getMultiRoomMapConfig(m_nh);
-    //std::vector<moveit_msgs::CollisionObject> tmp;
-    //auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config, tmp);
-    //for (auto& object : objects) {
-    //    m_collision_scene->ProcessCollisionObjectMsg(object);
+    //if(m_collision_scene->ProcessOctomapMsg(m_map_with_pose)){
+    //    ROS_INFO("Succesfully added octomap");
     //}
+    //else{
+    //    ROS_INFO("Could not added octomap");
+    //    return false;
+    //}
+    auto map_config = getMultiRoomMapConfig(m_nh);
+    std::vector<moveit_msgs::CollisionObject> tmp;
+    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config, tmp);
+    for (auto& object : objects) {
+        m_collision_scene->ProcessCollisionObjectMsg(object);
+    }
 
-    assert(m_grid != nullptr);
-    m_grid->addPointsToField(m_occgrid_points);
+    //assert(m_grid != nullptr);
+    //m_grid->addPointsToField(m_occgrid_points);
 
     SV_SHOW_INFO(m_collision_scene->getOccupiedVoxelsVisualization());
 
