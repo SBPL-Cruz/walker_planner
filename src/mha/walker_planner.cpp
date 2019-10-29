@@ -6,7 +6,7 @@
 
 #include <ros/ros.h>
 #include <smpl/graph/manip_lattice_action_space.h>
-#include <smpl/graph/manip_lattice_multi_rep.h>
+//#include <smpl/graph/manip_lattice_multi_rep.h>
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/heuristic/bfs_2d_heuristic.h>
 #include <smpl/heuristic/bfs_3d_heuristic.h>
@@ -22,6 +22,9 @@
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
 #include "utils/utils.h"
+
+#include "walker_planner/GraspPose.h"
+#include "walker_planner/Path1.h"
 
 using Path = std::vector< std::array<double, 3> >;
 using Point = std::pair<double, double>;
@@ -188,14 +191,15 @@ bool constructHeuristics(
 
             int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
             int arm_dist  = 0;
-            if(arm_dist > 10000){
-                arm_dist = m_retract_arm_heur->GetGoalHeuristic(state_id);
-                rot_dist = 0.0;
-            } else {
+            //if(arm_dist > 10000){
+                //arm_dist = m_retract_arm_heur->GetGoalHeuristic(state_id);
+                //rot_dist = 0.0;
+            //} else {
                 arm_dist = bfs_3d->GetGoalHeuristic(state_id);
-            }
+            //}
 
-            int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
+            //int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
+            int heuristic = arm_coeff*arm_dist + rot_coeff*rot_dist;
             //ROS_ERROR("%d + %d + %d = %d", int(base_coeff*base_dist), int(arm_coeff*arm_dist), int(rot_coeff*rot_dist), heuristic);
             return heuristic;
         }
@@ -223,6 +227,7 @@ bool constructHeuristics(
         int GetGoalHeuristic(int state_id){
             if(state_id == 0)
                 return 0;
+	    ROS_ERROR("Dynamic casting");
             auto robot_state = (dynamic_cast<smpl::ManipLattice*>(
                         bfs_3d->planningSpace()))->extractState(state_id);
             int yaw_dist = DefaultCostMultiplier*smpl::angles::shortest_angle_dist(robot_state[2], orientation);
@@ -244,6 +249,7 @@ bool constructHeuristics(
     };
 
 
+/*
     auto bfs_2d = std::make_unique<smpl::Bfs2DHeuristic>();
     bfs_2d->setCostPerCell(params.cost_per_cell);
     bfs_2d->setInflationRadius(params.inflation_radius_2d);
@@ -251,6 +257,7 @@ bool constructHeuristics(
         ROS_ERROR("Could not initialize Bfs2Dheuristic.");
         return false;
     }
+*/
 
     auto bfs_3d = std::make_shared<smpl::Bfs3DHeuristic>();
     bfs_3d->setCostPerCell(params.cost_per_cell);
@@ -311,7 +318,7 @@ bool constructHeuristics(
     }
     */
 
-    int num_rot_heurs = 8;
+    int num_rot_heurs = 0;
     for(int i=0; i<num_rot_heurs; i++){
         auto h = std::make_unique<BaseRotHeuristic>();
         if (!h->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i)) {
@@ -358,14 +365,14 @@ class ReadExperimentFromParamServer {
     private:
     void startCallback(const geometry_msgs::PoseWithCovarianceStamped start){
         geometry_msgs::Pose start_base = start.pose.pose;
-
-        if (!ReadInitialConfiguration(m_nh, m_start_state)) {
+        moveit_msgs::RobotState start_state;
+        if (!ReadInitialConfiguration(m_nh, start_state)) {
             ROS_ERROR("Failed to get initial configuration.");
             return;
         }
 
-        m_start_state.joint_state.position[0] = start_base.position.x;
-        m_start_state.joint_state.position[1] = start_base.position.y;
+        start_state.joint_state.position[0] = start_base.position.x;
+        start_state.joint_state.position[1] = start_base.position.y;
 
         {
             double roll, pitch, yaw;
@@ -376,8 +383,9 @@ class ReadExperimentFromParamServer {
                 start_base.orientation.w);
             tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
-            m_start_state.joint_state.position[2] = yaw;
+            start_state.joint_state.position[2] = yaw;
         }
+        m_start_state = start_state;
         m_start_received = true;
     }
 
@@ -390,12 +398,12 @@ class ReadExperimentFromParamServer {
         smpl::GoalConstraint goal;
         goal.type = smpl::GoalType::XYZ_RPY_GOAL;
         goal.pose = goal_pose;
-        goal.xyz_tolerance[0] = 0.05;
-        goal.xyz_tolerance[1] = 0.05;
-        goal.xyz_tolerance[2] = 0.05;
-        goal.rpy_tolerance[0] = 0.39;
-        goal.rpy_tolerance[1] = 0.39;
-        goal.rpy_tolerance[2] = 0.39;
+        goal.xyz_tolerance[0] = 0.03;
+        goal.xyz_tolerance[1] = 0.03;
+        goal.xyz_tolerance[2] = 0.03;
+        goal.rpy_tolerance[0] = 1.70;
+        goal.rpy_tolerance[1] = 1.70;
+        goal.rpy_tolerance[2] = 1.70;
 
         m_goal_constraint = goal;
         m_goal_received = true;
@@ -457,6 +465,24 @@ bool writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
 
     file.close();
     return true;
+}
+
+void publish_path(std::vector<smpl::RobotState> path, ros::Publisher path_pub) {
+  ROS_ERROR("publishing path");
+  int number_of_joints = 16;
+  ros::Rate r(10);
+
+  for(int k=0; k<10000;k++){
+  walker_planner::Path1 Final_path;
+  for(int i=0;i<path.size();i++){
+      walker_planner::GraspPose State;
+      for(int j=0;j<path[i].size();j++){
+          State.a.push_back(path[i][j]);
+      }
+      Final_path.path.push_back(State);
+    }
+    path_pub.publish(Final_path);
+  }
 }
 
 int main(int argc, char** argv){
@@ -671,17 +697,27 @@ int main(int argc, char** argv){
     std::string file_prefix = "paths/solution_path";
     std::ofstream stats_file;
     PlanningEpisode ep = planning_config.start_planning_episode;
+    auto path_pub = nh.advertise<walker_planner::Path1>("Robot_path", 1000);
+
+    std::vector<smpl::RobotState> plan;
     while(ep <= planning_config.end_planning_episode ){
         loop_rate.sleep();
         std::string file_suffix = std::to_string(ep) + ".txt";
         space->clearStats();
+
+	int done;
+        ros::param::get("/walker_planner_done", done);
+        if(done){
+            publish_path(plan, path_pub);
+	    continue;
+	}
         status = mplanner_ros.execute(ep);
     //}
         if(status == ExecutionStatus::SUCCESS){
             ROS_INFO("----------------");
             ROS_INFO("Planning Time: %f", mplanner_ros.getPlan(ep).planning_time);
             ROS_INFO("----------------");
-            auto plan = mplanner_ros.getPlan(ep).robot_states;
+            plan = mplanner_ros.getPlan(ep).robot_states;
 
             // Write to file.
             stats_file.open("planning_stats.txt", std::ios::app);
@@ -734,6 +770,8 @@ int main(int argc, char** argv){
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
             //*/
+	    publish_path(plan, path_pub);
+            ros::param::set("/walker_planner_done", 1);
         }
 
         if(status != ExecutionStatus::WAITING){
@@ -742,6 +780,5 @@ int main(int argc, char** argv){
         }
         ros::spinOnce();
     }
+
 }
-
-

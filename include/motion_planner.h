@@ -14,7 +14,7 @@
 #include <smpl/graph/motion_primitive.h>
 #include <smpl/heuristic/robot_heuristic.h>
 #include <smpl/console/console.h>
-#include <sbpl/planners/types.h>
+//#include <sbpl/planners/types.h>
 
 namespace MPlanner {
 
@@ -151,13 +151,11 @@ namespace MPlanner {
         smpl::get_euler_zyx(_goal_constraint.pose.rotation(), yaw, pitch, roll);
 
         // set sbpl environment goal
-        ROS_INFO("Setting goal in pspace");
         if (!m_env_ptr->setGoal(_goal_constraint)) {
             ROS_ERROR("Failed to set goal");
             return false;
         }
 
-        ROS_INFO("Updating goal in heuristics.");
         ROS_INFO("Goal: %f, %f", _goal_constraint.pose.translation()[0], _goal_constraint.pose.translation()[1]);
         for (auto& h : m_heurs) {
             dynamic_cast<smpl::RobotHeuristic*>(h)->updateGoal(_goal_constraint);
@@ -170,7 +168,6 @@ namespace MPlanner {
             return false;
         }
 
-        ROS_INFO("Setting planner Goal");
         if (m_search_ptr->set_goal(goal_id) == 0) {
             ROS_ERROR("Failed to set planner goal state");
             return false;
@@ -202,7 +199,8 @@ namespace MPlanner {
         bool success = m_search_ptr->replan( m_planning_time, &soltn_ids, &(_planner_soltn.cost) );
         double planning_time = smpl::to_seconds(smpl::clock::now() - then);
         _planner_soltn.planning_time = planning_time;
-        _planner_soltn.num_expansions = m_search_ptr->get_num_expansions();
+        //_planner_soltn.num_expansions = m_search_ptr->get_num_expansions();
+        _planner_soltn.num_expansions = m_search_ptr->get_n_expands();
         _planner_soltn.soltn_ids = soltn_ids;
         _planner_soltn.ik_computations =
             m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_RPY) +
