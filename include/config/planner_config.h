@@ -47,6 +47,8 @@ struct PlannerConfig
     int planning_time;
     int start_planning_episode;
     int end_planning_episode;
+    int seed;
+    std::vector<int> seeds;
 };
 
 struct MultiRoomMapConfig {
@@ -63,6 +65,8 @@ struct MultiRoomMapConfig {
     double max_table_len = 1.0;
     double table_height = 0.6;
     double min_dist_bw_tables = 1.5;
+    //Objects
+    int n_objects_per_table = 0;
 };
 
 void FillGoalConstraint(
