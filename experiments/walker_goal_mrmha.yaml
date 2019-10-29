@@ -1,8 +1,8 @@
 initial_configuration:
   joint_state:
-    - { name: x, position: 0.0 }
-    - { name: y, position: 0.0 }
-    - { name: theta, position: 0 }
+    - { name: x, position: 5.0 }
+    - { name: y, position: 4.0 }
+    - { name: theta, position: 1.57 }
     - { name: head_yaw,   position: 0.0 }
     - { name: head_pitch,   position: 0.0 }
     - { name: right_j1, position: -0.0 }
@@ -14,9 +14,9 @@ initial_configuration:
     - { name: right_j7, position: 0.0 }
 
 goal:
-  x: -2.00
-  y: -1.50
-  z: 0.80
+  x: 5.00
+  y: 6.50
+  z: 1.00
   roll: 0.0
   pitch: 0.0
-  yaw: -1.57
+  yaw: 1.57

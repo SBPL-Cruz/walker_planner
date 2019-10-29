@@ -1,4 +1,4 @@
-#include "collision_space_scene.h"
+#include "config/collision_space_scene.h"
 
 #include <moveit/collision_detection/world.h> // Object, ObjectPtr, ObjectConstPtr
 #include <geometric_shapes/shape_operations.h> // constructShapeFromMsg
