@@ -73,11 +73,27 @@ class UniformlyRandomPolicy : public SchedulingPolicy {
     unsigned int m_seed;
 };
 
-/*
-int UniformlyRandomPolicy::getNextQueue(const smpl::RobotState&){
-    return rand() % numQueues() + 1;
-}
-*/
+class RoundRobinPolicy : public SchedulingPolicy {
+    public:
+    RoundRobinPolicy(int num_queues) :
+        SchedulingPolicy(num_queues) {}
+    inline virtual double getActionSpaceProb(int state_id, int hidx){
+        //std::cerr<<hidx - 1 <<" " <<numQueues()<< " " << m_queue<<"\n";
+        if((hidx - 1) == m_queue){
+            if(hidx == numQueues())
+                m_queue = (m_queue + 1) % numQueues();
+            return 1.0;
+        } else {
+            if(hidx == numQueues())
+                m_queue = (m_queue + 1) % numQueues();
+            return  0.0;
+        }
+    }
+
+    private:
+    int m_queue = 0;
+    int m_iter = 0;
+};
 
 using Point = std::array<double, 2>;
 

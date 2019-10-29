@@ -18,8 +18,8 @@
     <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)"
 required="true" /> -->
 
-    <node pkg="walker_planner" type="walker_interface_mrmha" name="walker_interface_mrmha"
-            launch-prefix="$(arg launch-prefix)" output="screen">
+    <node pkg="walker_planner" type="run_mrmha_unirand_planner" name="run_mrmha_unirand_planner"
+            launch-prefix="$(arg launch-prefix)" output="screen" required="true">
         <param name="planning_frame" value="dummy_base"/>
 
         <!-- 1. robot model (for planning) -->
@@ -29,17 +29,17 @@ required="true" /> -->
                 x
                 y
                 theta
-                right_limb_j1
-                right_limb_j2
-                right_limb_j3
-                right_limb_j4
-                right_limb_j5
-                right_limb_j6
-                right_limb_j7
+                right_j1
+                right_j2
+                right_j3
+                right_j4
+                right_j5
+                right_j6
+                right_j7
             kinematics_frame:
                 planar_1
             chain_tip_link:
-                right_palm_link
+                right_palm_dummy_link
         </rosparam>
 
         <!-- collision checking -->
@@ -48,19 +48,26 @@ required="true" /> -->
         <!-- planner params -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
         <param name="planning/mprim_filenames" value="$(find
-walker_planner)/config/walker_multi_rep.mprim,$(find
-walker_planner)/config/walker_multi_rep_base.mprim,$(find
-walker_planner)/config/walker_multi_rep_right_arm.mprim"/>
+        walker_planner)/config/walker_multi_rep.mprim,$(find
+        walker_planner)/config/walker_multi_rep_right_arm.mprim,$(find
+        walker_planner)/config/walker_multi_rep_base.mprim"/>
 
         <param name="planning/mprim_filename" value="$(find
-        walker_planner)/config/walker.mprim"/>
+        walker_planner)/config/walker_multi_rep.mprim"/>
 
-        <param name="allowed_planning_time" value="100.0"/>
+        <param name="allowed_planning_time" value="60.0"/>
         <param name="read_goal_from_file" value="true"/>
+        <param name="robot_start_states_file" value="$(find
+        walker_planner)/experiments/start_states.txt" />
+        <param name="robot_goal_states_file" value="$(find
+        walker_planner)/experiments/goal_states.txt" />
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
-        <rosparam command="load" file="$(find walker_planner)/experiments/walker_goal_mrmha.yaml"/>
+        <rosparam command="load" file="$(find
+        walker_planner)/experiments/walker_goal_mrmha.yaml"/>
+
+        <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
 
         <!-- 2.2 world state -->
         <param name="object_filename" value="$(find walker_planner)/env/multi_rooms.env"/>

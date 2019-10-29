@@ -444,8 +444,7 @@ void writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
 }
 
 int main(int argc, char** argv) {
-    SMPL_INFO("Testing the new templated MRMHAPlanner.");
-    ros::init(argc, argv, "test_templated_mrmha_planner");
+    ros::init(argc, argv, "run_mrmha_unirand_planner");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);
@@ -662,24 +661,17 @@ int main(int argc, char** argv) {
                                   {{0, 1, 0}},
                                   {{0, 1, 0}} }};
 
-    //auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);
-    auto round_robin_policy = std::make_unique<RoundRobinPolicy>(inad_heurs.size());
+    auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);
 
-    //using Planner = MRMHAPlanner<NUM_QUEUES, NUM_ACTION_SPACES, UniformlyRandomPolicy>;
-    using Planner = MRMHAPlanner<NUM_QUEUES, NUM_ACTION_SPACES, RoundRobinPolicy>;
-    //using Planner = MHAPlanner<NUM_QUEUES, RoundRobinPolicy>;
-    //auto search_ptr = std::make_unique<Planner>(
-    //        space.get(), heurs_array, rep_ids, rep_dependency_matrix, uniformly_random_policy.get() );
+    using Planner = MRMHAPlanner<NUM_QUEUES, NUM_ACTION_SPACES, UniformlyRandomPolicy>;
     auto search_ptr = std::make_unique<Planner>(
-            space.get(), heurs_array, rep_ids, rep_dependency_matrix, round_robin_policy.get() );
-    //auto search_ptr = std::make_unique<Planner>(space.get(), heurs_array, round_robin_policy.get());
+            space.get(), heurs_array, rep_ids, rep_dependency_matrix, uniformly_random_policy.get() );
 
     const int max_planning_time = planning_config.planning_time;
     const double eps = planning_config.eps;
     const double eps_mha = planning_config.eps_mha;
     MPlanner::PlannerParams planner_params = { max_planning_time, eps, eps_mha, false };
 
-    //using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLatticeMultiRep>;
     using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLattice>;
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(search_ptr.get(), space.get(), heurs, planner_params);

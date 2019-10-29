@@ -1,5 +1,5 @@
-#ifndef WALKER_MRMHAPLANNER_H
-#define WALKER_MRMHAPLANNER_H
+#ifndef WALKER_MHAPLANNER_H
+#define WALKER_MHAPLANNER_H
 
 #include <algorithm>
 #include <array>
@@ -14,8 +14,8 @@
  * R : Number of representations
  * SP: Scheduling Policy
  */
-template <int N, int R, typename SP>
-class MRMHAPlanner : public SBPLPlanner {
+template <int N, typename SP>
+class MHAPlanner : public SBPLPlanner {
     public:
     /** Each heuristic (anchor and inadmissible) has a corresponding rep_id.
      * The rep_dependency_matrix is a max(rep_ids) x max(rep_ids) size matrix.
@@ -25,15 +25,13 @@ class MRMHAPlanner : public SBPLPlanner {
      * By convention, the first heuristic is the anchor heuristic and it should
      * get the union of all representations.
      */
-    MRMHAPlanner(
+    MHAPlanner(
         // Ideally, I should have a MultiRepDiscreteSpace
         DiscreteSpaceInformation* env,
         std::array<Heuristic*, N>& heurs,
-        std::array<int, N>& rep_ids,
-        std::array<std::array<int, R>, R>& rep_dependency_matrix,
         SP* scheduling_policy );
 
-    virtual ~MRMHAPlanner(){
+    virtual ~MHAPlanner(){
         clear();
         delete[] m_open;
     }
@@ -54,15 +52,18 @@ class MRMHAPlanner : public SBPLPlanner {
     virtual int set_goal(int goal_stateID) override;
     virtual int set_start(int start_stateID) override;
 
+    // Set through ReplanParams
     virtual void set_initialsolution_eps(double eps) override {
         m_params.initial_eps = eps;
     }
 
+    // Set through ReplanParams
     int set_initial_eps(double eps) {
         set_initialsolution_eps(eps);
         return true;
     }
 
+    // Is not set through ReplanParams
     int set_initial_mha_eps(double eps_mha){
         m_eps_mha = eps_mha;
         return true;
@@ -119,16 +120,16 @@ class MRMHAPlanner : public SBPLPlanner {
 
     private:
 
-    struct MRMHASearchState {
+    struct MHASearchState {
         int call_number;
         int state_id;
         int g;
-        MRMHASearchState* bp;
+        MHASearchState* bp;
         bool closed_in_anc;
-        std::array<int, R> closed_in_adds;
+        bool closed_in_add;
 
         struct HeapData : public smpl::heap_element {
-            MRMHASearchState* me;
+            MHASearchState* me;
             int h;
             int f;
         };
@@ -139,8 +140,8 @@ class MRMHAPlanner : public SBPLPlanner {
     struct HeapCompare
     {
         bool operator()(
-            const typename MRMHASearchState::HeapData& s,
-            const typename MRMHASearchState::HeapData& t) const
+            const typename MHASearchState::HeapData& s,
+            const typename MHASearchState::HeapData& t) const
         {
             return s.f < t.f;
         }
@@ -153,7 +154,6 @@ class MRMHAPlanner : public SBPLPlanner {
     std::default_random_engine m_generator;
 
     std::array<int, N> m_rep_ids;
-    std::array<std::array<int, R>, R> m_rep_dependency_matrix;
 
     ReplanParams m_params;
     int m_call_number;
@@ -161,11 +161,11 @@ class MRMHAPlanner : public SBPLPlanner {
     double m_eps_mha;
     double m_eps_satisfied;
 
-    MRMHASearchState* m_start_state;
-    MRMHASearchState* m_goal_state;
-    std::vector<MRMHASearchState*> m_search_states;
+    MHASearchState* m_start_state;
+    MHASearchState* m_goal_state;
+    std::vector<MHASearchState*> m_search_states;
 
-    typedef smpl::intrusive_heap<typename MRMHASearchState::HeapData, HeapCompare> CHeap;
+    typedef smpl::intrusive_heap<typename MHASearchState::HeapData, HeapCompare> CHeap;
     CHeap* m_open; ///< sequence of (m_h_count) open lists
 
     int m_num_expansions;
@@ -175,11 +175,11 @@ class MRMHAPlanner : public SBPLPlanner {
     bool check_params(const ReplanParams& params);
     bool time_limit_reached();
 
-    MRMHASearchState* get_state(int state_id){
+    MHASearchState* get_state(int state_id){
         assert(state_id >= 0 && state_id < environment_->StateID2IndexMapping.size());
         int* idxs = environment_->StateID2IndexMapping[state_id];
         if (idxs[MHAMDP_STATEID2IND] == -1) {
-            auto s = new MRMHASearchState;
+            auto s = new MHASearchState;
 
             const size_t mha_state_idx = m_search_states.size();
             init_state(s, mha_state_idx, state_id);
@@ -198,45 +198,45 @@ class MRMHAPlanner : public SBPLPlanner {
         }
     }
 
-    void init_state(MRMHASearchState* state, size_t mha_state_idx, int state_id);
-    void reinit_state(MRMHASearchState* state);
+    void init_state(MHASearchState* state, size_t mha_state_idx, int state_id);
+    void reinit_state(MHASearchState* state);
 
     void reinit_search() { clear_open_lists(); }
 
     void clear_open_lists();
     void clear();
-    int compute_key(MRMHASearchState* state, int hidx);
+    int compute_key(MHASearchState* state, int hidx);
 
-    MRMHASearchState* state_from_open_state(typename MRMHASearchState::HeapData* open_state){
+    MHASearchState* state_from_open_state(typename MHASearchState::HeapData* open_state){
         return open_state->me;
     }
 
     int sampleIndex(const std::array<double, N>& likelihoods);
     int chooseQueue();
     int compute_heuristic(int state_id, int hidx);
-    void expand(MRMHASearchState* state, int hidx);
+    void expand(MHASearchState* state, int hidx);
 
     int get_minf(CHeap& pq) const {
         return pq.min()->f;
     }
-    void insert_or_update( MRMHASearchState* state, int hidx );
+    void insert_or_update( MHASearchState* state, int hidx );
 
     void extract_path(std::vector<int>* solution_path, int* solcost);
 
-    bool closed_in_anc_search(MRMHASearchState* state) const {
+    bool closed_in_anc_search(MHASearchState* state) const {
         return state->closed_in_anc;
     }
 
-    bool closed_in_add_search(MRMHASearchState* state, int rep_id) const {
-        return state->closed_in_adds[rep_id];
+    bool closed_in_add_search(MHASearchState* state) const {
+        return state->closed_in_add;
     }
 
-    bool closed_in_any_search(MRMHASearchState* state) const {
-        return state->closed_in_anc|| std::any_of(state->closed_in_adds);
+    bool closed_in_any_search(MHASearchState* state) const {
+        return state->closed_in_anc || state->closed_in_add;
     }
 
 };
 
-#include "detail/mrmhaplanner.hpp"
+#include "detail/mhaplanner.hpp"
 
 #endif

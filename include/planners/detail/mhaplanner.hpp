@@ -1,30 +1,27 @@
-#ifndef WALKER_MRMHAPLANNER_DETAIL_H
-#define WALKER_MRMHAPLANNER_DETAIL_H
+#ifndef WALKER_MHAPLANNER_DETAIL_H
+#define WALKER_MHAPLANNER_DETAIL_H
 
 #include <limits>
 #include <smpl/time.h>
-#include "../mrmhaplanner.h"
+#include "../mhaplanner.h"
 
-#define LOG "templated_mrmha"
+#define LOG "templated_mha"
+#define ELOG "templated_mha.expanded_state"
 #define INFINITECOST std::numeric_limits<int>::max()
 
-template <int N, int R, typename SP>
-MRMHAPlanner<N, R, SP>::MRMHAPlanner(
+template <int N, typename SP>
+MHAPlanner<N, SP>::MHAPlanner(
         DiscreteSpaceInformation* _env,
         std::array<Heuristic*, N>& _heurs,
-        std::array<int, N>& _rep_ids,
-        std::array<std::array<int, R>, R>& _rep_dependency_matrix,
         SP* _scheduling_policy) :
     SBPLPlanner(),
     m_h_anchor{_heurs[0]},
     m_h_inads{_heurs.data() + 1},
     m_h_count{N},
     m_scheduling_policy{_scheduling_policy},
-    m_rep_ids{_rep_ids},
-    m_rep_dependency_matrix{_rep_dependency_matrix},
     m_params{0.0},
-    m_eps{1.0},
-    m_eps_mha{1.0},
+    m_eps{10.0},
+    m_eps_mha{1.5},
     m_num_expansions{0},
     m_time_elapsed{0.0},
     m_start_state{NULL},
@@ -45,16 +42,16 @@ MRMHAPlanner<N, R, SP>::MRMHAPlanner(
     m_generator.seed(seed);
 }
 
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::replan(
+template <int N, typename SP>
+int MHAPlanner<N, SP>::replan(
         double _allocated_time_sec,
         std::vector<int>* _solution ){
     int solcost;
     return replan( _allocated_time_sec, _solution, &solcost );
 }
 
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::replan(
+template <int N, typename SP>
+int MHAPlanner<N, SP>::replan(
         double _allocated_time_sec,
         std::vector<int>* _solution,
         int* _soltn_cost ){
@@ -63,8 +60,8 @@ int MRMHAPlanner<N, R, SP>::replan(
     return replan( _solution, params, _soltn_cost);
 }
 
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::replan(
+template <int N, typename SP>
+int MHAPlanner<N, SP>::replan(
         std::vector<int>* _solution,
         ReplanParams _params,
         int* _soltn_cost ){
@@ -75,15 +72,15 @@ int MRMHAPlanner<N, R, SP>::replan(
 
     m_params = _params;
 
-    SMPL_DEBUG("Generic Search parameters:");
-    SMPL_DEBUG("  Initial Epsilon: %0.3f", m_params.initial_eps);
-    SMPL_DEBUG("  Final Epsilon: %0.3f", m_params.final_eps);
-    SMPL_DEBUG("  Delta Epsilon: %0.3f", m_params.dec_eps);
-    SMPL_DEBUG("  Return First Solution: %s", m_params.return_first_solution ? "true" : "false");
-    SMPL_DEBUG("  Max Time: %0.3f", m_params.max_time);
-    SMPL_DEBUG("  Repair Time: %0.3f", m_params.repair_time);
-    SMPL_DEBUG("MHA Search parameters:");
-    SMPL_DEBUG("  Max Expansions: %d", m_max_expansions);
+    ROS_DEBUG(LOG, "Generic Search parameters:");
+    ROS_DEBUG(LOG, "  Initial Epsilon: %0.3f", m_params.initial_eps);
+    ROS_DEBUG(LOG, "  Final Epsilon: %0.3f", m_params.final_eps);
+    ROS_DEBUG(LOG, "  Delta Epsilon: %0.3f", m_params.dec_eps);
+    ROS_DEBUG(LOG, "  Return First Solution: %s", m_params.return_first_solution ? "true" : "false");
+    ROS_DEBUG(LOG, "  Max Time: %0.3f", m_params.max_time);
+    ROS_DEBUG(LOG, "  Repair Time: %0.3f", m_params.repair_time);
+    ROS_DEBUG(LOG,"MHA Search parameters:");
+    ROS_DEBUG(LOG, "  Max Expansions: %d", m_max_expansions);
 
     environment_->EnsureHeuristicsUpdated(true); // TODO: support backwards search
 
@@ -123,35 +120,31 @@ int MRMHAPlanner<N, R, SP>::replan(
         int hidx = chooseQueue();
         ROS_DEBUG_NAMED(LOG, "Expanding queue %d", hidx);
         ROS_DEBUG_NAMED(LOG, "==================");
+
         if ( get_minf(m_open[hidx]) <= m_eps_mha * get_minf(m_open[0]) ){
             if (m_goal_state->g <= get_minf(m_open[hidx])) {
                 // Solution found
-                m_eps_satisfied = m_eps*m_eps_mha;
+                m_eps_satisfied = m_eps;
                 extract_path(_solution, _soltn_cost);
                 return 1;
             } else {
                 // Inadmissible expansion
                 ROS_DEBUG_NAMED(LOG, "Inadmissible expansion");
-                MRMHASearchState* s = state_from_open_state(m_open[hidx].min());
+                MHASearchState* s = state_from_open_state(m_open[hidx].min());
                 ROS_DEBUG_NAMED(LOG, "State: %d, f: %d", s->state_id, s->od[hidx].f);
                 expand(s, hidx);
-                // Use the dependency matrix.
-                // to partially close the state.
-                for(int i = 0; i < R; i++){
-                    if(m_rep_dependency_matrix[m_rep_ids[hidx]][i])
-                        s->closed_in_adds[i] = true;
-                }
+                s->closed_in_add = true;
             }
         } else {
-            if (m_goal_state->g <= get_minf(m_open[0])) {
+            if (m_goal_state->g <= get_minf(m_open[hidx])) {
                 // Solution found
-                m_eps_satisfied = m_eps*m_eps_mha;
+                m_eps_satisfied = m_eps;
                 extract_path(_solution, _soltn_cost);
                 return 1;
             } else {
                 //Anchor expansion
                 ROS_DEBUG_NAMED(LOG, "Anchor Expansion");
-                MRMHASearchState* s = state_from_open_state(m_open[0].min());
+                MHASearchState* s = state_from_open_state(m_open[0].min());
                 expand(s, 0);
                 s->closed_in_anc = true;
             }
@@ -171,8 +164,8 @@ int MRMHAPlanner<N, R, SP>::replan(
     return 0;
 }
 
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::set_goal(int _goal_stateID) {
+template <int N, typename SP>
+int MHAPlanner<N, SP>::set_goal(int _goal_stateID) {
     SMPL_DEBUG("Planner set goal");
     m_goal_state = get_state(_goal_stateID);
     if (!m_goal_state) {
@@ -181,8 +174,8 @@ int MRMHAPlanner<N, R, SP>::set_goal(int _goal_stateID) {
         return 1;
     }
 }
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::set_start(int _start_stateID) {
+template <int N, typename SP>
+int MHAPlanner<N, SP>::set_start(int _start_stateID) {
     m_start_state = get_state(_start_stateID);
     if (!m_start_state) {
         return 0;
@@ -191,8 +184,8 @@ int MRMHAPlanner<N, R, SP>::set_start(int _start_stateID) {
     }
 }
 
-template <int N, int R, typename SP>
-bool MRMHAPlanner<N, R, SP>::check_params(const ReplanParams& _params){
+template <int N, typename SP>
+bool MHAPlanner<N, SP>::check_params(const ReplanParams& _params){
     if (_params.initial_eps < 1.0) {
         SMPL_ERROR("Initial Epsilon must be greater than or equal to 1");
         return false;
@@ -220,8 +213,8 @@ bool MRMHAPlanner<N, R, SP>::check_params(const ReplanParams& _params){
 
 }
 
-template <int N, int R, typename SP>
-bool MRMHAPlanner<N, R, SP>::time_limit_reached(){
+template <int N, typename SP>
+bool MHAPlanner<N, SP>::time_limit_reached(){
     if (m_params.return_first_solution) {
         return false;
     } else if (m_params.max_time > 0.0 && m_time_elapsed >= m_params.max_time) {
@@ -233,13 +226,12 @@ bool MRMHAPlanner<N, R, SP>::time_limit_reached(){
     }
 }
 
-template <int N, int R, typename SP>
-void MRMHAPlanner<N, R, SP>::init_state( MRMHASearchState* _state, size_t _mha_state_idx, int _state_id ){
+template <int N, typename SP>
+void MHAPlanner<N, SP>::init_state( MHASearchState* _state, size_t _mha_state_idx, int _state_id ){
     _state->call_number = 0; // not initialized for any iteration
     _state->state_id = _state_id;
     _state->closed_in_anc = false;
-    for( auto& ele : _state->closed_in_adds )
-        ele = false;
+    _state->closed_in_add = false;
     for (int i = 0; i < num_heuristics(); ++i) {
         _state->od[i].f = compute_heuristic(_state->state_id, i);
         _state->od[i].me = _state;
@@ -253,16 +245,15 @@ void MRMHAPlanner<N, R, SP>::init_state( MRMHASearchState* _state, size_t _mha_s
     }
 }
 
-template <int N, int R, typename SP>
-void MRMHAPlanner<N, R, SP>::reinit_state(MRMHASearchState* _state){
+template <int N, typename SP>
+void MHAPlanner<N, SP>::reinit_state(MHASearchState* _state){
     if (_state->call_number != m_call_number) {
         _state->call_number = m_call_number;
         _state->g = INFINITECOST;
         _state->bp = nullptr;
 
         _state->closed_in_anc = false;
-        for(auto& ele : _state->closed_in_adds)
-            ele = false;
+        _state->closed_in_add = false;
 
         for (int i = 0; i < num_heuristics(); ++i) {
             _state->od[i].h = compute_heuristic(_state->state_id, i);
@@ -278,15 +269,15 @@ void MRMHAPlanner<N, R, SP>::reinit_state(MRMHASearchState* _state){
     }
 }
 
-template <int N, int R, typename SP>
-void MRMHAPlanner<N, R, SP>::clear_open_lists(){
+template <int N, typename SP>
+void MHAPlanner<N, SP>::clear_open_lists(){
     for (int i = 0; i < num_heuristics(); ++i) {
         m_open[i].clear();
     }
 }
 
-template <int N, int R, typename SP>
-void MRMHAPlanner<N, R, SP>::clear(){
+template <int N, typename SP>
+void MHAPlanner<N, SP>::clear(){
     clear_open_lists();
 
     for(int i = 0; i < m_search_states.size(); i++)
@@ -297,13 +288,14 @@ void MRMHAPlanner<N, R, SP>::clear(){
     m_goal_state = nullptr;
 }
 
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::compute_key( MRMHASearchState* _state, int _hidx ){
-    return _state->g + (int)(m_eps * (double)_state->od[_hidx].h);
+template <int N, typename SP>
+int MHAPlanner<N, SP>::compute_key( MHASearchState* _state, int _hidx ){
+    //return _state->g + (int)(m_eps * (double)_state->od[_hidx].h);
+    return _state->g + (m_eps * _state->od[_hidx].h);
 }
 
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::sampleIndex(const std::array<double, N>& _likelihoods){
+template <int N, typename SP>
+int MHAPlanner<N, SP>::sampleIndex(const std::array<double, N>& _likelihoods){
     std::array<int, N> counts;
     // The anchor is supposed to have 0 likelihood.
     for(int i = 0; i < _likelihoods.size(); i++)
@@ -312,8 +304,8 @@ int MRMHAPlanner<N, R, SP>::sampleIndex(const std::array<double, N>& _likelihood
     return dist(m_generator);
 }
 
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::chooseQueue(){
+template <int N, typename SP>
+int MHAPlanner<N, SP>::chooseQueue(){
     std::array<double, N> queue_probs;
     // Do not expand the anchor unless the algorithm requires so.
     queue_probs[0] = 0.0;
@@ -332,8 +324,8 @@ int MRMHAPlanner<N, R, SP>::chooseQueue(){
     return sampleIndex(queue_probs);
 }
 
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::compute_heuristic( int _state_id, int _hidx ){
+template <int N, typename SP>
+int MHAPlanner<N, SP>::compute_heuristic( int _state_id, int _hidx ){
     if (_hidx == 0) {
         return m_h_anchor->GetGoalHeuristic(_state_id);
     } else {
@@ -341,14 +333,13 @@ int MRMHAPlanner<N, R, SP>::compute_heuristic( int _state_id, int _hidx ){
     }
 }
 
-template <int N, int R, typename SP>
-void MRMHAPlanner<N, R, SP>::expand(MRMHASearchState* _state, int _hidx){
-    int rep_id = m_rep_ids[_hidx];
-    // Inserts _state into the closed queues determined by the
-    // rep_dependency_matrix.
-    ROS_DEBUG_NAMED(LOG, "Expanding state %d in search %d", _state->state_id, _hidx);
+template <int N, typename SP>
+void MHAPlanner<N, SP>::expand(MHASearchState* _state, int _hidx){
+    /*ROS_DEBUG_NAMED(LOG, "Expanding state %d in search %d", _state->state_id, _hidx);
+    ROS_DEBUG_NAMED(LOG, "-------------------------------");*/
+    ROS_DEBUG_NAMED(ELOG, "%d, %d", _state->state_id, _hidx);
 
-    assert(!closed_in_add_search(_state, rep_id) || !closed_in_anc_search(_state));
+    assert(!closed_in_add_search(_state) || !closed_in_anc_search(_state));
 
     ++m_num_expansions;
 
@@ -361,13 +352,15 @@ void MRMHAPlanner<N, R, SP>::expand(MRMHASearchState* _state, int _hidx){
 
     std::vector<int> succ_ids;
     std::vector<int> costs;
-    environment_->GetSuccs(_state->state_id, rep_id, &succ_ids, &costs);
+    environment_->GetSuccs(_state->state_id, &succ_ids, &costs);
     assert(succ_ids.size() == costs.size());
 
     for (size_t sidx = 0; sidx < succ_ids.size(); ++sidx)  {
         const int cost = costs[sidx];
-        MRMHASearchState* succ_state = get_state(succ_ids[sidx]);
+        MHASearchState* succ_state = get_state(succ_ids[sidx]);
         reinit_state(succ_state);
+
+        SMPL_DEBUG_NAMED(ELOG, " Successor %d", succ_state->state_id);
 
         int new_g = _state->g + costs[sidx];
         if (new_g < succ_state->g) {
@@ -376,35 +369,30 @@ void MRMHAPlanner<N, R, SP>::expand(MRMHASearchState* _state, int _hidx){
             if (!closed_in_anc_search(succ_state)) {
                 succ_state->od[0].f = compute_key(succ_state, 0);
                 insert_or_update(succ_state, 0);
-                //ROS_DEBUG_NAMED(LOG, "Inserted/Updated successor %d in anchor", succ_state->state_id);
+                ROS_DEBUG_NAMED(ELOG, "  Update in search %d with f = %d", 0, succ_state->od[0].f);
 
                 // unless it's been closed in an inadmissible search...
-                //if (closed_in_add_search(succ_state, rep_id)) {
-                //    continue;
-                //}
+                /*if (closed_in_add_search(succ_state)) {
+                    continue;
+                }*/
 
-                // insert into the OPEN list for each heuristic
-                // XXX Currently does full sharing of all states.
-                // The possibility of having a learnt ``sharing matrix`` is
-                // open.
                 for (int hidx = 1; hidx < num_heuristics(); ++hidx) {
                     int fi = compute_key(succ_state, hidx);
-                    if(!closed_in_add_search(succ_state, m_rep_ids[hidx])){
-                        if(fi <= m_eps_mha * succ_state->od[0].f){
-                            succ_state->od[hidx].f = fi;
-                            insert_or_update(succ_state, hidx);
-                            //ROS_DEBUG_NAMED(LOG, "Inserted/Updated successor %d in Queue %d", succ_state->state_id, hidx);
-                        }
+                    if(fi <= m_eps_mha * succ_state->od[0].f){
+                        succ_state->od[hidx].f = fi;
+                        insert_or_update(succ_state, hidx);
+                        ROS_DEBUG_NAMED(ELOG, "  Update in search %d with f = %d", hidx, fi);
+                    } else {
+                            ROS_DEBUG_NAMED(ELOG, "  Skipping update of in search %d (%0.3f > %0.3f)", hidx, (double)fi, m_eps_mha * succ_state->od[0].f);
                     }
                 }
             }
         }
     }
-    //ros::Duration(0.1).sleep();
 }
 
-template <int N, int R, typename SP>
-void MRMHAPlanner<N, R, SP>::insert_or_update( MRMHASearchState* _state, int _hidx ) {
+template <int N, typename SP>
+void MHAPlanner<N, SP>::insert_or_update( MHASearchState* _state, int _hidx ) {
     if (m_open[_hidx].contains(&_state->od[_hidx])) {
         m_open[_hidx].update(&_state->od[_hidx]);
     } else {
@@ -412,12 +400,12 @@ void MRMHAPlanner<N, R, SP>::insert_or_update( MRMHASearchState* _state, int _hi
     }
 }
 
-template <int N, int R, typename SP>
-void MRMHAPlanner<N, R, SP>::extract_path(std::vector<int>* _solution_path, int* _solcost){
+template <int N, typename SP>
+void MHAPlanner<N, SP>::extract_path(std::vector<int>* _solution_path, int* _solcost){
     ROS_DEBUG("Extracting path");
     _solution_path->clear();
     *_solcost = 0;
-    for (MRMHASearchState* state = m_goal_state; state; state = state->bp) {
+    for (MHASearchState* state = m_goal_state; state; state = state->bp) {
         _solution_path->push_back(state->state_id);
         if (state->bp) {
             *_solcost += (state->g - state->bp->g);
@@ -429,5 +417,4 @@ void MRMHAPlanner<N, R, SP>::extract_path(std::vector<int>* _solution_path, int*
 }
 
 #undef LOG
-
 #endif

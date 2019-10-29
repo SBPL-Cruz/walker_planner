@@ -444,8 +444,7 @@ void writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
 }
 
 int main(int argc, char** argv) {
-    SMPL_INFO("Testing the new templated MRMHAPlanner.");
-    ros::init(argc, argv, "test_templated_mrmha_planner");
+    ros::init(argc, argv, "run_mrmha_rr_planner");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);

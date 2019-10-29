@@ -202,7 +202,7 @@ namespace MPlanner {
         //_planner_soltn.num_expansions = m_search_ptr->get_num_expansions();
         _planner_soltn.num_expansions = m_search_ptr->get_n_expands();
         _planner_soltn.soltn_ids = soltn_ids;
-        _planner_soltn.ik_computations =
+        /*_planner_soltn.ik_computations =
             m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_RPY) +
             m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_XYZ) +
             m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_XYZ_RPY);
@@ -213,11 +213,11 @@ namespace MPlanner {
         _planner_soltn.ik_valid =
             m_env_ptr->getMprimValid(smpl::MotionPrimitive::SNAP_TO_RPY) +
             m_env_ptr->getMprimValid(smpl::MotionPrimitive::SNAP_TO_XYZ) +
-            m_env_ptr->getMprimValid(smpl::MotionPrimitive::SNAP_TO_XYZ_RPY);
+            m_env_ptr->getMprimValid(smpl::MotionPrimitive::SNAP_TO_XYZ_RPY);*/
 
 
         if(!success){
-            SMPL_ERROR("Planning failed.");
+            ROS_ERROR("Planning failed.");
             return false;
         }
 
