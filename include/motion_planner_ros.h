@@ -99,6 +99,11 @@ bool MotionPlannerROS<SP, EP, Planner>::initExperiments(std::string _start, std:
 
 template <typename SP, typename EP, typename Planner>
 bool MotionPlannerROS<SP, EP, Planner>::canCallPlanner() const {
+    if(!SP::canCallPlanner())
+        ROS_ERROR("Map not updated.");
+    if(!EP::canCallPlanner())
+        ROS_ERROR("Experiment not updated.");
+      
     if(SP::canCallPlanner() && EP::canCallPlanner())
         return true;
     return false;
@@ -127,6 +132,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
         //ROS_ERROR("BFS3DBase: %d", heur->bfs_3d_base->GetGoalHeuristic(1));
         //SV_SHOW_INFO(heur->bfs_3d_base->getValuesVisualization());
 
+	 ros::param::set("/walker_planner_request", 0);
         if(!m_planner_ptr->plan(soltn)){
             ROS_WARN("Planning Episode %d Failed", _ep);
             return ExecutionStatus::FAILURE;
@@ -135,7 +141,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
             return ExecutionStatus::SUCCESS;
         }
     } else{
-        ROS_WARN("Can't call planner");
+        ROS_WARN_ONCE("Can't call planner");
         return ExecutionStatus::WAITING;
     }
 }
