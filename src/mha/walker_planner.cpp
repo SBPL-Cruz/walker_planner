@@ -689,7 +689,7 @@ int main(int argc, char** argv){
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(search_ptr.get(), space.get(), heurs, planner_params);
 
-    MotionPlannerROS< Callbacks, ReadExperimentFromParamServer, MotionPlanner >
+    MotionPlannerROS< Callbacks<>, ReadExperimentFromParamServer, MotionPlanner >
             mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
     ExecutionStatus status = ExecutionStatus::WAITING;

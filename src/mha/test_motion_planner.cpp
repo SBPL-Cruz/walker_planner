@@ -730,11 +730,11 @@ int main(int argc, char** argv){
     Heuristic* anchor_heur = heurs[0];
     std::vector<Heuristic*> inad_heurs( heurs.begin() + 1, heurs.end() );
 
-    //auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100, space.get());
-    std::array<double, 2> door_loc = {10, 5};
-    auto dirichlet_policy = std::make_unique<DirichletPolicy>( inad_heurs.size(), 100, space.get(), dynamic_cast<BfsHeuristic*>(heurs[0]), door_loc ); 
+    auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100, space.get());
+    //std::array<double, 2> door_loc = {10, 5};
+    //auto dirichlet_policy = std::make_unique<DirichletPolicy>( inad_heurs.size(), 100, space.get(), dynamic_cast<BfsHeuristic*>(heurs[0]), door_loc ); 
     auto search_ptr = std::make_unique<MRMHAPlanner>(
-            space.get(), anchor_heur, inad_heurs.data(), inad_heurs.size(), dirichlet_policy.get());
+            space.get(), anchor_heur, inad_heurs.data(), inad_heurs.size(), uniformly_random_policy.get());
 
     const int max_planning_time = planning_config.planning_time;
     const double eps = planning_config.eps;
@@ -745,7 +745,7 @@ int main(int argc, char** argv){
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(search_ptr.get(), space.get(), heurs, planner_params);
 
-    MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
+    MotionPlannerROS< Callbacks<>, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
     ExecutionStatus status = ExecutionStatus::WAITING;
     //while(status == ExecutionStatus::WAITING) {
