@@ -30,6 +30,7 @@
 #include "config/planner_config.h"
 #include "config/collision_space_scene.h"
 #include "config/get_collision_objects.h"
+#include "motion_planner.h"
 
 //Publish Path
 #include "walker_planner/GraspPose.h"
@@ -50,12 +51,15 @@ enum ExecutionStatus {
     WAITING
 };
 
-template < typename SceneUpdatePolicy, typename ExperimentPolicy, typename MotionPlanner >
+template < typename SceneUpdatePolicy,
+         typename ExperimentPolicy,
+         typename MotionPlanner,
+         typename RobotModel = smpl::KDLRobotModel >
 class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
     public:
 
     MotionPlannerROS( ros::NodeHandle _nh,
-            smpl::KDLRobotModel*,
+            RobotModel*,
             CollisionSpaceScene*,
             MotionPlanner*,
             smpl::OccupancyGrid* );
@@ -73,44 +77,44 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
     //Get occGrid and objects and add to occupancyGrid.
     MotionPlanner* m_planner_ptr;
     std::unordered_map<PlanningEpisode, MPlanner::PlannerSolution> m_planner_soltns;
-    smpl::KDLRobotModel* m_rm_ptr;
+    RobotModel* m_rm_ptr;
 };
 
 
-template <typename SP, typename EP, typename Planner>
-MotionPlannerROS<SP, EP, Planner>::MotionPlannerROS(
+template <typename SP, typename EP, typename Planner, typename RM>
+MotionPlannerROS<SP, EP, Planner, RM>::MotionPlannerROS(
         ros::NodeHandle _nh,
-        smpl::KDLRobotModel* _rm,
+        RM* _rm,
         CollisionSpaceScene* _scene,
         Planner* _planner,
         smpl::OccupancyGrid* _grid_ptr ) :
     SP(_nh, _scene, _grid_ptr), EP(_nh), m_rm_ptr{_rm},
     m_planner_ptr{_planner} {}
 
-template <typename SP, typename EP, typename Planner>
-bool MotionPlannerROS<SP, EP, Planner>::setPlannerParams(const MPlanner::PlannerParams& _params){
+template <typename SP, typename EP, typename Planner, typename RM>
+bool MotionPlannerROS<SP, EP, Planner, RM>::setPlannerParams(const MPlanner::PlannerParams& _params){
     return m_planner_ptr->updatePlannerParams(_params);
 }
 
-template <typename SP, typename EP, typename Planner>
-bool MotionPlannerROS<SP, EP, Planner>::initExperiments(std::string _start, std::string _goal){
+template <typename SP, typename EP, typename Planner, typename RM>
+bool MotionPlannerROS<SP, EP, Planner, RM>::initExperiments(std::string _start, std::string _goal){
     return this->init(_start, _goal);
 }
 
-template <typename SP, typename EP, typename Planner>
-bool MotionPlannerROS<SP, EP, Planner>::canCallPlanner() const {
+template <typename SP, typename EP, typename Planner, typename RM>
+bool MotionPlannerROS<SP, EP, Planner, RM>::canCallPlanner() const {
     if(!SP::canCallPlanner())
         ROS_ERROR("Map not updated.");
     if(!EP::canCallPlanner())
         ROS_ERROR("Experiment not updated.");
-      
+
     if(SP::canCallPlanner() && EP::canCallPlanner())
         return true;
     return false;
-} 
+}
 
-template <typename SP, typename EP, typename Planner>
-ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
+template <typename SP, typename EP, typename Planner, typename RM>
+ExecutionStatus MotionPlannerROS<SP, EP, Planner, RM>::execute(PlanningEpisode _ep){
     if(this->canCallPlanner()){
         // XXX The map/environment should be updated automatically??
         SMPL_INFO("Executing episode %d", _ep);
@@ -150,14 +154,14 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner>::execute(PlanningEpisode _ep){
     }
 }
 
-template <typename SP, typename EP, typename Planner>
-MPlanner::PlannerSolution MotionPlannerROS<SP, EP, Planner>::getPlan(PlanningEpisode _ep) const{
+template <typename SP, typename EP, typename Planner, typename RM>
+MPlanner::PlannerSolution MotionPlannerROS<SP, EP, Planner, RM>::getPlan(PlanningEpisode _ep) const{
     const MPlanner::PlannerSolution soltn = m_planner_soltns.at(_ep);
     return soltn;
 }
 
-template <typename SP, typename EP, typename Planner>
-bool MotionPlannerROS<SP, EP, Planner>::updateStart(
+template <typename SP, typename EP, typename Planner, typename RM>
+bool MotionPlannerROS<SP, EP, Planner, RM>::updateStart(
         const moveit_msgs::RobotState& _start){
     smpl::RobotState initial_positions;
     std::vector<std::string> missing;
@@ -190,11 +194,12 @@ bool MotionPlannerROS<SP, EP, Planner>::updateStart(
     return m_planner_ptr->updateStart(initial_positions);
 }
 
-template <typename SP, typename EP, typename Planner>
-bool MotionPlannerROS<SP, EP, Planner>::updateGoal(const smpl::GoalConstraint& _goal){
+template <typename SP, typename EP, typename Planner, typename RM>
+bool MotionPlannerROS<SP, EP, Planner, RM>::updateGoal(const smpl::GoalConstraint& _goal){
     m_planner_ptr->updateGoal(_goal);
 }
 
+template <typename RobotModel = smpl::KDLRobotModel>
 struct Callbacks {
 
     Callbacks( ros::NodeHandle,
@@ -202,7 +207,7 @@ struct Callbacks {
             smpl::OccupancyGrid* );
     bool canCallPlanner() const;
     bool updateMap(PlanningEpisode);
-    bool updateStart(const moveit_msgs::RobotState&, smpl::KDLRobotModel*);
+    bool updateStart(const moveit_msgs::RobotState&, RobotModel*);
 
     private:
 
@@ -250,4 +255,6 @@ bool IsMultiDOFJointVariable(
 std::vector<double> getResolutions(
         smpl::RobotModel* robot,
         const PlannerConfig& params );
+
+#include "detail/motion_planner_ros.hpp"
 #endif
