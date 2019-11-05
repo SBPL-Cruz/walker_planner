@@ -28,9 +28,10 @@ class Region {
     std::vector<subregion> subregions;
 };
 
+template <typename RobotModel = smpl::KDLRobotModel>
 class StartGoalGenerator {
     public:
-    bool init( smpl::collision::CollisionSpace*, smpl::KDLRobotModel*, unsigned int seed );
+    bool init( smpl::collision::CollisionSpace*, RobotModel*, unsigned int seed );
     bool addStartRegion(BoundedRegion&);
     bool addGoalRegion(BoundedRegion&);
     //* Generate N start-goal pairs uniformly randomly among the added start
@@ -43,7 +44,7 @@ class StartGoalGenerator {
 
     private:
     smpl::collision::CollisionSpace* m_cc = nullptr;
-    smpl::KDLRobotModel* m_rm = nullptr;
+    RobotModel* m_rm = nullptr;
 
     Region m_start_region;
     Region m_goal_region;
@@ -52,5 +53,7 @@ class StartGoalGenerator {
     //std::vector<std::vector<double>> m_goal_poses;
     std::vector<smpl::RobotState> m_goal_states;
 };
+
+#include "detail/start_goal_generator.hpp"
 
 #endif
