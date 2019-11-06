@@ -37,15 +37,20 @@ std::vector<double> Region::getRandState(){
     const int N = subregions[0].first.size();
     std::vector<double> state(N, 0);
     int subregionIx = rand() % subregions.size();
-    auto& lo = subregions[subregionIx].first;
-    auto& hi = subregions[subregionIx].second;
+    return getRandStateInSubregion(subregionIx);
+}
+
+std::vector<double> Region::getRandStateInSubregion(int _subregionIx){
+    const int N = subregions[0].first.size();
+    std::vector<double> state(N, 0);
+    auto& lo = subregions[_subregionIx].first;
+    auto& hi = subregions[_subregionIx].second;
     for(int i=0; i<state.size(); i++){
         if(fabs(hi[i] - lo[i]) < 0.001)
             state[i] = lo[i];
         else
             state[i] = getRandNum(lo[i], hi[i]);
     }
-
     return state;
 }
 

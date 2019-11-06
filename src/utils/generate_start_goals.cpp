@@ -10,7 +10,8 @@
 #include "config/collision_space_scene.h"
 #include "config/get_collision_objects.h"
 
-using RobotModel = smpl::TracIKRobotModel;
+//using RobotModel = smpl::TracIKRobotModel;
+using RobotModel = smpl::KDLRobotModel;
 
 bool addStartGoalRegionsForDoor(
         StartGoalGenerator<RobotModel>& generator,
@@ -84,14 +85,16 @@ bool addGoalRegionsForTable(
         hi[0] = table_x + table_size_x/2;
         lo[1] = table_y - table_size_y/2;
         hi[1] = table_y + table_size_y/2;
-        lo[2] = table_height + 0.15;
+        lo[2] = table_height + 0.05;
         hi[2] = table_height + 0.18;
 
-        //roll = 0
+        //roll
+        lo[3] = -3.14;
+        hi[3] = 3.14;
 
-        // Pitch downward
-        lo[4] = 0;//-0.7;
-        hi[4] = 0.10;
+        // Pitch
+        lo[4] = -3.14; //0
+        hi[4] = 3.14; //-0.1
 
         //yaw all around
         lo[5] = -3.14;
@@ -290,11 +293,15 @@ int main(int argc, char** argv){
     }
 
     ROS_INFO("Setting up robot model");
-    auto rm = SetupRobotModel<RobotModel>(robot_description, robot_config);
-    if (!rm) {
-        ROS_ERROR("Failed to set up Robot Model");
-        return 1;
-    }
+    auto fullbody_rm = SetupRobotModel<RobotModel>(robot_description, robot_config);
+    //auto arm_rm = std::make_unique<RobotModel>();
+    //if(!arm_rm->init(robot_description, "base_link", robot_config.chain_tip_link, 3)){
+        //ROS_ERROR("Failed to initialize RobotModel");
+        //return 1;
+    //}
+
+    SV_SHOW_INFO(cc.getCollisionRobotVisualization());
+    SV_SHOW_INFO(cc.getCollisionWorldVisualization());
 
     StartGoalGenerator<RobotModel> generator;
 
@@ -307,13 +314,13 @@ int main(int argc, char** argv){
         }
     }
     ROS_INFO("%d tables found in map.", tables.size());
-    generator.init(&cc, rm.get(), 1000);
+    generator.init(&cc, fullbody_rm.get(), 1000);
     //addStartGoalRegionsForDoor(generator, rm.get(), doors);
     //addStartRegionsForRoom1(generator, rm.get(), map_config.x_max, map_config.y_max);
-    addStartRegionsForRoom5(generator, rm.get(), map_config.x_max, map_config.y_max);
-    addGoalRegionsForTable(generator, rm.get(), tables);
+    addStartRegionsForRoom5(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
+    addGoalRegionsForTable(generator, fullbody_rm.get(), tables);
 
-    const int N = 50;
+    const int N = 5;
     auto status = generator.generate(N);
     if(status)
         ROS_INFO("Generated %d start-goal pairs.", N);
@@ -321,6 +328,6 @@ int main(int argc, char** argv){
         ROS_ERROR("Could not generate start-goal pairs.");
     generator.writeToFile(
             "x y theta right_j1 right_j2 right_j3 right_j4 right_j5 right_j6 right_j7\n",
-            "start_states.txt", "goal_states.txt");
+            "start_states.txt", "goal_states.txt", "goal_poses.txt");
 }
 
