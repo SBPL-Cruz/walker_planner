@@ -128,6 +128,15 @@ target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
 #add_dependencies( test_mrmha_rr_planner ${${PROJECT_NAME}_EXPORTED_TARGETS}
 #    ${catkin_EXPORTED_TARGETS} )
 
+add_executable( mrmhaplanner
+    src/mha/mrmhaplanner.cpp
+    src/motion_planner_ros.cpp
+    src/config/planner_config.cpp
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+target_link_libraries( mrmhaplanner ${catkin_LIBRARIES} smpl::smpl )
+
 add_executable( walker_planner
     src/mha/walker_planner.cpp
     src/motion_planner_ros.cpp
