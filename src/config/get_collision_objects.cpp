@@ -293,7 +293,7 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     pose.position.x = map_half_x/2;
     pose.position.y = 2*map_third_y;
     pose.position.z = z;
-    dims[0] = map_half_x - 2*d;
+    dims[0] = map_half_x - 2*door_width - 6*th; //to compensate for wall thickness
     dims[1] = th;
     dims[2] = ht;
     objs.push_back(GetCollisionCube(pose, dims, frame_id, object_id));
