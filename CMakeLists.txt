@@ -172,6 +172,13 @@ add_executable( test_ompl_planner
     src/config/planner_config.cpp)
 target_link_libraries( test_ompl_planner ${catkin_LIBRARIES} smpl::smpl )
 
+add_executable(generate_map
+    src/utils/generate_map.cpp
+    src/config/planner_config.cpp
+    src/config/get_collision_objects.cpp
+    ${AUXILIARY})
+target_link_libraries(generate_map ${catkin_LIBRARIES} smpl::smpl)
+
 add_executable(generate_start_goals
     src/utils/generate_start_goals.cpp
     src/utils/start_goal_generator.cpp
