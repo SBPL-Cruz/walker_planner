@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(walker_planner)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++14)
+add_compile_options(-std=c++17)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -86,6 +86,9 @@ set( PLANNERS
     src/planners/rmhaplanner.cpp)
     #src/planners/mrmhaplanner.cpp)
 
+set (AUXILIARY
+    src/utils/utils.cpp)
+
 add_executable(collision_model_visualizer src/debug/collision_model_visualizer.cpp
     src/config/collision_space_scene.cpp)
 target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
@@ -165,7 +168,8 @@ add_executable(generate_start_goals
     src/utils/start_goal_generator.cpp
     src/config/planner_config.cpp
     src/config/collision_space_scene.cpp
-    src/config/get_collision_objects.cpp)
+    src/config/get_collision_objects.cpp
+    ${AUXILIARY})
 target_link_libraries(generate_start_goals ${catkin_LIBRARIES} smpl::smpl)
 
 #add_executable( test_ik

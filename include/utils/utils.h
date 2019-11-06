@@ -4,6 +4,11 @@
 #include <cstdlib>
 #include <cmath>
 #include <limits>
+#include <utility>
+#include <vector>
+
+#include <smpl/spatial.h>
+#include <smpl/angles.h>
 
 template <typename T>
 inline T getRandNum(const T _lo, const T _hi ){
@@ -62,5 +67,7 @@ inline bool areClose( const smpl::Affine3& a, const smpl::Affine3& b ){
 inline bool areClose(const double a, const double b){
     return fabs(a - b) < 0.001;
 }
+
+std::vector<double> poseToXYZRPY(Eigen::Affine3d& _pose);
 
 #endif
