@@ -172,13 +172,13 @@ add_executable(generate_start_goals
     ${AUXILIARY})
 target_link_libraries(generate_start_goals ${catkin_LIBRARIES} smpl::smpl)
 
-#add_executable( test_ik
-#    src/test_ik.cpp
-#    src/collision_space_scene.cpp
-#    src/planner_config.cpp
-#    src/get_collision_objects.cpp)
-#target_link_libraries(test_ik ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
-#add_dependencies( test_ik ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+add_executable( test_ik
+    test/test_ik.cpp
+    src/config/collision_space_scene.cpp
+    src/config/planner_config.cpp
+    src/config/get_collision_objects.cpp)
+target_link_libraries(test_ik ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
+add_dependencies( test_ik ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
 
 add_executable( test_templated_mrmha_planner
     test/test_mrmhaplanner.cpp
