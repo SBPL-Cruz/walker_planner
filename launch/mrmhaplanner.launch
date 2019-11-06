@@ -19,7 +19,7 @@
 required="true" /> -->
 
     <node pkg="walker_planner" type="mrmhaplanner" name="mrmhaplanner"
-            launch-prefix="$(arg launch-prefix)" output="screen">
+            launch-prefix="$(arg launch-prefix)" output="screen" required="true">
         <param name="planning_frame" value="dummy_base"/>
 
         <!-- 1. robot model (for planning) -->
@@ -57,9 +57,10 @@ required="true" /> -->
 
         <param name="allowed_planning_time" value="60.0"/>
         <param name="read_goal_from_file" value="true"/>
-        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/start_states.txt" />
-        <param name="robot_goal_states_file" value="$(find
-        walker_planner)/experiments/goal_poses.txt" />
+        <!-- <param name="robot_start_states_file" value="$(find
+        walker_planner)/experiments/start_states.txt" /> -->
+        <!-- <param name="robot_goal_states_file" value="$(find
+        walker_planner)/experiments/goal_poses.txt" /> -->
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
@@ -69,7 +70,7 @@ required="true" /> -->
         <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
 
         <!-- 2.2 world state -->
-        <param name="object_filename" value="$(find walker_planner)/env/multi_rooms.env"/>
+        <param name="object_filename" value="$(find walker_planner)/experiments/train/easy/multi_room_map.env"/>
 
         <!-- 3. scenario -->
 

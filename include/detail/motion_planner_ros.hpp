@@ -52,20 +52,21 @@ bool Callbacks<RM>::updateMap(PlanningEpisode _ep){
     //    ROS_INFO("Could not added octomap");
     //    return false;
     //}
-    auto map_config = getMultiRoomMapConfig(m_nh);
-    std::vector<moveit_msgs::CollisionObject> tmp;
-    auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config, tmp);
-    for (auto& object : objects) {
-        m_collision_scene->ProcessCollisionObjectMsg(object);
-    }
+    //auto map_config = getMultiRoomMapConfig(m_nh);
+    //std::vector<moveit_msgs::CollisionObject> tmp;
+    //auto objects = GetMultiRoomMapCollisionCubes(m_grid->getReferenceFrame(), map_config, tmp);
+    //for (auto& object : objects) {
+        //m_collision_scene->ProcessCollisionObjectMsg(object);
+    //}
 
-    //std::string filename;
-    //ros::param::get("/walker_planner/object_filename", filename);
-    //ROS_DEBUG("Object filename: %s", filename.c_str());
-    //
-    //auto objects = GetCollisionObjects(filename, m_grid->getReferenceFrame());
-    //for (auto& object : objects)
-    //    m_collision_scene->ProcessCollisionObjectMsg(object);
+    std::string filename;
+    m_nh.getParam("object_filename", filename);
+
+    ROS_INFO("Object filename: %s", filename.c_str());
+
+    auto objects = GetCollisionObjects(filename, m_grid->getReferenceFrame());
+    for (auto& object : objects)
+        m_collision_scene->ProcessCollisionObjectMsg(object);
 
     //m_grid->addPointsToField(m_occgrid_points);
 
