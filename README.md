@@ -5,10 +5,13 @@ Setup
 ------
 
 1. Clone this repo (unified_planner branch) in catkin_ws/src
+
 Also clone following :
-2. git clone https://github.com/shivamvats/smpl.git -b mrmha
-3. git clone https://github.com/aurone/leatherman
-4. git clone https://github.com/SBPL-Cruz/wheeled_walker
+```
+git clone https://github.com/shivamvats/smpl.git -b mrmha
+git clone https://github.com/aurone/leatherman
+git clone https://github.com/SBPL-Cruz/wheeled_walker
+```
 
 In separate folder :
 ```
@@ -20,10 +23,14 @@ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 make install
 ```
 
-4. Change ~/lolocal in smpl/smpl/CmakeLists.txt and smpl/smpl/smpl-config.cmake.in to install path inside sbpl folder created above
+4. Change ```~/lolocal``` in ```smpl/smpl/CmakeLists.txt``` and ```smpl/smpl/smpl-config.cmake.in``` to install path inside sbpl folder created above
 
-5. sudo apt-get install ros-kinetic-trac-ik 
-6. catkin build walker_planner
+5. Install also :
+```
+sudo apt-get install ros-kinetic-trac-ik 
+```
+6. Build only our package: 
+```catkin build walker_planner```
 
 Rviz
 ------
@@ -35,7 +42,19 @@ Generating Traj
 --------------
 Working directory : walker_planner
 
-1. roslaunch walker_planner generate_map.launch. Generates map in ~/.ros/-multi_room_map.env. Copy this to env folder and rename to planning_proj.env
-2. roslaunch walker_planner generate_start_goals.launch (generates 500 start/goal pairs in ~/.ros/goal_* ~/.ros/start_*. Copy these to environments folder
-3. Change number of paths you need to generate plans for (start/goal pairs) in config/walker_right_arm.yaml in the end_planning_episode variable. Set to 499 to generate for all start/goal pairs. **By default this is set to 0 to visualize plan for the first start/goal pair only**
-4. roslaunch walker_planner mrmhaplanner.launch
+1. Generate map in ~/.ros/-multi_room_map.env. Copy this to env folder and rename to proj_env.env : 
+```
+roslaunch walker_planner generate_map.launch
+cp ~/.ros/-multi_room_map.env env/proj_env.env
+```
+
+2. Generate start/goal pairs. Generates 500 start/goal pairs in ~/.ros/goal_* ~/.ros/start_*. Copy these to environments folder
+
+```
+roslaunch walker_planner generate_start_goals.launch 
+cp ~/.ros/goal_* experiments
+cp ~/.ros/start_states.txt experiments/
+```
+3. Change number of paths you need to generate plans for (start/goal pairs) in ```config/walker_right_arm.yaml``` in the ```end_planning_episode variable```. Set to 499 to generate for all start/goal pairs. **By default this is set to 0 to visualize plan for the first start/goal pair only**
+4. Run planner and verify in RVIZ :
+```roslaunch walker_planner mrmhaplanner.launch```
