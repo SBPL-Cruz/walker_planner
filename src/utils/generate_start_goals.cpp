@@ -165,7 +165,6 @@ bool addStartRegionsForRoom5(
     return true;
 }
 
-
 int main(int argc, char** argv){
     ros::init(argc, argv, "generate_start_goal");
     ros::NodeHandle nh;
@@ -279,18 +278,27 @@ int main(int argc, char** argv){
         ROS_ERROR("Failed to read planner config");
         return 1;
     }
-    planning_config.cost_per_cell = 1000;
     ROS_INFO("Initialize scene");
 
     scene_ptr->SetCollisionSpace(&cc);
 
-    std::vector<moveit_msgs::CollisionObject> doors;
     auto map_config = getMultiRoomMapConfig(ph);
+
+    /*
+    //std::vector<moveit_msgs::CollisionObject> doors;
     //auto objects = GetMultiRoomMapCollisionCubes(doors, grid_ptr->getReferenceFrame(), map_config);
     auto objects = GetMultiRoomMapCollisionCubes( grid_ptr->getReferenceFrame(), map_config, doors );
     for (auto& object : objects) {
         scene_ptr->ProcessCollisionObjectMsg(object);
-    }
+    }*/
+    std::string filename;
+    ph.getParam("object_filename", filename);
+
+    ROS_INFO("Object filename: %s", filename.c_str());
+
+    auto objects = GetCollisionObjects(filename, grid_ptr->getReferenceFrame());
+    for (auto& object : objects)
+        scene_ptr->ProcessCollisionObjectMsg(object);
 
     ROS_INFO("Setting up robot model");
     auto fullbody_rm = SetupRobotModel<RobotModel>(robot_description, robot_config);
@@ -301,7 +309,7 @@ int main(int argc, char** argv){
     //}
 
     SV_SHOW_INFO(cc.getCollisionRobotVisualization());
-    SV_SHOW_INFO(cc.getCollisionWorldVisualization());
+    SV_SHOW_INFO(cc.getOccupiedVoxelsVisualization());
 
     StartGoalGenerator<RobotModel> generator;
 
@@ -314,13 +322,13 @@ int main(int argc, char** argv){
         }
     }
     ROS_INFO("%d tables found in map.", tables.size());
-    generator.init(&cc, fullbody_rm.get(), 1000);
+    generator.init(&cc, fullbody_rm.get(), 2090);
     //addStartGoalRegionsForDoor(generator, rm.get(), doors);
-    //addStartRegionsForRoom1(generator, rm.get(), map_config.x_max, map_config.y_max);
-    addStartRegionsForRoom5(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
+    addStartRegionsForRoom1(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
+    //addStartRegionsForRoom5(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
     addGoalRegionsForTable(generator, fullbody_rm.get(), tables);
 
-    const int N = 5;
+    const int N = 50;
     auto status = generator.generate(N);
     if(status)
         ROS_INFO("Generated %d start-goal pairs.", N);
