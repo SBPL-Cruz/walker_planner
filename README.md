@@ -25,8 +25,13 @@ make install
 5. sudo apt-get install ros-kinetic-trac-ik 
 6. catkin build walker_planner
 
+Rviz
+------
+1. Start RVIZ
+2. Open the config in the repo proj.rviz
+3. Once this open, map, goal states while generating goals and generate plan can be visualized
 
-Generating Taj
+Generating Traj
 --------------
 Working directory : walker_planner
 
