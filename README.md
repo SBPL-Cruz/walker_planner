@@ -27,6 +27,6 @@ make install
 
 4. Change ~/lolocal in smpl/smpl/CmakeLists.txt and smpl/smpl/smpl-config.cmake.in to install path inside sbpl folder created above
 
-5. catkin_build
+5. catkin build
 
 6.
