@@ -12,3 +12,4 @@ Setup
 1. Clone this repo in catkin_ws/src
 2. git clone https://github.com/shivamvats/smpl.git -b mrmha
 3. git clone https://github.com/shivamvats/sbpl -b mrmha
+4. git clone https://github.com/aurone/leatherman
