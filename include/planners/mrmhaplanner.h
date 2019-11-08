@@ -219,7 +219,7 @@ class MRMHAPlanner : public SBPLPlanner {
     int sampleIndex(const std::array<double, N>& likelihoods);
     int chooseQueue();
     int compute_heuristic(int state_id, int hidx);
-    void expand(MRMHASearchState* state, int hidx);
+    virtual void expand(MRMHASearchState* state, int hidx);
 
     int get_minf(CHeap& pq) const {
         return pq.min()->f;

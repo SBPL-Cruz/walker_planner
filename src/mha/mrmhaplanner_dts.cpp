@@ -19,7 +19,6 @@
 #include <smpl/search/smhastar.h>
 #include <sbpl/planners/types.h>
 
-#include "planners/mrmhaplanner.h"
 #include "planners/mrmhaplanner_dts.h"
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
@@ -652,7 +651,7 @@ int main(int argc, char** argv) {
 
     std::array<int, NUM_QUEUES> rep_ids;
     for(auto& ele : rep_ids)
-        ele = (int)Fullbody;
+        ele = (int)Base;
     rep_ids[0] = (int)Fullbody;
     rep_ids[1] = (int)Fullbody;
 
@@ -676,7 +675,7 @@ int main(int argc, char** argv) {
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(search_ptr.get(), space.get(), heurs, planner_params);
 
-    MotionPlannerROS< Callbacks, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
+    MotionPlannerROS< Callbacks<>, ReadExperimentsFromFile, MotionPlanner > mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
     ExecutionStatus status = ExecutionStatus::WAITING;
     std::string file_prefix = "paths/solution_path";

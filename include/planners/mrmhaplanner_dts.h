@@ -3,6 +3,9 @@
 
 #include <algorithm>
 #include <array>
+// Beta distribution
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 
 #include <sbpl/planners/planner.h>
 #include <sbpl/heuristics/heuristic.h>
@@ -27,8 +30,7 @@ class MRMHAPlannerDTS : public MRMHAPlanner<N, R, SP> {
         std::array<std::array<int, R>, R>& rep_dependency_matrix,
         SP* scheduling_policy );
 
-    virtual ~MRMHAPlannerDTS(){
-    }
+    virtual ~MRMHAPlannerDTS();
 
     /// Required from SBPLPlanner:
     //{
@@ -46,13 +48,7 @@ class MRMHAPlannerDTS : public MRMHAPlanner<N, R, SP> {
 
     private:
 
-    // 0 index reserved for the anchor queue
-    // even if we won't be updating anchor's values.
-    std::array<double, N> m_alphas, m_betas;
-    double m_C = 10;
-    std::array<int, N> m_best_h, m_prev_best_h ;
-
-    using MRMHAPlanner<N, R, SP>::MRMHASearchState;
+    using MRMHASearchState = typename MRMHAPlanner<N, R, SP>::MRMHASearchState;
     using MRMHAPlanner<N, R, SP>::reinit_search;
     using MRMHAPlanner<N, R, SP>::reinit_state;
     using MRMHAPlanner<N, R, SP>::num_heuristics;
@@ -60,10 +56,24 @@ class MRMHAPlannerDTS : public MRMHAPlanner<N, R, SP> {
     using MRMHAPlanner<N, R, SP>::compute_key;
     using MRMHAPlanner<N, R, SP>::m_start_state;
     using MRMHAPlanner<N, R, SP>::m_goal_state;
+    using MRMHAPlanner<N, R, SP>::m_rep_ids;
+    using MRMHAPlanner<N, R, SP>::m_rep_dependency_matrix;
     using MRMHAPlanner<N, R, SP>::m_open;
     using MRMHAPlanner<N, R, SP>::m_params;
     using MRMHAPlanner<N, R, SP>::m_eps;
     using MRMHAPlanner<N, R, SP>::m_eps_mha;
+
+    void updateDistribution(int ridx, int reward);
+    virtual void expand(MRMHASearchState* state, int hidx);
+
+    // 0 index reserved for the anchor queue
+    // even if we won't be updating anchor's values.
+    std::array<double, R> m_alphas {}, m_betas {} ;
+    double m_C = 10;
+    std::array<int, N> m_best_h, m_prev_best_h ;
+    std::array<int, R> m_rep_h_count {};
+    const gsl_rng_type* m_gsl_rand_T;
+    gsl_rng* m_gsl_rand;
 
     int chooseRep();
 
