@@ -23,7 +23,7 @@ planning:
   inflation_radius_3d: 0.02
   eps: 10
   eps_mha: 1.5
-  planning_time: 120
+  planning_time: 20
   start_planning_episode: 0
   end_planning_episode: 0
   seed: 100

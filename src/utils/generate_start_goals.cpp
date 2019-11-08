@@ -136,6 +136,63 @@ bool addStartRegionsForRoom1(
     return true;
 }
 
+bool addStartRegionsForRoom3(
+        StartGoalGenerator<RobotModel>& generator,
+        const smpl::urdf::URDFRobotModel* rm,
+        double map_x,
+        double map_y){
+
+    {
+        BoundedRegion start_region;
+        std::vector<double> lo(10, 0);
+        std::vector<double> hi(10, 0);
+        lo[0] = 0.5;
+        hi[0] = map_x/2 - 0.5;
+        lo[1] = map_y/3 + 0.5;
+        hi[1] = 2*map_y/3 - 0.5;
+        lo[2] = -3.14;
+        hi[2] = 3.14;
+        for(int i=3; i<10; i++){
+            hi[i] = rm->vprops[i].max_position;
+            lo[i] = rm->vprops[i].min_position;
+            ROS_INFO("%f, %f", lo[i], hi[i]);
+        }
+        start_region.lo = lo;
+        start_region.hi = hi;
+        generator.addStartRegion(start_region);
+    }
+    return true;
+}
+
+
+bool addStartRegionsForRoom4(
+        StartGoalGenerator<RobotModel>& generator,
+        const smpl::urdf::URDFRobotModel* rm,
+        double map_x,
+        double map_y){
+
+    {
+        BoundedRegion start_region;
+        std::vector<double> lo(10, 0);
+        std::vector<double> hi(10, 0);
+        lo[0] = map_x/2 + 0.5;
+        hi[0] = map_x - 0.5;
+        lo[1] = map_y/2 + 0.5;
+        hi[1] = map_y - 0.5;
+        lo[2] = -3.14;
+        hi[2] = 3.14;
+        for(int i=3; i<10; i++){
+            hi[i] = rm->vprops[i].max_position;
+            lo[i] = rm->vprops[i].min_position;
+            ROS_INFO("%f, %f", lo[i], hi[i]);
+        }
+        start_region.lo = lo;
+        start_region.hi = hi;
+        generator.addStartRegion(start_region);
+    }
+    return true;
+}
+
 // The Hard tests
 bool addStartRegionsForRoom5(
         StartGoalGenerator<RobotModel>& generator,
@@ -316,11 +373,13 @@ int main(int argc, char** argv){
     ROS_INFO("%d tables found in map.", tables.size());
     generator.init(&cc, fullbody_rm.get(), 1000);
     //addStartGoalRegionsForDoor(generator, rm.get(), doors);
-    //addStartRegionsForRoom1(generator, rm.get(), map_config.x_max, map_config.y_max);
+    addStartRegionsForRoom1(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
+    addStartRegionsForRoom3(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
+    addStartRegionsForRoom4(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
     addStartRegionsForRoom5(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
     addGoalRegionsForTable(generator, fullbody_rm.get(), tables);
 
-    const int N = 5;
+    const int N = 500;
     auto status = generator.generate(N);
     if(status)
         ROS_INFO("Generated %d start-goal pairs.", N);

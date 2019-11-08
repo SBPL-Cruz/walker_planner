@@ -377,9 +377,9 @@ smpl::GoalConstraint stringToGoalConstraint(std::string _pose_str){
     goal.xyz_tolerance[0] = 0.05;
     goal.xyz_tolerance[1] = 0.05;
     goal.xyz_tolerance[2] = 0.05;
-    goal.rpy_tolerance[0] = 0.39;
-    goal.rpy_tolerance[1] = 0.39;
-    goal.rpy_tolerance[2] = 0.39;
+    goal.rpy_tolerance[0] = 3.14;
+    goal.rpy_tolerance[1] = 3.14;
+    goal.rpy_tolerance[2] = 3.14;
 
     return goal;
 }
