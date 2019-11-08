@@ -24,4 +24,10 @@ make install
 
 5. catkin build
 
-6.
+
+Generating Taj
+--------------
+
+1. roslaunch walker_planner generate_map.launch. Generates map in ~/.ros/-multi_room_map.env. Copy this to env folder and rename to planning_proj.env
+2. roslaunch walker_planner generate_start_goals.launch (generates 500 start/goal pairs in ~/.ros/goal_* ~/.ros/start_*. Copy these to environments folder
+2. roslaunch walker_planner mrmhaplanner.launch
