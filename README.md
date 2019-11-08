@@ -37,5 +37,5 @@ Working directory : walker_planner
 
 1. roslaunch walker_planner generate_map.launch. Generates map in ~/.ros/-multi_room_map.env. Copy this to env folder and rename to planning_proj.env
 2. roslaunch walker_planner generate_start_goals.launch (generates 500 start/goal pairs in ~/.ros/goal_* ~/.ros/start_*. Copy these to environments folder
-3. Change number of paths you need to generate plans for (start/goal pairs) in config/walker_right_arm.yaml in the end_planning_episode variable. Set to 499 to generate for all start/goal pairs. *By default this is set to 0 to visualize plan for the first start/goal pair only*
+3. Change number of paths you need to generate plans for (start/goal pairs) in config/walker_right_arm.yaml in the end_planning_episode variable. Set to 499 to generate for all start/goal pairs. **By default this is set to 0 to visualize plan for the first start/goal pair only**
 4. roslaunch walker_planner mrmhaplanner.launch
