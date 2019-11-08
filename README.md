@@ -10,6 +10,22 @@ Setup
 ------
 
 1. Clone this repo in catkin_ws/src
+Also clone following :
 2. git clone https://github.com/shivamvats/smpl.git -b mrmha
-3. git clone https://github.com/shivamvats/sbpl -b mrmha
-4. git clone https://github.com/aurone/leatherman
+3. git clone https://github.com/aurone/leatherman
+
+In separate folder :
+```
+git clone https://github.com/shivamvats/sbpl -b mrmha
+mkdir build
+mkdir install
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=../install ..
+make install
+```
+
+4. Change ~/lolocal to install path inside sbpl folder created above
+
+5. catkin config --blacklist sbpl_ompl_interface
+
+6.
