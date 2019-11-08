@@ -22,7 +22,8 @@ make install
 
 4. Change ~/lolocal in smpl/smpl/CmakeLists.txt and smpl/smpl/smpl-config.cmake.in to install path inside sbpl folder created above
 
-5. catkin build walker_planner
+5. sudo apt-get install ros-kinetic-trac-ik 
+6. catkin build walker_planner
 
 
 Generating Taj
