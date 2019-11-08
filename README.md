@@ -9,10 +9,11 @@ To Do
 Setup
 ------
 
-1. Clone this repo in catkin_ws/src
+1. Clone this repo (unified_planner branch) in catkin_ws/src
 Also clone following :
 2. git clone https://github.com/shivamvats/smpl.git -b mrmha
 3. git clone https://github.com/aurone/leatherman
+4. git clone https://github.com/SBPL-Cruz/wheeled_walker
 
 In separate folder :
 ```
@@ -24,8 +25,8 @@ cmake -DCMAKE_INSTALL_PREFIX=../install ..
 make install
 ```
 
-4. Change ~/lolocal to install path inside sbpl folder created above
+4. Change ~/lolocal in smpl/smpl/CmakeLists.txt and smpl/smpl/smpl-config.cmake.in to install path inside sbpl folder created above
 
-5. catkin config --blacklist sbpl_ompl_interface
+5. catkin_build
 
 6.
