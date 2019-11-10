@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(walker_planner)
 
-## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++17)
 
 ## Find catkin macros and libraries
@@ -25,22 +24,24 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
 )
 
-
 find_package(orocos_kdl REQUIRED)
-find_package(Boost REQUIRED COMPONENTS unit_test_framework)
+find_package(Boost REQUIRED) #COMPONENTS )
 find_package(OMPL REQUIRED)
 find_package(smpl REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(GSL REQUIRED)
 #list(APPEND CMAKE_PREFIX_PATH "~/lolocal")
+#find_package(panini REQUIRED)
 #find_package(hsearch REQUIRED)
+
+find_package( PkgConfig REQUIRED)
+pkg_check_modules( gsl REQUIRED gsl )
 
 add_definitions(-DSV_PACKAGE_NAME="walker_planner")
 include_directories(SYSTEM ${catkin_INCLUDE_DIRS})
 include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 include_directories(SYSTEM ${orocos_kdl_INCLUDE_DIRS})
-#include_directories(SYSTEM "~/lolocal/include/gsl")
+include_directories(SYSTEM "~/lolocal/include/panini")
 #include_directories(SYSTEM ${CATKIN_DEVEL_PREFIX}/include})
 
 
@@ -104,7 +105,6 @@ target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
 #add_dependencies( test_motion_planner ${${PROJECT_NAME}_EXPORTED_TARGETS}
 #    ${catkin_EXPORTED_TARGETS} )
 #
-
 add_executable( mrmhaplanner
     src/mha/mrmhaplanner.cpp
     src/motion_planner_ros.cpp
@@ -114,14 +114,14 @@ add_executable( mrmhaplanner
     )
 target_link_libraries( mrmhaplanner ${catkin_LIBRARIES} smpl::smpl )
 
-add_executable( walker_planner
-    src/mha/walker_planner.cpp
+add_executable( mhaplanner
+    src/mha/mhaplanner.cpp
     src/motion_planner_ros.cpp
-    src/config/collision_space_scene.cpp
     src/config/planner_config.cpp
-    src/config/get_collision_objects.cpp)
-target_link_libraries(walker_planner ${catkin_LIBRARIES} smpl::smpl ${orocos_kdl_LIBRARIES})
-add_dependencies( walker_planner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS} )
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+target_link_libraries( mhaplanner ${catkin_LIBRARIES} smpl::smpl )
 
 add_executable( mhaplanner_single_param
     src/mha/mhaplanner_single_param.cpp

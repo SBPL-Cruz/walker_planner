@@ -62,6 +62,8 @@ bool StartGoalGenerator<RM>::generate(int _n){
         smpl::RobotState seed_state(this->m_start_region.getRandState().size(), 0);
         // Will find a robot state around this end-eff pose.
         auto rand_goal = m_goal_region.getRandState();
+        //while(m_cc->grid()->getDistance(rand_goal[0], rand_goal[1], rand_goal[2]) < 0.01)
+            //rand_goal = m_goal_region.getRandState();
 
         smpl::Affine3 goal_pose;
         geometry_msgs::Pose read_grasp;
@@ -134,6 +136,8 @@ bool StartGoalGenerator<RM>::generate(int _n){
                             //ros::Duration(1.0).sleep();
                             m_goal_states.push_back(possible_state);
                             m_goal_poses.push_back(pose_xyzrpy);
+                            SV_SHOW_INFO_NAMED("goal_pose",
+                                    smpl::visual::MakePoseMarkers(end_eff_pose, "dummy_base", "goal_pose"));
                             found_goal_state = true;
                         }
                         iters++;

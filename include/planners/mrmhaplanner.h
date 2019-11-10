@@ -210,7 +210,7 @@ class MRMHAPlanner : public SBPLPlanner {
 
     void clear_open_lists();
     void clear();
-    int compute_key(MRMHASearchState* state, int hidx);
+    virtual int compute_key(MRMHASearchState* state, int hidx);
 
     MRMHASearchState* state_from_open_state(typename MRMHASearchState::HeapData* open_state){
         return open_state->me;

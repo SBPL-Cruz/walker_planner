@@ -8,12 +8,7 @@ moveit_msgs::CollisionObject GetCollisionCube(
     const std::string& id) {
     moveit_msgs::CollisionObject object;
     object.id = id;
-    if( id.compare( 0, 4, "door" ) == 0 ){
-        ROS_ERROR("%s", id.c_str());
-        object.operation = moveit_msgs::CollisionObject::REMOVE;
-    }
-    else
-        object.operation = moveit_msgs::CollisionObject::ADD;
+    object.operation = moveit_msgs::CollisionObject::ADD;
     object.header.frame_id = frame_id;
     object.header.stamp = ros::Time::now();
 
