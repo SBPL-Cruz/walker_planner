@@ -1,0 +1,75 @@
+<launch>
+    <env name="ROSCONSOLE_CONFIG_FILE" value="$(find walker_planner)/config/rosconsole.config" />
+
+    <arg name="debug" default="false"/>
+    <arg name="rvizconfig" default ="$(find walker_planner)/config/urdf.rviz" />
+
+
+    <include file="$(find walker_planner)/launch/planning_context_walker.launch"/>
+
+    <arg unless="$(arg debug)" name="launch-prefix" value=""/>
+    <arg     if="$(arg debug)" name="launch-prefix" value="gdb -ex run --args"/>
+    <env name="SMPL_VISUALIZE_CONFIG_FILE" value="$(find walker_planner)/config/smpl_visual.ini"/>
+
+    <!-- tf -->
+    <!-- <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"/> -->
+    <!-- <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" /> -->
+
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)"
+required="true" /> -->
+
+    <node pkg="walker_planner" type="mrmhaplanner_ucb" name="mrmhaplanner_ucb"
+            launch-prefix="$(arg launch-prefix)" output="screen" required="true">
+        <param name="planning_frame" value="dummy_base"/>
+
+        <!-- 1. robot model (for planning) -->
+        <rosparam param="robot_model">
+            group_name: full_body
+            planning_joints:
+                x
+                y
+                theta
+                right_j1
+                right_j2
+                right_j3
+                right_j4
+                right_j5
+                right_j6
+                right_j7
+            kinematics_frame:
+                planar_1
+            chain_tip_link:
+                right_palm_dummy_link
+        </rosparam>
+
+        <!-- collision checking -->
+        <rosparam command="load" file="$(find walker_planner)/config/collision_model_walker.yaml"/>
+
+        <!-- planner params -->
+        <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
+        <param name="planning/mprim_filenames" value="$(find
+        walker_planner)/config/walker_multi_rep.mprim,$(find
+        walker_planner)/config/walker_multi_rep_right_arm.mprim,$(find
+        walker_planner)/config/walker_multi_rep_base.mprim"/>
+
+        <param name="planning/mprim_filename" value="$(find
+        walker_planner)/config/walker_multi_rep.mprim"/>
+
+        <!-- <param name="robot_start_states_file" value="$(find walker_planner)/experiments/train/easy/short/start_states.txt" /> -->
+        <!-- <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/train/easy/short/goal_poses.txt" /> -->
+
+        <!-- 2. scene -->
+        <!-- 2.1 robot state -->
+        <rosparam command="load" file="$(find
+        walker_planner)/experiments/walker_goal_mrmha.yaml"/>
+
+        <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
+
+        <!-- 2.2 world state -->
+        <!-- <param name="object_filename" value="$(find walker_planner)/experiments/train/easy/multi_room_map.env"/> -->
+
+        <!-- 3. scenario -->
+
+    </node>
+
+</launch>
