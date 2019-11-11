@@ -29,7 +29,8 @@ find_package(Boost REQUIRED) #COMPONENTS )
 find_package(OMPL REQUIRED)
 find_package(smpl REQUIRED)
 find_package(Eigen3 REQUIRED)
-#list(APPEND CMAKE_PREFIX_PATH "~/lolocal")
+list(APPEND CMAKE_PREFIX_PATH "~/lolocal")
+find_package(sbpl REQUIRED)
 #find_package(panini REQUIRED)
 #find_package(hsearch REQUIRED)
 
@@ -81,14 +82,20 @@ CATKIN_DEPENDS geometry_msgs leatherman moveit_msgs moveit_ros_planning message_
 include_directories(
  include
   ${catkin_INCLUDE_DIRS}
+  ${SBPL_INCLUDE_DIRS}
 )
 
 set( PLANNERS
     src/planners/rmhaplanner.cpp)
     #src/planners/mrmhaplanner.cpp)
 
-set (AUXILIARY
-    src/utils/utils.cpp)
+set( SOURCE_FILES
+    src/scheduling_policies.cpp
+    src/utils/utils.cpp
+    )
+
+add_library(generic_planner SHARED ${SOURCE_FILES})
+target_link_libraries(generic_planner ${gsl_LIBRARIES})
 
 add_executable(collision_model_visualizer src/debug/collision_model_visualizer.cpp
     src/config/collision_space_scene.cpp)
@@ -161,18 +168,17 @@ target_link_libraries( test_ompl_planner ${catkin_LIBRARIES} smpl::smpl )
 add_executable(generate_map
     src/utils/generate_map.cpp
     src/config/planner_config.cpp
-    src/config/get_collision_objects.cpp
-    ${AUXILIARY})
-target_link_libraries(generate_map ${catkin_LIBRARIES} smpl::smpl)
+    src/config/get_collision_objects.cpp)
+target_link_libraries(generate_map ${catkin_LIBRARIES} smpl::smpl
+    generic_planner)
 
 add_executable(generate_start_goals
     src/utils/generate_start_goals.cpp
     src/utils/start_goal_generator.cpp
     src/config/planner_config.cpp
     src/config/collision_space_scene.cpp
-    src/config/get_collision_objects.cpp
-    ${AUXILIARY})
-target_link_libraries(generate_start_goals ${catkin_LIBRARIES} smpl::smpl)
+    src/config/get_collision_objects.cpp)
+target_link_libraries(generate_start_goals ${catkin_LIBRARIES} smpl::smpl generic_planner)
 
 add_executable( test_ik
     test/test_ik.cpp
