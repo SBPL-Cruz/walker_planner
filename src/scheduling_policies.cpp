@@ -63,3 +63,41 @@ void DTSPolicy::updatePolicy( double _reward, int _arm )
         m_betas[_arm] *= (m_C/(m_C + 1));
     }
 }
+UCBPolicy::UCBPolicy( int _num_arms, unsigned int _seed ) :
+    MABPolicy(_num_arms),
+    m_T{_num_arms}
+{
+    m_pull_counts.resize(_num_arms, 0);
+    m_rewards.resize(_num_arms, 0);
+    m_ucbs.resize(_num_arms);
+    m_pulls.resize(_num_arms, 0);
+    srand(_seed);
+}
+
+int UCBPolicy::getAction()
+{
+    m_T++;
+    for( int i = 0; i < numArms(); i++ )
+    {
+        if( m_pulls[i] == 0 )
+            return i;
+    }
+    std::vector<double> ucbs;
+    for( int i = 0; i < numArms(); i++ )
+    {
+        double ucb = m_rewards[i] / m_pulls[i] +
+                m_alpha* sqrt( 2*log(m_T) / m_pulls[i] );
+        ucbs.push_back(ucb);
+        m_ucbs[i].push_back(ucb);
+    }
+    int pull = panini::algo::argmax(ucbs);
+    m_pulls[pull]++;
+    return pull;
+}
+
+void UCBPolicy::updatePolicy( double _reward, int _hidx )
+{
+    m_rewards[_hidx] += _reward;
+    m_pulls[_hidx] += 1;
+}
+

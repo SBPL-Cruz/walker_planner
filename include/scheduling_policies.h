@@ -147,6 +147,23 @@ class DTSPolicy : public MABPolicy
     gsl_rng* m_gsl_rand;
 };
 
+class UCBPolicy : public MABPolicy
+{
+    public:
+    UCBPolicy( int num_arms, unsigned int seed );
+
+    int getAction() override;
+    void updatePolicy( double reward, int arm ) override;
+
+    private:
+    double m_alpha = 0.75;
+    int m_T = 0;
+    std::vector<int> m_pull_counts;
+    std::vector<double> m_rewards;
+
+    std::vector< std::vector<double> > m_ucbs;
+    std::vector<int> m_pulls;
+};
 using Point = std::array<double, 2>;
 
 class DirichletPolicy : public SchedulingPolicy {
