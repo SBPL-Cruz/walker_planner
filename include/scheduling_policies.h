@@ -109,7 +109,6 @@ class RoundRobinPolicy : public SchedulingPolicy {
 };
 
 
-template <typename T = int>
 class MABPolicy : public SchedulingPolicy
 {
     public:
@@ -128,18 +127,17 @@ class MABPolicy : public SchedulingPolicy
 
     int getAction() = 0;
 
-    virtual void updatePolicy( T reward, int arm ) = 0;
+    virtual void updatePolicy( double reward, int arm ) = 0;
 };
 
-template <typename T = int>
-class DTSPolicy : public MABPolicy<T>
+class DTSPolicy : public MABPolicy
 {
     public:
     DTSPolicy( int num_arms, unsigned int seed );
     ~DTSPolicy();
 
-    int getAction();
-    void updatePolicy( T reward, int arm );
+    int getAction() override;
+    void updatePolicy( double reward, int arm );
 
     private:
     unsigned int m_seed;
@@ -148,6 +146,7 @@ class DTSPolicy : public MABPolicy<T>
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
 };
+
 using Point = std::array<double, 2>;
 
 class DirichletPolicy : public SchedulingPolicy {
