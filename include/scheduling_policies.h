@@ -1,3 +1,6 @@
+#ifndef WALKER_SCHEDULING_POLICIES_H
+#define WALKER_SCHEDULING_POLICIES_H
+
 #include <stdlib.h>
 #include <vector>
 #include <utility>
@@ -59,15 +62,20 @@ class DecisionTreePolicy : public SchedulingPolicy {
 
 class UniformlyRandomPolicy : public SchedulingPolicy {
     public:
-        UniformlyRandomPolicy( int _num_queues, unsigned int _seed ) :
-            SchedulingPolicy(_num_queues),
-            m_seed{_seed}{
-            srand(_seed);
-        }
-    //inline virtual int getNextQueue(const smpl::RobotState&) override;
-        inline virtual double getActionSpaceProb(int state_id, int hidx){
-            return 0.5;
-        }
+    UniformlyRandomPolicy( int _num_queues, unsigned int _seed ) :
+        SchedulingPolicy(_num_queues),
+        m_seed{_seed}{
+        srand(_seed);
+    }
+
+    inline virtual double getActionSpaceProb(int state_id, int hidx){
+        return 0.5;
+    }
+
+    int getAction() override
+    {
+        throw "Not Implemented";
+    }
 
     private:
     unsigned int m_seed;
@@ -90,17 +98,61 @@ class RoundRobinPolicy : public SchedulingPolicy {
         }
     }
 
+    int getAction() override
+    {
+        throw "Not Implemented";
+    }
+
     private:
     int m_queue = 0;
     int m_iter = 0;
 };
 
+
+template <typename T = int>
+class MABPolicy : public SchedulingPolicy
+{
+    public:
+    MABPolicy( int num_arms ) :
+        SchedulingPolicy(num_arms) {}
+
+    int numArms()
+    {
+        return this->numQueues();
+    }
+
+    double getActionSpaceProb( int state_id, int hidx ) override
+    {
+        throw "Not Implemented";
+    }
+
+    int getAction() = 0;
+
+    virtual void updatePolicy( T reward, int arm ) = 0;
+};
+
+template <typename T = int>
+class DTSPolicy : public MABPolicy<T>
+{
+    public:
+    DTSPolicy( int num_arms, unsigned int seed );
+    ~DTSPolicy();
+
+    int getAction();
+    void updatePolicy( T reward, int arm );
+
+    private:
+    unsigned int m_seed;
+    std::vector<double> m_alphas {}, m_betas {} ;
+    double m_C = 10;
+    const gsl_rng_type* m_gsl_rand_T;
+    gsl_rng* m_gsl_rand;
+};
 using Point = std::array<double, 2>;
 
 class DirichletPolicy : public SchedulingPolicy {
     public:
-    DirichletPolicy( int _num_queues, unsigned int _seed,
-            smpl::ManipLatticeMultiRep* _manip_space_mr, BfsHeuristic* _base_heur, Point _door_loc ) :
+    DirichletPolicy( int _num_queues, unsigned int _seed, smpl::ManipLatticeMultiRep* _manip_space_mr, BfsHeuristic* _base_heur, Point _door_loc ) :
         SchedulingPolicy(_num_queues),
         m_seed{_seed},
         m_manip_space_mr{_manip_space_mr},
@@ -162,3 +214,7 @@ class DirichletPolicy : public SchedulingPolicy {
     unsigned int m_seed;
     gsl_rng* m_gsl_rng;
 };
+
+#include "detail/scheduling_policies.hpp"
+
+#endif

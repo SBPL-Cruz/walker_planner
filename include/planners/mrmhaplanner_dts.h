@@ -63,7 +63,6 @@ class MRMHAPlannerDTS : public MRMHAPlanner<N, R, SP> {
     using MRMHAPlanner<N, R, SP>::m_eps;
     using MRMHAPlanner<N, R, SP>::m_eps_mha;
 
-    void updateDistribution(int ridx, int reward);
     virtual void expand(MRMHASearchState* state, int hidx);
 
     // 0 index reserved for the anchor queue
@@ -74,9 +73,6 @@ class MRMHAPlannerDTS : public MRMHAPlanner<N, R, SP> {
     std::array<int, R> m_rep_h_count {};
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
-
-    int chooseRep();
-
 };
 
 #include "detail/mrmhaplanner_dts.hpp"

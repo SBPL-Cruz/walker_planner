@@ -57,68 +57,6 @@ int MRMHAPlannerDTS<N, R, SP>::replan(
 }
 
 template <int N, int R, typename SP>
-int MRMHAPlannerDTS<N, R, SP>::chooseRep(){
-    std::array<double, R> rep_likelihoods;
-    // Stores a beta distribution for each queue.
-    /*for( int i = 0; i < R; i++ ){
-        std::vector<double> rep_likelihood;
-        for( int j = 1; j < N; j++ ){
-            if( m_rep_ids[j] == i ){
-                ROS_ERROR_NAMED(LOG, "alpha: %f, beta: %f", m_alphas[j], m_betas[j]);
-                boost::math::beta_distribution<double> beta(m_alphas[j], m_betas[j]);
-                rep_likelihood.push_back(boost::math::quantile(beta, rand() / RAND_MAX));
-            }
-        }
-        //TODO: Take into account the branching factor of each rep.
-        rep_likelihoods[i] = panini::maths::mean(rep_likelihood);
-    }*/
-
-    // Beta distribution for each representation
-    double best_likelihood = -1;
-    for( int i = 0; i < R; i++ )
-    {
-        //ROS_ERROR_NAMED(LOG, "alpha: %f, beta: %f", m_alphas[i], m_betas[i]);
-        rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, m_alphas[i], m_betas[i]);
-        //doubledouble betaMean = alpha[i] / (alpha[i] + beta[i]);
-        if(rep_likelihoods[i] > best_likelihood)
-            best_likelihood = rep_likelihoods[i];
-    }
-
-    //because of quantization we can get the exact same random value
-    //for multiple queues more often than we'd like
-    //especially when beta is very low (we get 1 very easily)
-    //or when alpha is very low (we get 0 very easily)
-    //in these cases, there is a bias toward the lower index queues
-    //because they "improve" best_rand first
-    //so when there are multiple queues near the best_rand value,
-    //we will choose uniformly at random from them
-    std::vector<int> near_best_likelihood;
-    for (int i = 0; i < R; i++)
-    {
-      if (fabs( best_likelihood - rep_likelihoods[i] ) < 0.0001) {
-        near_best_likelihood.push_back(i);
-      }
-    }
-    ROS_ERROR("%f, %f, %f", rep_likelihoods[0], rep_likelihoods[1], rep_likelihoods[2]);
-    //TODO: Take into account the branching factor of each rep.
-    int best_id = near_best_likelihood[rand() % near_best_likelihood.size()];
-    return best_id;
-}
-
-template <int N, int R, typename SP>
-void MRMHAPlannerDTS<N, R, SP>::updateDistribution(int _ridx, int _reward)
-{
-    if(_reward > 0)
-        m_alphas[_ridx] += 1;
-    else
-        m_betas[_ridx] += 1;
-    if( m_alphas[_ridx] + m_betas[_ridx] > m_C ){
-        m_alphas[_ridx] *= (m_C/(m_C + 1));
-        m_betas[_ridx] *= (m_C/(m_C + 1));
-    }
-}
-
-template <int N, int R, typename SP>
 int MRMHAPlannerDTS<N, R, SP>::replan(
         std::vector<int>* _solution,
         ReplanParams _params,
@@ -178,7 +116,7 @@ int MRMHAPlannerDTS<N, R, SP>::replan(
         // Picks a queue among all non-empty inadmissible queue.
         // If an inadmissible queue is empty, it is skipped.
         //int hidx = chooseQueue();
-        int rep_id = chooseRep();
+        int rep_id = this->m_scheduling_policy->getAction();
         ROS_DEBUG_NAMED(LOG, "Expanding Rep %d", rep_id);
         ROS_DEBUG_NAMED(LOG, "==================");
         int reward = 0;
@@ -226,7 +164,7 @@ int MRMHAPlannerDTS<N, R, SP>::replan(
                 }
             }
         }
-        updateDistribution(rep_id, reward);
+        this->m_scheduling_policy->updatePolicy(reward, rep_id);
         auto end_time = smpl::clock::now();
         this->m_time_elapsed += smpl::to_seconds(end_time - start_time);
     }
