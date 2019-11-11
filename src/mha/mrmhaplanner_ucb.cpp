@@ -20,7 +20,7 @@
 #include <sbpl/planners/types.h>
 
 #include "heuristics/walker_heuristics.h"
-#include "planners/mrmhaplanner_dts.h"
+#include "planners/mrmhaplanner_bandits.h"
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
 #include "scheduling_policies.h"
@@ -253,7 +253,7 @@ void writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
 
 int main(int argc, char** argv) {
     SMPL_INFO("Testing the MRMHAPlanner UCB");
-    ros::init(argc, argv, "mrmhaplanner_dts");
+    ros::init(argc, argv, "mrmhaplanner_ucb");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);
@@ -474,7 +474,7 @@ int main(int argc, char** argv) {
     using PolicyT = UCBPolicy;
     auto dts_policy = std::make_unique<PolicyT>(NUM_ACTION_SPACES, 100);
 
-    using Planner = MRMHAPlannerDTS<NUM_QUEUES, NUM_ACTION_SPACES, PolicyT>;
+    using Planner = MRMHAPlannerBandits<NUM_QUEUES, NUM_ACTION_SPACES, PolicyT>;
     auto search_ptr = std::make_unique<Planner>(
             space.get(), heurs_array, rep_ids, rep_dependency_matrix, dts_policy.get() );
     const int max_planning_time = planning_config.planning_time;

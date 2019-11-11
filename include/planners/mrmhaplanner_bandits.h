@@ -1,5 +1,5 @@
-#ifndef WALKER_MRMHAPLANNER_DTS_H
-#define WALKER_MRMHAPLANNER_DTS_H
+#ifndef WALKER_MRMHAPLANNER_BANDITS_H
+#define WALKER_MRMHAPLANNER_BANDITS_H
 
 #include <algorithm>
 #include <array>
@@ -20,9 +20,9 @@
  * SP: Scheduling Policy
  */
 template <int N, int R, typename SP>
-class MRMHAPlannerDTS : public MRMHAPlanner<N, R, SP> {
+class MRMHAPlannerBandits : public MRMHAPlanner<N, R, SP> {
     public:
-    MRMHAPlannerDTS(
+    MRMHAPlannerBandits(
         // Ideally, I should have a MultiRepDiscreteSpace
         DiscreteSpaceInformation* env,
         std::array<Heuristic*, N>& heurs,
@@ -30,7 +30,7 @@ class MRMHAPlannerDTS : public MRMHAPlanner<N, R, SP> {
         std::array<std::array<int, R>, R>& rep_dependency_matrix,
         SP* scheduling_policy );
 
-    virtual ~MRMHAPlannerDTS();
+    virtual ~MRMHAPlannerBandits();
 
     /// Required from SBPLPlanner:
     //{
@@ -75,6 +75,6 @@ class MRMHAPlannerDTS : public MRMHAPlanner<N, R, SP> {
     gsl_rng* m_gsl_rand;
 };
 
-#include "detail/mrmhaplanner_dts.hpp"
+#include "detail/mrmhaplanner_bandits.hpp"
 
 #endif

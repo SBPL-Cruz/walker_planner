@@ -1,14 +1,14 @@
-#ifndef WALKER_MHAPLNANNER_DTS_IMPLEMENTATION_H
-#define WALKER_MHAPLNANNER_DTS_IMPLEMENTATION_H
+#ifndef WALKER_MHAPLNANNER_BANDITS_IMPLEMENTATION_H
+#define WALKER_MHAPLNANNER_BANDITS_IMPLEMENTATION_H
 
-#include "../mrmhaplanner_dts.h"
+#include "../mrmhaplanner_bandits.h"
 #include <panini/maths.h>
 #include <panini/algo.h>
 
-#define LOG "mrmha_dts"
+#define LOG "mrmha_bandits"
 
 template <int N, int R, typename SP>
-MRMHAPlannerDTS<N, R, SP>::MRMHAPlannerDTS(
+MRMHAPlannerBandits<N, R, SP>::MRMHAPlannerBandits(
         DiscreteSpaceInformation* _env,
         std::array<Heuristic*, N>& _heurs,
         std::array<int, N>& _rep_ids,
@@ -33,13 +33,13 @@ MRMHAPlannerDTS<N, R, SP>::MRMHAPlannerDTS(
 }
 
 template <int N, int R, typename SP>
-MRMHAPlannerDTS<N, R, SP>::~MRMHAPlannerDTS()
+MRMHAPlannerBandits<N, R, SP>::~MRMHAPlannerBandits()
 {
     gsl_rng_free(m_gsl_rand);
 }
 
 template <int N, int R, typename SP>
-int MRMHAPlannerDTS<N, R, SP>::replan(
+int MRMHAPlannerBandits<N, R, SP>::replan(
         double _allocated_time_sec,
         std::vector<int>* _solution ){
     int solcost;
@@ -47,7 +47,7 @@ int MRMHAPlannerDTS<N, R, SP>::replan(
 }
 
 template <int N, int R, typename SP>
-int MRMHAPlannerDTS<N, R, SP>::replan(
+int MRMHAPlannerBandits<N, R, SP>::replan(
         double _allocated_time_sec,
         std::vector<int>* _solution,
         int* _soltn_cost ){
@@ -57,7 +57,7 @@ int MRMHAPlannerDTS<N, R, SP>::replan(
 }
 
 template <int N, int R, typename SP>
-int MRMHAPlannerDTS<N, R, SP>::replan(
+int MRMHAPlannerBandits<N, R, SP>::replan(
         std::vector<int>* _solution,
         ReplanParams _params,
         int* _soltn_cost ){
@@ -180,7 +180,7 @@ int MRMHAPlannerDTS<N, R, SP>::replan(
 }
 
 template <int N, int R, typename SP>
-void MRMHAPlannerDTS<N, R, SP>::expand(MRMHASearchState* _state, int _hidx)
+void MRMHAPlannerBandits<N, R, SP>::expand(MRMHASearchState* _state, int _hidx)
 {
     int rep_id = m_rep_ids[_hidx];
     // Inserts _state into the closed queues determined by the

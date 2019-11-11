@@ -20,7 +20,7 @@
 #include <sbpl/planners/types.h>
 
 #include "heuristics/walker_heuristics.h"
-#include "planners/mrmhaplanner_dts.h"
+#include "planners/mrmhaplanner_bandits.h"
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
 #include "scheduling_policies.h"
@@ -470,11 +470,13 @@ int main(int argc, char** argv) {
                                   {{0, 1, 0}},
                                   {{0, 1, 0}} }};
 
-    auto round_robin_policy = std::make_unique<RoundRobinPolicy>(inad_heurs.size());
+    const unsigned int seed = 100;
+    using PolicyT = DTSPolicy;
+    auto dts_policy = std::make_unique<PolicyT>(NUM_ACTION_SPACES, 100);
 
-    using Planner = MRMHAPlannerDTS<NUM_QUEUES, NUM_ACTION_SPACES, RoundRobinPolicy>;
+    using Planner = MRMHAPlannerBandits<NUM_QUEUES, NUM_ACTION_SPACES, PolicyT>;
     auto search_ptr = std::make_unique<Planner>(
-            space.get(), heurs_array, rep_ids, rep_dependency_matrix, round_robin_policy.get() );
+            space.get(), heurs_array, rep_ids, rep_dependency_matrix, dts_policy.get() );
     const int max_planning_time = planning_config.planning_time;
     const double eps = planning_config.eps;
     const double eps_mha = planning_config.eps_mha;
