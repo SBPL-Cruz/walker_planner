@@ -10,13 +10,16 @@ planning:
     right_j5    0.087267
     right_j6    0.087267
     right_j7    0.087267
-  use_xyz_snap_mprim: true
-  use_rpy_snap_mprim: true
-  use_xyzrpy_snap_mprim: false
+  use_xyz_snap_mprim: false
+  use_rpy_snap_mprim: false
+  use_xyzrpy_snap_mprim: true
   use_short_dist_mprims: true
+  #xyz_snap_dist_thresh: 0.5
+  #rpy_snap_dist_thresh: 0.5
+  #xyzrpy_snap_dist_thresh: 0.5
   xyz_snap_dist_thresh: 0.1
   rpy_snap_dist_thresh: .05
-  xyzrpy_snap_dist_thresh: 0.05
+  xyzrpy_snap_dist_thresh: 0.1
   short_dist_mprims_thresh: 0.1
   cost_per_cell: 500
   inflation_radius_2d: 0.285
@@ -25,7 +28,7 @@ planning:
   eps_mha: 1.5
   planning_time: 120
   start_planning_episode: 0
-  end_planning_episode: 0
+  end_planning_episode: 24
   seed: 100
   seeds:
       - 100

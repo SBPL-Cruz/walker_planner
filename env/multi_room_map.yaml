@@ -1,5 +1,8 @@
 map:
-    seed: 9000
+    # train
+    seed: 1000
+    # test
+    # seed: 4000
     x_max: 20
     y_max: 15
     h_max: 1.5
@@ -9,5 +12,5 @@ map:
     min_table_len: 0.4
     max_table_len: 0.6
     table_height: 0.70
-    min_dist_bw_tables: 0.2
+    min_dist_bw_tables: 0.1
     n_objects: 4
