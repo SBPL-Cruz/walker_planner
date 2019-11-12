@@ -147,7 +147,8 @@ add_executable( mrmhaplanner_dts
     src/config/get_collision_objects.cpp
     )
 target_link_libraries( mrmhaplanner_dts ${catkin_LIBRARIES} smpl::smpl
-    ${gsl_LIBRARIES})
+    generic_planner)
+
 add_executable( mrmhaplanner_ucb
     src/mha/mrmhaplanner_ucb.cpp
     src/motion_planner_ros.cpp
@@ -156,6 +157,16 @@ add_executable( mrmhaplanner_ucb
     src/config/get_collision_objects.cpp
     )
 target_link_libraries( mrmhaplanner_ucb ${catkin_LIBRARIES} smpl::smpl
+    generic_planner)
+
+add_executable( mrmhaplanner_cobandits
+    src/mha/mrmhaplanner_cobandits.cpp
+    src/motion_planner_ros.cpp
+    src/config/planner_config.cpp
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+target_link_libraries( mrmhaplanner_cobandits ${catkin_LIBRARIES} smpl::smpl
     generic_planner)
 
 #add_executable( walker_planner
