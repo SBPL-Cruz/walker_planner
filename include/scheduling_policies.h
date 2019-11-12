@@ -14,6 +14,8 @@
 #include <sbpl/planners/scheduling_policy.h>
 #include "utils/utils.h"
 
+#include "context_features.h"
+
 using CollisionObjects = std::vector<smpl::collision::CollisionObject>;
 
 /*
@@ -164,11 +166,54 @@ class UCBPolicy : public MABPolicy
     std::vector< std::vector<double> > m_ucbs;
     std::vector<int> m_pulls;
 };
+
+template <typename ContextArray>
+class ContextualMABPolicy : public MABPolicy
+{
+    public:
+    ContextualMABPolicy( int num_arms ) :
+        MABPolicy(num_arms) {}
+
+    ~ContextualMABPolicy();
+
+    virtual int getAction( const std::vector<ContextArray>& ) = 0;
+
+    int getAction()
+    {
+        throw "Not Implemented";
+    }
+
+    void updatePolicy( double, int ) = 0;
+};
+
+
+template <typename ContextArray>
+class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
+{
+    public:
+    ContextualDTSPolicy( int num_arms, unsigned int seed);
+    ~ContextualDTSPolicy();
+
+    //Gets the state at the top of every inadmissible queue.
+    int getAction( const std::vector<ContextArray>& ) override;
+    // Get reward for arm i and update distribution..
+    void updatePolicy( double reward, int  arm ) override;
+
+    private:
+    unsigned int m_seed;
+    std::vector<double> m_alphas {}, m_betas {} ;
+    double m_C = 10;
+    const gsl_rng_type* m_gsl_rand_T;
+    gsl_rng* m_gsl_rand;
+};
+
+
 using Point = std::array<double, 2>;
 
 class DirichletPolicy : public SchedulingPolicy {
     public:
-    DirichletPolicy( int _num_queues, unsigned int _seed, smpl::ManipLatticeMultiRep* _manip_space_mr, BfsHeuristic* _base_heur, Point _door_loc ) :
+    DirichletPolicy( int _num_queues, unsigned int _seed,
+            smpl::ManipLatticeMultiRep* _manip_space_mr, smpl::CompoundBfsHeuristic* _base_heur, Point _door_loc ) :
         SchedulingPolicy(_num_queues),
         m_seed{_seed},
         m_manip_space_mr{_manip_space_mr},
@@ -224,7 +269,7 @@ class DirichletPolicy : public SchedulingPolicy {
 
     private:
     smpl::ManipLatticeMultiRep* m_manip_space_mr;
-    BfsHeuristic* m_base_heur;
+    smpl::CompoundBfsHeuristic* m_base_heur;
     Point m_door_loc;
     double m_thresh = 0.8;
     unsigned int m_seed;

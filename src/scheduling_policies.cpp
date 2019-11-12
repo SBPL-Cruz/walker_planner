@@ -63,6 +63,7 @@ void DTSPolicy::updatePolicy( double _reward, int _arm )
         m_betas[_arm] *= (m_C/(m_C + 1));
     }
 }
+
 UCBPolicy::UCBPolicy( int _num_arms, unsigned int _seed ) :
     MABPolicy(_num_arms),
     m_T{_num_arms}
@@ -100,4 +101,3 @@ void UCBPolicy::updatePolicy( double _reward, int _hidx )
     m_rewards[_hidx] += _reward;
     m_pulls[_hidx] += 1;
 }
-
