@@ -30,8 +30,10 @@ ContextualDTSPolicy<C>::~ContextualDTSPolicy()
     gsl_rng_free(m_gsl_rand);
 }
 
+// Pass a negative rep_id if the queue was empty and hence did not have any
+// element at the top.
 template <typename C> int
-ContextualDTSPolicy<C>::getAction( const std::vector<C>& _contexts, const std::vector<int>& _rep_ids )
+ContextualDTSPolicy<C>::getArm( const std::vector<C>& _contexts, const std::vector<int>& _rep_ids )
 {
     int N = _contexts.size();
     std::vector<int> context_ids(N, 0);
@@ -47,7 +49,10 @@ ContextualDTSPolicy<C>::getAction( const std::vector<C>& _contexts, const std::v
         int rep_id = _rep_ids[i];
         auto alpha_i = m_alphas[context_id][rep_id];
         auto beta_i = m_betas[context_id][rep_id];
-        rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, alpha_i, beta_i);
+        if(rep_id < 0)
+            rep_likelihoods[i] = 0;
+        else
+            rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, alpha_i, beta_i);
         //doubledouble betaMean = alpha[i] / (alpha[i] + beta[i]);
         if(rep_likelihoods[i] > best_likelihood)
             best_likelihood = rep_likelihoods[i];
@@ -62,7 +67,7 @@ ContextualDTSPolicy<C>::getAction( const std::vector<C>& _contexts, const std::v
     //so when there are multiple queues near the best_rand value,
     //we will choose uniformly at random from them
     std::vector<int> near_best_likelihood;
-    for (int i = 0; i < this->numArms(); i++)
+    for (int i = 0; i < N; i++)
     {
       if (fabs( best_likelihood - rep_likelihoods[i] ) < 0.0001) {
         near_best_likelihood.push_back(i);
@@ -77,7 +82,11 @@ ContextualDTSPolicy<C>::getAction( const std::vector<C>& _contexts, const std::v
 template <typename C> void
 ContextualDTSPolicy<C>::updatePolicy(const C& _context, double _reward, int _arm)
 {
+    //ROS_ERROR("Context updating: ");
+    //ROS_ERROR_STREAM(_context[0] << " "<< _context[1]<< " "<< _context[2]<< " "<< _context[3]<<"\n");
     int context_id = m_context_id_map[_context];
+    //ROS_ERROR("Updating: ");
+    //ROS_ERROR("  Context id: %d, Reward: %f, Arm: %d", context_id, _reward, _arm);
     if(_reward > 0)
         m_alphas[context_id][_arm] += 1;
     else
@@ -96,10 +105,23 @@ ContextualDTSPolicy<C>::setContextIdMap( const std::vector<C>& _contexts,
         return false;
     if(_contexts.size() != m_alphas.size())
             return false;
+    //ROS_ERROR("Context-id map");
     for( int i = 0; i < _contexts.size(); i++)
+    {
         m_context_id_map[_contexts[i]] = _rep_ids[i];
+        //ROS_ERROR("  Context: %d, %d, %d, %d", _contexts[i][0], _contexts[i][1], _contexts[i][2], _contexts[i][3]);
+        //ROS_ERROR("  id: %d", _rep_ids[i]);
+    }
 
     return true;
+}
+
+template <typename C> void
+ContextualDTSPolicy<C>::setBetaPrior( const C& _context, int _rep_id, int _alpha, int _beta)
+{
+    int context_id = m_context_id_map[_context];
+    m_alphas[context_id][_rep_id] = _alpha;
+    m_betas[context_id][_rep_id] = _beta;
 }
 
 #endif

@@ -4,6 +4,8 @@
 #include <algorithm>
 #include "../context_features.h"
 
+#define LOG "context_features"
+
 /*template <>
 MobManipDiscreteFeatures<2>::MobManipDiscreteFeatures(
         smpl::ManipLattice _manip_lattice,
@@ -65,19 +67,19 @@ MobManipDiscreteFeatures<4>::MobManipDiscreteFeatures(
 auto MobManipDiscreteFeatures<4>::getContext( int _state_id )
     -> ContextArray
 {
+    ROS_DEBUG_NAMED(LOG, "getContext for %d", _state_id);
     ContextArray context;
     auto grid = m_bfs_3d->grid();
     double res = grid->resolution();
+    int cost_per_cell = m_bfs_3d->costPerCell();
 
     auto state = m_env->getHashEntry(_state_id);
     // Get state-id
     auto robot_coord = state->coord;
     auto robot_state = state->state;
 
-    context[0] = m_bfs_2d->GetGoalHeuristic(_state_id);
-    ROS_ERROR("2d bfs distance: %d", context[0]);
-    context[1] = m_bfs_3d->GetGoalHeuristic(_state_id);
-    ROS_ERROR("3d bfs distance: %d", context[1]);
+    context[0] = m_bfs_3d_base->GetGoalHeuristic(_state_id) / cost_per_cell;
+    context[1] = m_bfs_3d->GetGoalHeuristic(_state_id) / cost_per_cell;
 
     // Find circum-radius of the robot.
     auto end_eff_frame = m_rm->computeFK(robot_state);
@@ -87,23 +89,25 @@ auto MobManipDiscreteFeatures<4>::getContext( int _state_id )
     auto trans = base_link_to_end_eff.translation();
     int circum_radius = (int) ( sqrt(trans.x()*trans.x() + trans.y()*trans.y()) / res );
 
-    ROS_ERROR("Circum radius: %f", circum_radius);
-
     context[2] = circum_radius;
 
     // Find BFS2D_Base path and compute distance to the nearest narrow passage.
     auto path_to_goal = m_bfs_3d_base->getPathToGoal(robot_state);
-    ROS_ERROR("Length of path: %d", path_to_goal.size());
-    context[3] = 100;
-    for(int i = 0; i < std::min(100, (int) path_to_goal.size()); i++)
+    // Ignore narrow passages beyond 1m.
+    const int MAX_HORIZON = 20;
+    context[3] = 0;
+    for(int i = 0; i < std::min(MAX_HORIZON, (int) path_to_goal.size()); i++)
     {
         auto point = path_to_goal[i];
-        if( grid->getDistance(point[0], point[1], 0) < circum_radius)
+        if( grid->getDistance(point[0], point[1], 15) / res < circum_radius)
         {
-            context[3] = i;
+            context[3] = 1;
             break;
         }
     }
+    ROS_DEBUG_NAMED(LOG, "Context for state: %d", _state_id);
+    ROS_DEBUG_NAMED(LOG, "  3D-base  3D   Circum-radius  2D Path length");
+    ROS_DEBUG_NAMED(LOG, "  %d,      %d    %d,           %d", context[0], context[1], context[2], context[3]);
 
     return context;
 }
@@ -112,5 +116,7 @@ void MobManipDiscreteFeatures<4>::setRobotArmLength( double _len )
 {
     m_arm_len = _len;
 }
+
+#undef LOG
 
 #endif

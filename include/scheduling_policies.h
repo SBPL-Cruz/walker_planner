@@ -214,7 +214,8 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
     //Get the context-array for the state at the top of every inadmissible
     //queue and the queue's rep-id.
     // Pick the right beta distributions on that basis and then TS.
-    int getAction( const std::vector<ContextArray>&, const std::vector<int>& rep_ids );
+    int getAction( const std::vector<ContextArray>&, const std::vector<int>& rep_ids ){}
+    int getArm( const std::vector<ContextArray>&, const std::vector<int>& rep_ids );
 
     void updatePolicy(double, int) override 
     {
@@ -225,7 +226,7 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
     void updatePolicy( const ContextArray&, double reward, int  arm );
 
     bool setContextIdMap( const std::vector<ContextArray>&, const std::vector<int>& );
-    //bool setBetaPriors( const std::vector<int>& context_id,  )
+    void setBetaPrior( const ContextArray& context, int rep_id, int alpha, int beta );
 
     private:
     unsigned int m_seed;
