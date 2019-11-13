@@ -116,12 +116,21 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
     while (!m_open[0].empty() && !this->time_limit_reached()) {
         auto start_time = smpl::clock::now();
 
-        // Picks a queue among all non-empty inadmissible queue.
-        // If an inadmissible queue is empty, it is skipped.
-        //int hidx = chooseQueue();
-        std::vector<double> state;
-        auto context = m_context->getContext(state);
-        int rep_id = this->m_scheduling_policy->getAction();
+        std::vector<decltype(m_context->getContext(1))> contexts;
+        //std::vector<C::ContextArray> contexts;
+        std::vector<int> rep_ids;
+        for( int hidx = 1; hidx < num_heuristics(); hidx++ )
+        {
+            int rep_id = m_rep_ids[hidx];
+            int state_id = this->state_from_open_state(m_open[hidx].min())->state_id;
+            // Context generator class should handle the conversion from
+            // state-id to the actual robot state.
+            // The planner is agnostic to the robot state.
+            auto context = m_context->getContext(state_id);
+            contexts.push_back(context);
+            rep_ids.push_back(rep_id);
+        }
+        int rep_id = this->m_scheduling_policy->getAction(contexts, rep_ids);
         ROS_DEBUG_NAMED(LOG, "Expanding Rep %d", rep_id);
         ROS_DEBUG_NAMED(LOG, "==================");
         int reward = 0;
