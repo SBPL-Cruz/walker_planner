@@ -68,9 +68,9 @@ struct EndEffHeuristic : public smpl::CompoundBfsHeuristic
         return heuristic;
     }
 
-    double base_coeff=0.2;
-    double arm_coeff=10;
-    double rot_coeff=10;
+    double base_coeff=0.0;
+    double arm_coeff=0.5;
+    double rot_coeff=0.5;
     smpl::PoseProjectionExtension* pose_ext = nullptr;
 };
 
@@ -147,22 +147,19 @@ struct ImprovedEndEffHeuristic : public smpl::CompoundBfsHeuristic
         int rot_dist = DefaultCostMultiplier*smpl::angles::normalize_angle(2.0 * std::acos(dot));
 
         int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
-        int arm_dist  = 0;
-        if(arm_dist > 10000){
+        auto arm_dist = bfs_3d->GetGoalHeuristic(state_id);
+        if(arm_dist/bfs_3d->getCostPerCell() > 30){
             arm_dist = m_retract_arm_heur->GetGoalHeuristic(state_id);
             rot_dist = 0.0;
-        } else {
-            arm_dist = bfs_3d->GetGoalHeuristic(state_id);
         }
-
         int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
         return heuristic;
     }
 
-    double base_coeff=0.05;
+    double base_coeff=1;
     double arm_coeff=1;
-    double rot_coeff=0.5;
-    //double rot_coeff=2;
+    //double rot_coeff=0.5;
+    double rot_coeff=2;
 
     std::shared_ptr<RetractArmHeuristic> m_retract_arm_heur;
     smpl::PoseProjectionExtension* pose_ext = nullptr;
