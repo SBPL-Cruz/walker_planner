@@ -20,6 +20,7 @@ DTSPolicy::~DTSPolicy()
 
 int DTSPolicy::getAction()
 {
+    //ROS_ERROR("alphas: %f, %f", m_alphas[0], m_alphas[1]);
     std::vector<double> rep_likelihoods(this->numArms(), 0);
     // Beta distribution for each representation
     double best_likelihood = -1;

@@ -6,6 +6,7 @@
 #include <utility>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
+#include <boost/functional/hash.hpp>
 
 #include <smpl/types.h>
 #include <smpl/heuristic/mother_heuristic.h>
@@ -174,8 +175,6 @@ class ContextualMABPolicy : public MABPolicy
     ContextualMABPolicy( int num_arms ) :
         MABPolicy(num_arms) {}
 
-    ~ContextualMABPolicy();
-
     virtual int getAction( const std::vector<ContextArray>& ) = 0;
 
     int getAction()
@@ -186,95 +185,125 @@ class ContextualMABPolicy : public MABPolicy
     void updatePolicy( double, int ) = 0;
 };
 
+template <class T>
+struct ContextArrayHash
+{
+    size_t operator() (const T& v) const
+    {
+        std::size_t seed = 0;
+        for(auto& val : v)
+        {
+            boost::hash_combine(seed, std::hash<typename T::value_type>()(val));
+        }
+        return seed;
+    }
+};
 
 template <typename ContextArray>
 class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
 {
     public:
-    ContextualDTSPolicy( int num_arms, unsigned int seed);
+    ContextualDTSPolicy( int num_arms, int num_contexts, unsigned int seed);
     ~ContextualDTSPolicy();
 
-    //Gets the state at the top of every inadmissible queue.
-    int getAction( const std::vector<ContextArray>& ) override;
+    int getAction(const std::vector<ContextArray>&)
+    {
+        throw "Not Implemented";
+    }
+
+    //Get the context-array for the state at the top of every inadmissible
+    //queue and the queue's rep-id.
+    // Pick the right beta distributions on that basis and then TS.
+    int getAction( const std::vector<ContextArray>&, const std::vector<int>& rep_ids );
+
+    void updatePolicy(double, int) override 
+    {
+        throw "Not Implemented";
+    }
+
     // Get reward for arm i and update distribution..
-    void updatePolicy( double reward, int  arm ) override;
+    void updatePolicy( const ContextArray&, double reward, int  arm );
+
+    bool setContextIdMap( const std::vector<ContextArray>&, const std::vector<int>& );
+    //bool setBetaPriors( const std::vector<int>& context_id,  )
 
     private:
     unsigned int m_seed;
-    std::vector<double> m_alphas {}, m_betas {} ;
+    std::unordered_map< ContextArray, int, ContextArrayHash<ContextArray> > m_context_id_map;
+    std::vector< std::vector<double> > m_alphas {}, m_betas {} ;
     double m_C = 10;
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
 };
 
 
-using Point = std::array<double, 2>;
+//using Point = std::array<double, 2>;
 
-class DirichletPolicy : public SchedulingPolicy {
-    public:
-    DirichletPolicy( int _num_queues, unsigned int _seed,
-            smpl::ManipLatticeMultiRep* _manip_space_mr, smpl::CompoundBfsHeuristic* _base_heur, Point _door_loc ) :
-        SchedulingPolicy(_num_queues),
-        m_seed{_seed},
-        m_manip_space_mr{_manip_space_mr},
-        m_base_heur{_base_heur},
-        m_door_loc{_door_loc} {
-        srand(_seed);
-        const gsl_rng_type* T;
-        gsl_rng_env_setup();
-        gsl_rng_default_seed = _seed;
-        T = gsl_rng_default;
-        m_gsl_rng = gsl_rng_alloc( T );
-    }
+//class DirichletPolicy : public SchedulingPolicy {
+    //public:
+    //DirichletPolicy( int _num_queues, unsigned int _seed,
+            //smpl::ManipLatticeMultiRep* _manip_space_mr, smpl::CompoundBfsHeuristic* _base_heur, Point _door_loc ) :
+        //SchedulingPolicy(_num_queues),
+        //m_seed{_seed},
+        //m_manip_space_mr{_manip_space_mr},
+        //m_base_heur{_base_heur},
+        //m_door_loc{_door_loc} {
+        //srand(_seed);
+        //const gsl_rng_type* T;
+        //gsl_rng_env_setup();
+        //gsl_rng_default_seed = _seed;
+        //T = gsl_rng_default;
+        //m_gsl_rng = gsl_rng_alloc( T );
+    //}
 
-    ~DirichletPolicy(){
-        gsl_rng_free(m_gsl_rng);
-    }
+    //~DirichletPolicy(){
+        //gsl_rng_free(m_gsl_rng);
+    //}
 
-    /*
-    inline virtual int getNextQueue(const smpl::RobotState& s) override {
-        auto sqrd = [](double x){return x*x;};
-        if(sqrt( sqrd(s[0] - m_door_loc.first) + sqrd(s[1] - m_door_loc.second) ) < m_thresh){
+    //[>
+    //inline virtual int getNextQueue(const smpl::RobotState& s) override {
+        //auto sqrd = [](double x){return x*x;};
+        //if(sqrt( sqrd(s[0] - m_door_loc.first) + sqrd(s[1] - m_door_loc.second) ) < m_thresh){
 
-        }
-    }
-    */
+        //}
+    //}
+    //*/
 
-    inline virtual double getActionSpaceProb( int state_id, int hidx ){
-        //if state_id near goal
-        if(state_id == 0)
-            return 1.0;
-        auto robot_state = m_manip_space_mr->getHashEntry(state_id)->state;
-        double probs[9];
-        if( m_base_heur->getMetricGoalDistance(robot_state[0], robot_state[1], 0) < 0.5){
-            std::vector<double> conc_params = {50, 5, 5, 5, 5, 5, 5, 5, 5};
-            gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
-        }
+    //inline virtual double getActionSpaceProb( int state_id, int hidx ){
+        ////if state_id near goal
+        //if(state_id == 0)
+            //return 1.0;
+        //auto robot_state = m_manip_space_mr->getHashEntry(state_id)->state;
+        //double probs[9];
+        //if( m_base_heur->getMetricGoalDistance(robot_state[0], robot_state[1], 0) < 0.5){
+            //std::vector<double> conc_params = {50, 5, 5, 5, 5, 5, 5, 5, 5};
+            //gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
+        //}
 
-        ////if state_id near door
-        else if( euclidDist(robot_state.data(), m_door_loc.data(), 2) < 0.5 ){
-            std::vector<double> conc_params = {50, 5, 5, 5, 5, 5, 5, 5, 5};
-            gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
-        }
+        //////if state_id near door
+        //else if( euclidDist(robot_state.data(), m_door_loc.data(), 2) < 0.5 ){
+            //std::vector<double> conc_params = {50, 5, 5, 5, 5, 5, 5, 5, 5};
+            //gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
+        //}
 
-        //otherwise: high prob on base and low on arm
-        // 2 params
-        else {
-            std::vector<double> conc_params = {10, 10, 10, 10, 10, 10, 10, 10, 10};
-            gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
-        }
-        //Ignoring anchor
-        return probs[hidx-1];
-    }
+        ////otherwise: high prob on base and low on arm
+        //// 2 params
+        //else {
+            //std::vector<double> conc_params = {10, 10, 10, 10, 10, 10, 10, 10, 10};
+            //gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
+        //}
+        ////Ignoring anchor
+        //return probs[hidx-1];
+    //}
 
-    private:
-    smpl::ManipLatticeMultiRep* m_manip_space_mr;
-    smpl::CompoundBfsHeuristic* m_base_heur;
-    Point m_door_loc;
-    double m_thresh = 0.8;
-    unsigned int m_seed;
-    gsl_rng* m_gsl_rng;
-};
+    //private:
+    //smpl::ManipLatticeMultiRep* m_manip_space_mr;
+    //smpl::CompoundBfsHeuristic* m_base_heur;
+    //Point m_door_loc;
+    //double m_thresh = 0.8;
+    //unsigned int m_seed;
+    //gsl_rng* m_gsl_rng;
+ //};
 
 #include "detail/scheduling_policies.hpp"
 

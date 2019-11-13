@@ -5,23 +5,49 @@
 
 template <typename C>
 ContextualDTSPolicy<C>::ContextualDTSPolicy( int _num_arms,
+        int _num_contexts,
         unsigned int _seed ) :
     ContextualMABPolicy<C>(_num_arms),
     m_seed{_seed}
 {
-    m_alphas.resize(_num_arms, 1);
-    m_betas.resize(_num_arms, 1);
+    m_alphas.resize(_num_contexts);
+    m_betas.resize(_num_contexts);
+    for( int i = 0; i < _num_contexts; i++ )
+    {
+        // No Prior
+        m_alphas[i].resize(_num_arms, 1);
+        m_betas[i].resize(_num_arms, 1);
+    }
+    srand(_seed);
+    gsl_rng_env_setup();
+    m_gsl_rand_T = gsl_rng_default;
+    m_gsl_rand = gsl_rng_alloc(m_gsl_rand_T);
+}
+
+template <typename C>
+ContextualDTSPolicy<C>::~ContextualDTSPolicy()
+{
+    gsl_rng_free(m_gsl_rand);
 }
 
 template <typename C> int
-ContextualDTSPolicy<C>::getAction( const std::vector<C>& _context )
+ContextualDTSPolicy<C>::getAction( const std::vector<C>& _contexts, const std::vector<int>& _rep_ids )
 {
-    std::vector<double> rep_likelihoods(this->numArms(), 0);
+    int N = _contexts.size();
+    std::vector<int> context_ids(N, 0);
+    for(auto& context : _contexts)
+        context_ids.push_back(m_context_id_map[context]);
+
+    std::vector<double> rep_likelihoods(N, 0);
     // Beta distribution for each representation
     double best_likelihood = -1;
-    for( int i = 0; i < this->numArms(); i++ )
+    for( int i = 0; i < N; i++ )
     {
-        rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, m_alphas[i], m_betas[i]);
+        int context_id = context_ids[i];
+        int rep_id = _rep_ids[i];
+        auto alpha_i = m_alphas[context_id][rep_id];
+        auto beta_i = m_betas[context_id][rep_id];
+        rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, alpha_i, beta_i);
         //doubledouble betaMean = alpha[i] / (alpha[i] + beta[i]);
         if(rep_likelihoods[i] > best_likelihood)
             best_likelihood = rep_likelihoods[i];
@@ -49,16 +75,31 @@ ContextualDTSPolicy<C>::getAction( const std::vector<C>& _context )
 }
 
 template <typename C> void
-ContextualDTSPolicy<C>::updatePolicy( double _reward, int _arm)
+ContextualDTSPolicy<C>::updatePolicy(const C& _context, double _reward, int _arm)
 {
+    int context_id = m_context_id_map[_context];
     if(_reward > 0)
-        m_alphas[_arm] += 1;
+        m_alphas[context_id][_arm] += 1;
     else
-        m_betas[_arm] += 1;
-    if( m_alphas[_arm] + m_betas[_arm] > m_C ){
-        m_alphas[_arm] *= (m_C/(m_C + 1));
-        m_betas[_arm] *= (m_C/(m_C + 1));
+        m_betas[context_id][_arm] += 1;
+    if( m_alphas[context_id][_arm] + m_betas[context_id][_arm] > m_C ){
+        m_alphas[context_id][_arm] *= (m_C/(m_C + 1));
+        m_betas[context_id][_arm] *= (m_C/(m_C + 1));
     }
+}
+
+template <typename C> bool
+ContextualDTSPolicy<C>::setContextIdMap( const std::vector<C>& _contexts,
+        const std::vector<int>& _rep_ids )
+{
+    if(_contexts.size() != _rep_ids.size())
+        return false;
+    if(_contexts.size() != m_alphas.size())
+            return false;
+    for( int i = 0; i < _contexts.size(); i++)
+        m_context_id_map[_contexts[i]] = _rep_ids[i];
+
+    return true;
 }
 
 #endif
