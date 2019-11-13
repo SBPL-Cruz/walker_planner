@@ -1,4 +1,4 @@
-#include <tf2/LinearMath/Quaternion.h>
+//#include <tf2/LinearMath/Quaternion.h>
 #include <sstream>
 #include <memory>
 #include <fstream>
@@ -19,6 +19,7 @@
 //#include <sbpl/planners/mrmhaplanner.h>
 #include <smpl/search/smhastar.h>
 #include <sbpl/planners/types.h>
+#include <panini/algo.h>
 
 #include "heuristics/walker_heuristics.h"
 #include "planners/mrmhaplanner.h"
@@ -33,8 +34,8 @@
 
 enum ActionSpace {
     Fullbody = 0,
-    Arm,
     Base
+    Arm,
 };
 
 bool constructHeuristics(
@@ -193,9 +194,9 @@ smpl::GoalConstraint stringToGoalConstraint(std::string _pose_str){
     goal.xyz_tolerance[0] = 0.05;
     goal.xyz_tolerance[1] = 0.05;
     goal.xyz_tolerance[2] = 0.05;
-    goal.rpy_tolerance[0] = 0.39;
-    goal.rpy_tolerance[1] = 0.39;
-    goal.rpy_tolerance[2] = 0.39;
+    goal.rpy_tolerance[0] = 0.70;//0.39;
+    goal.rpy_tolerance[1] = 0.70;//0.39;
+    goal.rpy_tolerance[2] = 0.70;//0.39;
 
     return goal;
 }
@@ -473,17 +474,17 @@ int main(int argc, char** argv) {
 
     std::array<int, NUM_QUEUES> rep_ids;
     for(auto& ele : rep_ids)
-        ele = (int)Fullbody;
+        ele = (int)Base;
     rep_ids[0] = (int)Fullbody;
     rep_ids[1] = (int)Fullbody;
 
     // if aij = 1 :  closed in rep i => closed in rep j
-    //std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
-    //    rep_dependency_matrix = {{ {{1, 1, 1}},
-    //                              {{0, 1, 0}},
-    //                              {{0, 1, 0}} }};
     std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
-        rep_dependency_matrix = {{ {{1}} }};
+        rep_dependency_matrix = {{ {{1, 1, 1}},
+                                  {{0, 1, 0}},
+                                  {{0, 1, 0}} }};
+    //std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
+        //rep_dependency_matrix = {{ {{1}} }};
 
 
     //auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);

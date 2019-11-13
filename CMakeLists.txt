@@ -92,6 +92,7 @@ set( PLANNERS
 set( SOURCE_FILES
     src/scheduling_policies.cpp
     src/utils/utils.cpp
+    src/scheduling_policies.cpp
     )
 
 add_library(generic_planner SHARED ${SOURCE_FILES})

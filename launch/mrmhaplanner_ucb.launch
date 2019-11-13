@@ -49,19 +49,14 @@ required="true" /> -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
         <param name="planning/mprim_filenames" value="$(find
         walker_planner)/config/walker_multi_rep.mprim,$(find
-        walker_planner)/config/walker_multi_rep_right_arm.mprim,$(find
-        walker_planner)/config/walker_multi_rep_base.mprim"/>
+        walker_planner)/config/walker_multi_rep_base.mprim,$(find
+        walker_planner)/config/walker_multi_rep_right_arm.mprim"/>
 
         <param name="planning/mprim_filename" value="$(find
         walker_planner)/config/walker_multi_rep.mprim"/>
 
         <!-- <param name="robot_start_states_file" value="$(find walker_planner)/experiments/train/easy/short/start_states.txt" /> -->
         <!-- <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/train/easy/short/goal_poses.txt" /> -->
-
-        <!-- 2. scene -->
-        <!-- 2.1 robot state -->
-        <rosparam command="load" file="$(find
-        walker_planner)/experiments/walker_goal_mrmha.yaml"/>
 
         <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
 

@@ -31,8 +31,8 @@
 
 enum ActionSpace {
     Fullbody = 0,
-    Arm,
     Base
+    Arm,
 };
 
 bool constructHeuristics(
