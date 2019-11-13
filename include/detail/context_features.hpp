@@ -62,26 +62,25 @@ MobManipDiscreteFeatures<4>::MobManipDiscreteFeatures(
 
 }
 
-//XXX Trailing return type?
-auto MobManipDiscreteFeatures<4>::getContext( const std::vector<double>& _robot_state )
+auto MobManipDiscreteFeatures<4>::getContext( int _state_id )
     -> ContextArray
 {
     ContextArray context;
-    auto grid = m_bfs_2d->grid();
+    auto grid = m_bfs_3d->grid();
     double res = grid->resolution();
 
+    auto state = m_env->getHashEntry(_state_id);
     // Get state-id
-    smpl::RobotCoord robot_coord(_robot_state.size());
-    m_env->stateToCoord( _robot_state, robot_coord );
-    int state_id = m_env->getOrCreateState(robot_coord, _robot_state);
+    auto robot_coord = state->coord;
+    auto robot_state = state->state;
 
-    context[0] = m_bfs_2d->GetGoalHeuristic(state_id);
+    context[0] = m_bfs_2d->GetGoalHeuristic(_state_id);
     ROS_ERROR("2d bfs distance: %d", context[0]);
-    context[1] = m_bfs_3d->GetGoalHeuristic(state_id);
+    context[1] = m_bfs_3d->GetGoalHeuristic(_state_id);
     ROS_ERROR("3d bfs distance: %d", context[1]);
 
     // Find circum-radius of the robot.
-    auto end_eff_frame = m_rm->computeFK(_robot_state);
+    auto end_eff_frame = m_rm->computeFK(robot_state);
     auto base_link_frame = m_rm->getLinkTransform("base_link");
     assert(base_link_frame!= nullptr);
     auto base_link_to_end_eff = base_link_frame->inverse() * end_eff_frame;
@@ -93,7 +92,7 @@ auto MobManipDiscreteFeatures<4>::getContext( const std::vector<double>& _robot_
     context[2] = circum_radius;
 
     // Find BFS2D_Base path and compute distance to the nearest narrow passage.
-    auto path_to_goal = m_bfs_3d_base->getPathToGoal(_robot_state);
+    auto path_to_goal = m_bfs_3d_base->getPathToGoal(robot_state);
     ROS_ERROR("Length of path: %d", path_to_goal.size());
     context[3] = 100;
     for(int i = 0; i < std::min(100, (int) path_to_goal.size()); i++)

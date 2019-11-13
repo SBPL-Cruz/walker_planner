@@ -8,6 +8,7 @@ template <int N, typename T>
 class AbstractContext {
     public:
     virtual std::array<T, N> getContext(const std::vector<double>& robot_state) = 0;
+    virtual std::array<T, N> getContext(int state_id) = 0;
 };
 
 #endif

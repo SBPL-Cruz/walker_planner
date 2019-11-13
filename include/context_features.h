@@ -23,7 +23,7 @@ class MobManipDiscreteFeatures : public AbstractContext<N, int>
      * Arm-retract state
      **/
     using ContextArray = std::array<int, N>;
-    ContextArray getContext( const std::vector<double>& ) override
+    ContextArray getContext( const std::vector<int>& ) override
     {
         throw "Not Implemented";
     }
@@ -71,7 +71,13 @@ class MobManipDiscreteFeatures<4> : public AbstractContext<4, int>
      * Distance to nearest narrow passage on 2D BFS path
      **/
     using ContextArray = std::array<int, 4>;
-    ContextArray getContext( const std::vector<double>& ) override;
+
+    ContextArray getContext( int state_id ) override;
+
+    std::array<int, 4> getContext(const std::vector<double>& robot_state)
+    {
+        throw "Not Implemented";
+    }
 
     void setRobotArmLength( double );
 
