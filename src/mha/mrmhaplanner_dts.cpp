@@ -27,12 +27,12 @@
 #include "utils/utils.h"
 
 #define NUM_QUEUES 10
-#define NUM_ACTION_SPACES 3
+#define NUM_ACTION_SPACES 2
 
 enum ActionSpace {
     Fullbody = 0,
-    Arm,
-    Base
+    Base,
+    Arm //Optional for now.
 };
 
 bool constructHeuristics(
@@ -81,6 +81,11 @@ bool constructHeuristics(
         inad->init( bfs_3d_base, bfs_3d, retract_arm );
         heurs.push_back(std::move(inad));
     }
+    //{ //EndEffector
+        //auto inad = std::make_unique<ImprovedEndEffHeuristic>();
+        //inad->init( bfs_3d_base, bfs_3d, retract_arm );
+        //heurs.push_back(std::move(inad));
+    //}
 
     int num_rot_heurs = 8;
     for(int i=0; i<num_rot_heurs; i++){
@@ -463,12 +468,15 @@ int main(int argc, char** argv) {
         ele = (int)Base;
     rep_ids[0] = (int)Fullbody;
     rep_ids[1] = (int)Fullbody;
+    //rep_ids[2] = (int)Arm;
 
     //if aij = 1 :  closed in rep i => closed in rep j
     std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
-        rep_dependency_matrix = {{ {{1, 1, 1}},
-                                  {{0, 1, 0}},
-                                  {{0, 1, 0}} }};
+        //rep_dependency_matrix = {{ {{1, 1, 1}},
+                                  //{{0, 1, 0}},
+                                  //{{0, 0, 1}} }};
+        rep_dependency_matrix = {{ {{1, 1}},
+                                  {{0, 1}} }};
 
     const unsigned int seed = 100;
     using PolicyT = DTSPolicy;
