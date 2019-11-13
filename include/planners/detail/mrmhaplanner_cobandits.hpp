@@ -121,8 +121,32 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
         std::vector<int> rep_ids;
         for( int hidx = 1; hidx < num_heuristics(); hidx++ )
         {
-            int rep_id = m_rep_ids[hidx];
-            int state_id = this->state_from_open_state(m_open[hidx].min())->state_id;
+            // Dummy state_id referring to the start.
+            // Always valid.
+            int state_id = 1;
+            // Pass a negative rep_id if inadmissible queue is empty.
+            int rep_id = -1;
+            if(!m_open[hidx].empty())
+            {
+                if ( get_minf(m_open[hidx]) <= m_eps_mha * get_minf(m_open[0]) ){
+                    if (m_goal_state->g <= get_minf(m_open[hidx])) {
+                        // Solution found
+                        this->m_eps_satisfied = m_eps*m_eps_mha;
+                        this->extract_path(_solution, _soltn_cost);
+                        return 1;
+                    }
+                } else {
+                    if (m_goal_state->g <= get_minf(m_open[0])) {
+                        // Solution found
+                        this->m_eps_satisfied = m_eps*m_eps_mha;
+                        this->extract_path(_solution, _soltn_cost);
+                        return 1;
+                    }
+                }
+
+                state_id = this->state_from_open_state(m_open[hidx].min())->state_id;
+                rep_id = m_rep_ids[hidx];
+            }
             // Context generator class should handle the conversion from
             // state-id to the actual robot state.
             // The planner is agnostic to the robot state.
@@ -130,55 +154,39 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
             contexts.push_back(context);
             rep_ids.push_back(rep_id);
         }
-        int rep_id = this->m_scheduling_policy->getAction(contexts, rep_ids);
-        ROS_DEBUG_NAMED(LOG, "Expanding Rep %d", rep_id);
+        int hidx = this->m_scheduling_policy->getArm(contexts, rep_ids) + 1; // Policy doesn't know about anchor
+        int rep_id = m_rep_ids[hidx];
+        auto context = contexts[hidx-1];
+        ROS_DEBUG_NAMED(LOG, "Expanding Queue %d in Rep: %d", hidx, rep_id);
         ROS_DEBUG_NAMED(LOG, "==================");
         int reward = 0;
-        for(int hidx = 1; hidx < num_heuristics(); hidx++)
-        {
-            if(m_rep_ids[hidx] != rep_id)
-                continue;
-            if ( get_minf(m_open[hidx]) <= m_eps_mha * get_minf(m_open[0]) ){
-                if (m_goal_state->g <= get_minf(m_open[hidx])) {
-                    // Solution found
-                    this->m_eps_satisfied = m_eps*m_eps_mha;
-                    this->extract_path(_solution, _soltn_cost);
-                    return 1;
-                } else {
-                    // Inadmissible expansion
-                    ROS_DEBUG_NAMED(LOG, "Inadmissible expansion");
-                    auto s = this->state_from_open_state(m_open[hidx].min());
-                    ROS_DEBUG_NAMED(LOG, "State: %d, f: %d", s->state_id, s->od[hidx].f);
-                    this->expand(s, hidx);
-                    // Use the dependency matrix.
-                    // to partially close the state.
-                    for(int i = 0; i < R; i++){
-                        if(this->m_rep_dependency_matrix[this->m_rep_ids[hidx]][i])
-                            s->closed_in_adds[i] = true;
-                    }
-                    // DTS
-                    if( m_best_h[hidx] < m_prev_best_h[hidx] )
-                    {
-                        m_prev_best_h[hidx] = m_best_h[hidx];
-                        reward++;
-                    }
-                }
-            } else {
-                if (m_goal_state->g <= get_minf(m_open[0])) {
-                    // Solution found
-                    this->m_eps_satisfied = m_eps*m_eps_mha;
-                    this->extract_path(_solution, _soltn_cost);
-                    return 1;
-                } else {
-                    //Anchor expansion
-                    ROS_DEBUG_NAMED(LOG, "Anchor Expansion");
-                    auto s = this->state_from_open_state(m_open[0].min());
-                    this->expand(s, 0);
-                    s->closed_in_anc = true;
-                }
+        if ( get_minf(m_open[hidx]) <= m_eps_mha * get_minf(m_open[0]) ){
+            // Inadmissible expansion
+            ROS_DEBUG_NAMED(LOG, "Inadmissible expansion");
+            auto s = this->state_from_open_state(m_open[hidx].min());
+            ROS_DEBUG_NAMED(LOG, "State: %d, f: %d", s->state_id, s->od[hidx].f);
+            this->expand(s, hidx);
+            // Use the dependency matrix.
+            // to partially close the state.
+            for(int i = 0; i < R; i++){
+                if(this->m_rep_dependency_matrix[this->m_rep_ids[hidx]][i])
+                    s->closed_in_adds[i] = true;
             }
+            // DTS
+            if( m_best_h[hidx] < m_prev_best_h[hidx] )
+            {
+                m_prev_best_h[hidx] = m_best_h[hidx];
+                reward++;
+            }
+        } else {
+            //Anchor expansion
+            ROS_DEBUG_NAMED(LOG, "Anchor Expansion");
+            auto s = this->state_from_open_state(m_open[0].min());
+            this->expand(s, 0);
+            s->closed_in_anc = true;
         }
-        this->m_scheduling_policy->updatePolicy(reward, rep_id);
+        ROS_DEBUG_NAMED(LOG, "Size of Anchor: %d", m_open[0].size());
+        this->m_scheduling_policy->updatePolicy(context, reward, rep_id);
         auto end_time = smpl::clock::now();
         this->m_time_elapsed += smpl::to_seconds(end_time - start_time);
     }
