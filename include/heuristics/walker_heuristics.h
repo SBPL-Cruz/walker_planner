@@ -145,8 +145,11 @@ struct ImprovedEndEffHeuristic : public smpl::CompoundBfsHeuristic
             dot = qa.dot(qb);
         }
         int rot_dist = DefaultCostMultiplier*smpl::angles::normalize_angle(2.0 * std::acos(dot));
-
-        int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
+        int base_dist;
+        if(bfs_3d_base != nullptr)
+             base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
+        else
+            base_dist = 0;
         auto arm_dist = bfs_3d->GetGoalHeuristic(state_id);
         if(arm_dist/bfs_3d->getCostPerCell() > 30){
             arm_dist = m_retract_arm_heur->GetGoalHeuristic(state_id);
