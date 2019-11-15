@@ -26,83 +26,6 @@
 #include "scheduling_policies.h"
 #include "utils/utils.h"
 
-#define NUM_QUEUES 10
-#define NUM_ACTION_SPACES 2
-
-enum ActionSpace {
-    Fullbody = 0,
-    Base,
-    Arm //Optional for now.
-};
-
-bool constructHeuristics(
-        std::vector<std::unique_ptr<smpl::RobotHeuristic>>& heurs,
-        smpl::ManipLattice* pspace,
-        smpl::OccupancyGrid* grid,
-        smpl::KDLRobotModel* rm,
-        PlannerConfig& params ){
-
-    SMPL_INFO("Initialize Heuristics");
-    const int DefaultCostMultiplier = 1000;
-
-    auto bfs_3d = std::make_shared<smpl::Bfs3DHeuristic>();
-    bfs_3d->setCostPerCell(params.cost_per_cell);
-    bfs_3d->setInflationRadius(params.inflation_radius_3d);
-    if (!bfs_3d->init(pspace, grid)) {
-        ROS_ERROR("Could not initialize Bfs3Dheuristic.");
-        return false;
-    }
-
-    auto bfs_3d_base = std::make_shared<smpl::Bfs3DBaseHeuristic>();
-    bfs_3d_base->setCostPerCell(params.cost_per_cell);
-    bfs_3d_base->setInflationRadius(params.inflation_radius_2d);
-    if (!bfs_3d_base->init(pspace, grid, 4)) {
-        ROS_ERROR("Could not initialize Bfs3DBaseHeuristic");
-        return false;
-    }
-
-    auto retract_arm = std::make_shared<RetractArmHeuristic>();
-    if(!retract_arm->init(bfs_3d_base, bfs_3d)){
-        ROS_ERROR("Could not initialize RetractArmHeuristic initialize");
-        return false;
-    }
-
-    //Compute a feasible base location.
-    std::vector<int> base_x, base_y;
-    heurs.clear();
-
-    {
-        auto anchor = std::make_unique<AnchorHeuristic>();
-        anchor->init( bfs_3d_base, bfs_3d );
-        heurs.push_back(std::move(anchor));
-    }
-    { //EndEffector
-        auto inad = std::make_unique<ImprovedEndEffHeuristic>();
-        inad->init( bfs_3d_base, bfs_3d, retract_arm );
-        heurs.push_back(std::move(inad));
-    }
-    //{ //EndEffector
-        //auto inad = std::make_unique<ImprovedEndEffHeuristic>();
-        //inad->init( bfs_3d_base, bfs_3d, retract_arm );
-        //heurs.push_back(std::move(inad));
-    //}
-
-    int num_rot_heurs = 8;
-    for(int i=0; i<num_rot_heurs; i++){
-        auto h = std::make_unique<BaseRotHeuristic>();
-        if (!h->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        heurs.push_back(std::move(h));
-    }
-
-    for (auto& entry : heurs) {
-        pspace->insertHeuristic(entry.get());
-    }
-    return true;
-}
-
 class ReadExperimentsFromFile {
     public:
     ReadExperimentsFromFile(ros::NodeHandle);
@@ -440,9 +363,12 @@ int main(int argc, char** argv) {
     //Planning////
     /////////////
 
-    std::vector< std::unique_ptr<smpl::RobotHeuristic> > robot_heurs;
+    std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES > robot_heurs;
+    std::vector< std::shared_ptr<smpl::RobotHeuristic> > bfs_heurs;
 
-    if(!constructHeuristics( robot_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    std::array<int, NUM_QUEUES> rep_ids;
+
+    if(!constructHeuristics( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
@@ -463,20 +389,13 @@ int main(int argc, char** argv) {
     Heuristic* anchor_heur = heurs[0];
     std::vector<Heuristic*> inad_heurs( heurs.begin() + 1, heurs.end() );
 
-    std::array<int, NUM_QUEUES> rep_ids;
-    for(auto& ele : rep_ids)
-        ele = (int)Base;
-    rep_ids[0] = (int)Fullbody;
-    rep_ids[1] = (int)Fullbody;
-    //rep_ids[2] = (int)Arm;
-
     //if aij = 1 :  closed in rep i => closed in rep j
     std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
-        //rep_dependency_matrix = {{ {{1, 1, 1}},
-                                  //{{0, 1, 0}},
-                                  //{{0, 0, 1}} }};
-        rep_dependency_matrix = {{ {{1, 1}},
-                                  {{0, 1}} }};
+        rep_dependency_matrix = {{ {{1, 1, 1}},
+                                  {{0, 1, 0}},
+                                  {{0, 0, 1}} }};
+        //rep_dependency_matrix = {{ {{1, 1}},
+                                  //{{0, 1}} }};
 
     const unsigned int seed = 100;
     using PolicyT = DTSPolicy;

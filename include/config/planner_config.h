@@ -51,6 +51,12 @@ struct PlannerConfig
     std::vector<int> seeds;
 };
 
+enum ActionSpace {
+    Fullbody = 0,
+    Base,
+    Arm
+};
+
 struct MultiRoomMapConfig {
     int seed = 1000;
     //Map
