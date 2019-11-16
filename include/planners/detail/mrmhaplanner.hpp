@@ -5,7 +5,7 @@
 #include <smpl/time.h>
 #include "../mrmhaplanner.h"
 
-#define LOG "templated_mrmha"
+#define LOG "mrmha"
 
 template <int N, int R, typename SP>
 MRMHAPlanner<N, R, SP>::MRMHAPlanner(
@@ -104,6 +104,7 @@ int MRMHAPlanner<N, R, SP>::replan(
     reinit_state(m_start_state);
     m_start_state->g = 0;
 
+
     for (int hidx = 0; hidx < num_heuristics(); ++hidx) {
         m_start_state->od[hidx].f = compute_key(m_start_state, hidx);
         m_open[hidx].push(&m_start_state->od[hidx]);
@@ -116,15 +117,19 @@ int MRMHAPlanner<N, R, SP>::replan(
 
     while (!m_open[0].empty() && !time_limit_reached()) {
         auto start_time = smpl::clock::now();
-
         // Picks a queue among all non-empty inadmissible queue.
         // If an inadmissible queue is empty, it is skipped.
-        int hidx = chooseQueue();
-        ROS_DEBUG_NAMED(LOG, "Expanding queue %d", hidx);
-        ROS_DEBUG_NAMED(LOG, "==================");
+        int hidx = m_scheduling_policy->getAction() + 1;
+        for(int hidx = 0; hidx < num_heuristics(); hidx++)
+        {
+            ROS_DEBUG_NAMED(LOG, "Size of queue %d : %d", hidx, (int)m_open[hidx].size());
+        }
+        ROS_DEBUG_NAMED(LOG, "Expanding queue %d of size: %d", hidx, m_open[hidx].size());
+        ROS_DEBUG_NAMED( LOG, "  comparing %d with %f x %d = %f", get_minf(m_open[hidx]), m_eps_mha, get_minf(m_open[0]), m_eps_mha*get_minf(m_open[0]) );
         if ( get_minf(m_open[hidx]) <= m_eps_mha * get_minf(m_open[0]) ){
             if (m_goal_state->g <= get_minf(m_open[hidx])) {
                 // Solution found
+                ROS_DEBUG_NAMED(LOG, "Path found");
                 m_eps_satisfied = m_eps*m_eps_mha;
                 extract_path(_solution, _soltn_cost);
                 return 1;
@@ -136,14 +141,18 @@ int MRMHAPlanner<N, R, SP>::replan(
                 expand(s, hidx);
                 // Use the dependency matrix.
                 // to partially close the state.
+                int rep_id = m_rep_ids[hidx];
                 for(int i = 0; i < R; i++){
-                    if(m_rep_dependency_matrix[m_rep_ids[hidx]][i])
+                    if(m_rep_dependency_matrix[rep_id][i]){
+                        ROS_DEBUG_NAMED(LOG, "Closing %d expanded from rep %d in rep %d", s->state_id, rep_id, i);
                         s->closed_in_adds[i] = true;
+                    }
                 }
             }
         } else {
             if (m_goal_state->g <= get_minf(m_open[0])) {
                 // Solution found
+                ROS_DEBUG_NAMED(LOG, "Path found");
                 m_eps_satisfied = m_eps*m_eps_mha;
                 extract_path(_solution, _soltn_cost);
                 return 1;
@@ -269,11 +278,11 @@ void MRMHAPlanner<N, R, SP>::reinit_state(MRMHASearchState* _state){
         }
 
         //SMPL_DEBUG_STREAM("Reinitialized state: " << *_state);
-        for (int i = 0; i < num_heuristics(); ++i) {
-            SMPL_DEBUG("  me[%d]: %p", i, _state->od[i].me);
-            SMPL_DEBUG("  h[%d]: %d", i, _state->od[i].h);
-            SMPL_DEBUG("  f[%d]: %d", i, _state->od[i].f);
-        }
+        //for (int i = 0; i < num_heuristics(); ++i) {
+            //ROS_DEBUG_NAMED(LOG, "  me[%d]: %p", i, _state->od[i].me);
+            //ROS_DEBUG_NAMED(LOG, "  h[%d]: %d", i, _state->od[i].h);
+            //ROS_DEBUG_NAMED(LOG, "  f[%d]: %d", i, _state->od[i].f);
+        //}
     }
 }
 
@@ -303,37 +312,11 @@ void MRMHAPlanner<N, R, SP>::clear(){
 
 template <int N, int R, typename SP>
 int MRMHAPlanner<N, R, SP>::compute_key( MRMHASearchState* _state, int _hidx ){
-    return _state->g + (int)(m_eps * (double)_state->od[_hidx].h);
-}
-
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::sampleIndex(const std::array<double, N>& _likelihoods){
-    std::array<int, N> counts;
-    // The anchor is supposed to have 0 likelihood.
-    for(int i = 0; i < _likelihoods.size(); i++)
-        counts[i] = 100*_likelihoods[i];
-    std::discrete_distribution<int> dist(counts.begin(), counts.end());
-    return dist(m_generator);
-}
-
-template <int N, int R, typename SP>
-int MRMHAPlanner<N, R, SP>::chooseQueue(){
-    std::array<double, N> queue_probs;
-    // Do not expand the anchor unless the algorithm requires so.
-    queue_probs[0] = 0.0;
-
-    for(int hidx = 1; hidx < num_heuristics(); ++hidx){
-        //Only makes sense if the queue is not empty.
-        if (!m_open[hidx].empty()){
-            double p = m_scheduling_policy->getActionSpaceProb(
-                    state_from_open_state(m_open[hidx].min())->state_id,
-                        hidx );
-            queue_probs[hidx] = p;
-        } else {
-            queue_probs[hidx] = 0.0;
-        }
-    }
-    return sampleIndex(queue_probs);
+    //if(_hidx == 0)
+        //return _state->g +  _state->od[_hidx].h;
+    //else
+        ROS_DEBUG_NAMED(LOG, "queue(%d): g : %d, h : %d", _hidx, _state->g, _state->od[_hidx].h);
+        return _state->g + (int)(m_eps * (double)_state->od[_hidx].h);
 }
 
 template <int N, int R, typename SP>
@@ -368,10 +351,12 @@ void MRMHAPlanner<N, R, SP>::expand(MRMHASearchState* _state, int _hidx){
     environment_->GetSuccs(_state->state_id, rep_id, &succ_ids, &costs);
     assert(succ_ids.size() == costs.size());
 
+    ROS_DEBUG_NAMED(LOG, "  %d successors:", succ_ids.size());
     for (size_t sidx = 0; sidx < succ_ids.size(); ++sidx)  {
         const int cost = costs[sidx];
         MRMHASearchState* succ_state = get_state(succ_ids[sidx]);
         reinit_state(succ_state);
+        ROS_DEBUG_NAMED(LOG, "    Successor: %d", sidx);
 
         int new_g = _state->g + costs[sidx];
         if (new_g < succ_state->g) {
@@ -379,6 +364,7 @@ void MRMHAPlanner<N, R, SP>::expand(MRMHASearchState* _state, int _hidx){
             succ_state->bp = _state;
             if (!closed_in_anc_search(succ_state)) {
                 succ_state->od[0].f = compute_key(succ_state, 0);
+                ROS_DEBUG_NAMED(LOG, "    Inserting/updating in anchor");
                 insert_or_update(succ_state, 0);
                 //ROS_DEBUG_NAMED(LOG, "Inserted/Updated successor %d in anchor", succ_state->state_id);
 
@@ -391,14 +377,15 @@ void MRMHAPlanner<N, R, SP>::expand(MRMHASearchState* _state, int _hidx){
                 // XXX Currently does full sharing of all states.
                 // The possibility of having a learnt ``sharing matrix`` is
                 // open.
-                for (int hidx = 1; hidx < num_heuristics(); ++hidx) {
+                for (int hidx = 1; hidx < num_heuristics(); hidx++) {
                     int fi = compute_key(succ_state, hidx);
                     if(!closed_in_add_search(succ_state, m_rep_ids[hidx])){
-                        if(fi <= m_eps_mha * succ_state->od[0].f){
+                        //if(fi <= m_eps_mha * succ_state->od[0].f){
+                            ROS_DEBUG_NAMED(LOG, "      Inserting/Updating in Queue %d", hidx);
                             succ_state->od[hidx].f = fi;
                             insert_or_update(succ_state, hidx);
                             //ROS_DEBUG_NAMED(LOG, "Inserted/Updated successor %d in Queue %d", succ_state->state_id, hidx);
-                        }
+                        //}
                     }
                 }
             }

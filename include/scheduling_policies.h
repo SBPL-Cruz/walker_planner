@@ -89,21 +89,14 @@ class RoundRobinPolicy : public SchedulingPolicy {
     RoundRobinPolicy(int num_queues) :
         SchedulingPolicy(num_queues) {}
     inline virtual double getActionSpaceProb(int state_id, int hidx){
-        //std::cerr<<hidx - 1 <<" " <<numQueues()<< " " << m_queue<<"\n";
-        if((hidx - 1) == m_queue){
-            if(hidx == numQueues())
-                m_queue = (m_queue + 1) % numQueues();
-            return 1.0;
-        } else {
-            if(hidx == numQueues())
-                m_queue = (m_queue + 1) % numQueues();
-            return  0.0;
-        }
+        throw "Not Implemented";
     }
 
     int getAction() override
     {
-        throw "Not Implemented";
+        int arm = m_queue;
+        m_queue = (m_queue + 1) % numQueues();
+        return arm;
     }
 
     private:
@@ -177,7 +170,7 @@ class ContextualMABPolicy : public MABPolicy
 
     virtual int getAction( const std::vector<ContextArray>& ) = 0;
 
-    int getAction()
+    int getAction() override
     {
         throw "Not Implemented";
     }
@@ -206,6 +199,7 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
     ContextualDTSPolicy( int num_arms, int num_contexts, unsigned int seed);
     ~ContextualDTSPolicy();
 
+    using ContextualMABPolicy<ContextArray>::getAction;
     int getAction(const std::vector<ContextArray>&)
     {
         throw "Not Implemented";
@@ -232,7 +226,7 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
     unsigned int m_seed;
     std::unordered_map< ContextArray, int, ContextArrayHash<ContextArray> > m_context_id_map;
     std::vector< std::vector<double> > m_alphas {}, m_betas {} ;
-    double m_C = 10;
+    double m_C = 20;
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
 };
