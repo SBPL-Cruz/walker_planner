@@ -164,7 +164,7 @@ int main(int argc, char** argv){
     scene_ptr->SetCollisionSpace(&cc);
 
     ROS_INFO("Setting up robot model");
-    auto rm = SetupRobotModel(robot_description, robot_config);
+    auto rm = SetupRobotModel<smpl::KDLRobotModel>(robot_description, robot_config);
     if (!rm) {
         ROS_ERROR("Failed to set up Robot Model");
         return 1;

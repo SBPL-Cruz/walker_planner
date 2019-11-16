@@ -6,7 +6,6 @@
 #include "../mrmhaplanner.h"
 
 #define LOG "templated_mrmha"
-#define INFINITECOST std::numeric_limits<int>::max()
 
 template <int N, int R, typename SP>
 MRMHAPlanner<N, R, SP>::MRMHAPlanner(

@@ -2,43 +2,46 @@
 #include <sstream>
 #include <memory>
 #include <fstream>
-#include <algorithm>
+#include <stdlib.h>
+#include <time.h>
 
 #include <ros/ros.h>
+#include <trac_ik_robot_model/trac_ik_robot_model.h>
 #include <smpl/graph/manip_lattice_action_space.h>
 #include <smpl/graph/manip_lattice_multi_rep.h>
 #include <smpl/graph/motion_primitive.h>
-#include <smpl/heuristic/bfs_2d_heuristic.h>
-#include <smpl/heuristic/bfs_3d_heuristic.h>
-#include <smpl/heuristic/bfs_3d_base_heuristic.h>
+#include <smpl/heuristic/bfs_heuristic.h>
 #include <smpl/heuristic/bfs_fullbody_heuristic.h>
-#include <smpl/heuristic/bfs_base_rot_heuristic.h>
 #include <smpl/heuristic/euclid_dist_heuristic.h>
 #include <smpl/heuristic/euclid_diffdrive_heuristic.h>
 #include <smpl/heuristic/arm_retract_heuristic.h>
-#include <smpl/heuristic/mother_heuristic.h>
-#include <sbpl/planners/mrmhaplanner.h>
+#include <smpl/heuristic/base_rot_bfs_heuristic.h>
+//#include <sbpl/planners/mrmhaplanner.h>
+#include <smpl/search/smhastar.h>
+#include <sbpl/planners/types.h>
 
+#include "planners/mrmhaplanner.h"
+#include "planners/mhaplanner.h"
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
+#include "scheduling_policies.h"
 #include "utils/utils.h"
 
-using Path = std::vector< std::array<double, 3> >;
-using Point = std::pair<double, double>;
+#define NUM_QUEUES 10
+#define NUM_ACTION_SPACES 3
 
-using namespace std;
-
-struct PlanFeatures {
-    std::vector<double> x_rel_door;
-    std::vector<double> y_rel_door;
-    std::vector<bool> base_path_through_door;
+enum ActionSpace {
+    Fullbody = 0,
+    Arm,
+    Base
 };
 
 bool constructHeuristics(
         std::vector<std::unique_ptr<smpl::RobotHeuristic>>& heurs,
         smpl::ManipLattice* pspace,
         smpl::OccupancyGrid* grid,
-        smpl::KDLRobotModel* rm,
+        //smpl::KDLRobotModel* rm,
+        smpl::TracIKRobotModel* rm,
         PlannerConfig& params ){
 
     SMPL_INFO("Initialize Heuristics");
@@ -58,7 +61,6 @@ bool constructHeuristics(
         }
     };
 
-    /*
     struct EndEffHeuristic : public BfsHeuristic {
         bool init(std::shared_ptr<smpl::Bfs3DBaseHeuristic> _bfs_3d_base,
                 std::shared_ptr<smpl::Bfs3DHeuristic> _bfs_3d){
@@ -93,16 +95,14 @@ bool constructHeuristics(
             int arm_dist = bfs_3d->GetGoalHeuristic(state_id);
 
             int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
-            ROS_ERROR("%d + %d + %d = %d", int(base_coeff*base_dist), int(arm_coeff*arm_dist), int(rot_coeff*rot_dist), heuristic);
             return heuristic;
         }
 
-        double base_coeff=0.02;
-        double arm_coeff=1;
-        double rot_coeff=1;
+        double base_coeff=0.2;
+        double arm_coeff=10;
+        double rot_coeff=10;
         smpl::PoseProjectionExtension* pose_ext = nullptr;
     };
-    */
 
     struct RetractArmHeuristic : public BfsHeuristic {
         bool init(std::shared_ptr<smpl::Bfs3DBaseHeuristic> _bfs_3d_base,
@@ -118,21 +118,10 @@ bool constructHeuristics(
 
             smpl::Vector3 p;
             if(!bfs_3d->m_pp->projectToPoint(state_id, p)){
-                SMPL_ERROR("RetractArmHeuristic Could not project");
+                ROS_ERROR("RetractArmHeuristic Could not project");
                 return 0;
             }
             auto retracted_robot_state = bfs_3d->planningSpace()->getExtension<smpl::ExtractRobotStateExtension>()->extractState(state_id);
-
-            /* End-effector distance
-            for(int i=3; i<retracted_robot_state.size(); i++)
-                retracted_robot_state[i] = 0;
-            smpl::Vector3 retracted_p;
-            if(!bfs_3d->m_pp->projectToPoint(retracted_robot_state, retracted_p)){
-                SMPL_ERROR("RetractArmHeuristic Could not project");
-                return 0;
-            }
-            int retract_heuristic = euclidDist(p.data(), retracted_p.data(), 3) * DefaultCostMultiplier;
-            */
 
             // Norm of first 5 joints.
             double norm = 0.0;
@@ -144,7 +133,6 @@ bool constructHeuristics(
             int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
 
             int heuristic = base_coeff*base_dist + retract_arm_coeff*retract_heuristic;
-            //ROS_ERROR("%d + %d = %d", base_dist, int(retract_arm_coeff*retract_heuristic), heuristic);
 
             return heuristic;
         }
@@ -196,13 +184,13 @@ bool constructHeuristics(
             }
 
             int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
-            //ROS_ERROR("%d + %d + %d = %d", int(base_coeff*base_dist), int(arm_coeff*arm_dist), int(rot_coeff*rot_dist), heuristic);
             return heuristic;
         }
 
         double base_coeff=0.05;
         double arm_coeff=1;
-        double rot_coeff=2;
+        double rot_coeff=0.5;
+        //double rot_coeff=2;
 
         std::shared_ptr<RetractArmHeuristic> m_retract_arm_heur;
         smpl::PoseProjectionExtension* pose_ext = nullptr;
@@ -274,7 +262,6 @@ bool constructHeuristics(
         return false;
     }
 
-
     //Compute a feasible base location.
     std::vector<int> base_x, base_y;
     heurs.clear();
@@ -284,63 +271,21 @@ bool constructHeuristics(
         anchor->init( bfs_3d_base, bfs_3d );
         heurs.push_back(std::move(anchor));
     }
-    /*
-    {
-        auto inad = std::make_unique<EndEffHeuristic>();
-        inad->init( bfs_3d_base, bfs_3d );
-        heurs.push_back(std::move(inad));
-    }*/
-    {
+    { //EndEffector
         auto inad = std::make_unique<ImprovedEndEffHeuristic>();
-        if(!inad->init( bfs_3d_base, bfs_3d, retract_arm )){
-            ROS_ERROR("Could not initialize ImprovedEndEffHeuristic.");
-            return false;
-        }
+        inad->init( bfs_3d_base, bfs_3d, retract_arm );
         heurs.push_back(std::move(inad));
     }
-    /*
-    {
-        auto h = std::make_unique<smpl::Bfs3DHeuristic>();
-        h->setCostPerCell(params.cost_per_cell);
-        h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace, grid)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        heurs.push_back(std::move(h));
-    }
-    */
 
     int num_rot_heurs = 8;
     for(int i=0; i<num_rot_heurs; i++){
         auto h = std::make_unique<BaseRotHeuristic>();
         if (!h->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i)) {
-            ROS_ERROR("Could not initialize BaseRotheuristic.");
+            ROS_ERROR("Could not initialize heuristic.");
             return false;
         }
         heurs.push_back(std::move(h));
     }
-    {
-        auto h = std::make_unique<smpl::EuclidDiffHeuristic>();
-        if (!h->init(pspace)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        //heurs.push_back(std::move(h));
-    }
-    /*
-    {
-        auto h = std::make_unique<smpl::BfsFullbodyHeuristic>();
-        h->setCostPerCell(params.cost_per_cell);
-        h->setInflationRadius(params.inflation_radius);
-        if (!h->init(pspace, grid)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        //SV_SHOW_INFO(h->get2DMapVisualization());
-        //heurs.push_back(std::move(h));
-    }
-    */
 
     for (auto& entry : heurs) {
         pspace->insertHeuristic(entry.get());
@@ -348,261 +293,14 @@ bool constructHeuristics(
     return true;
 }
 
-
-// Given three colinear points p, q, r, the function checks if
-// point q lies on line segment 'pr'
-bool onSegment(Point p, Point q, Point r)
-{
-    if (q.first <= max(p.first, r.first) && q.first >= min(p.first, r.first) &&
-        q.second <= max(p.second, r.second) && q.second >= min(p.second, r.second))
-    return true;
-
-    return false;
-}
-
-// To find orientation of ordered triplet (p, q, r).
-// The function returns following values
-// 0 --> p, q and r are colinear
-// 1 --> Clockwise
-// 2 --> Counterclockwise
-int orientation(Point p, Point q, Point r)
-{
-    // See https://www.geeksforgeeks.org/orientation-3-ordered-points/
-    // for details of below formula.
-    int val = (q.second - p.second) * (r.first - q.first) -
-            (q.first - p.first) * (r.second - q.second);
-
-    if (val == 0) return 0; // colinear
-
-    return (val > 0)? 1: 2; // clock or counterclock wise
-}
-
-// The main function that returns true if line segment 'p1q1'
-// and 'p2q2' intersect.
-bool doIntersect(Point p1, Point q1, Point p2, Point q2)
-{
-    // Find the four orientations needed for general and
-    // special cases
-    int o1 = orientation(p1, q1, p2);
-    int o2 = orientation(p1, q1, q2);
-    int o3 = orientation(p2, q2, p1);
-    int o4 = orientation(p2, q2, q1);
-
-    // General case
-    if (o1 != o2 && o3 != o4)
-        return true;
-
-    // Special Cases
-    // p1, q1 and p2 are colinear and p2 lies on segment p1q1
-    if (o1 == 0 && onSegment(p1, p2, q1)) return true;
-
-    // p1, q1 and q2 are colinear and q2 lies on segment p1q1
-    if (o2 == 0 && onSegment(p1, q2, q1)) return true;
-
-    // p2, q2 and p1 are colinear and p1 lies on segment p2q2
-    if (o3 == 0 && onSegment(p2, p1, q2)) return true;
-
-    // p2, q2 and q1 are colinear and q1 lies on segment p2q2
-    if (o4 == 0 && onSegment(p2, q1, q2)) return true;
-
-    return false; // Doesn't fall in any of the above cases
-}
-
-/*
-bool doLineSegmentsIntersect( Point a1, Point a2, Point b1, Point b2 ){
-    // Check vertical
-    if( areClose(a1.first, a2.first) && areClose(b1.first, b2.first) ){
-        ROS_ERROR("1");
-        return false;
-    }
-
-    if( !areClose(a1.first, a2.first) && !areClose(b1.first, b2.first) ){
-        double m1 = (a2.second - a1.second) / (a2.first - a1.first);
-        double m2 = (b2.second - b1.second) / (b2.first - b1.first);
-        if(areClose(m1, m2)){
-        ROS_ERROR("2");
-            return false;
-        }
-
-        double c1 = a1.second - m1*a1.first;
-        double c2 = b1.second - m2*b1.first;
-
-        double ix = (c2 - c1) / (m1 - m2);
-        //double iy = m1*ix + c1;
-
-        if( ix <= std::min( std::max( a1.first, a2.first ),
-                    std::max( b1.first, b2.first ) ) &&
-               ix >= std::max( std::min( a1.first, a2.first ),
-                    std::min( b1.first, b2.first ))  ){
-            ROS_ERROR("3");
-            return true;
-        }
-        else{
-            ROS_ERROR("4");
-            return false;
-        }
-    }
-
-    if(areClose(a1.first, a2.first)){
-        //Implies that b1, b2 y's are not close
-        //x1 = c1
-        ROS_ERROR("b");
-        double m2 = (b2.second - b1.second) / (b2.first - b1.first);
-        double c2 = b1.second - m2*b1.first;
-
-        double ix = a1.first;
-        if( ix <= std::max( b1.first, b2.first ) &&
-                ix >= std::min( b1.first, b2.first ) ){
-            double iy = m2*ix + c2;
-            if(iy >= std::min(b1.second, b2.second) && iy <= std::max(b1.second, b2.second))
-                return true;
-        }
-        return false;
-
-    } else if(areClose(b1.first, b2.first)){
-        ROS_ERROR("a");
-        double m1 = (a2.second - a1.second) / (a2.first - a1.first);
-        double c1 = a1.second - m1*a1.first;
-        double ix = b1.first;
-        if( ix <= std::max( a1.first, a2.first ) &&
-               ix >= std::min( a1.first, a2.first) ){
-            double iy = m1*ix + c1;
-            ROS_ERROR("iy; %f", iy);
-            if(iy >= std::min(a1.second, a2.second) && iy <= std::max(a1.second, a2.second))
-                return true;
-        }
-        return false;
-
-    } else{
-        ROS_ERROR("WTF Exception in doLineSegmentsIntersect");
-        return false;
-    }
-}
-*/
-
-PlanFeatures computePlanFeatures(
-        const MPlanner::PlannerSolution& soltn,
-        smpl::Bfs3DBaseHeuristic* base_heur_ptr,
-        const moveit_msgs::CollisionObject& door){
-
-    PlanFeatures features;
-    double door_loc[2];
-    door_loc[0] = door.primitive_poses[0].position.x;
-    door_loc[1] = door.primitive_poses[0].position.y;
-    double door_length = door.primitives[0].dimensions[0];
-    double door_width = door.primitives[0].dimensions[1];
-
-    for(const auto& state : soltn.robot_states){
-        features.x_rel_door.push_back(state[0] - door_loc[0]);
-        features.y_rel_door.push_back(state[1] - door_loc[1]);
-    }
-
-    ROS_ERROR("Fisrt par");
-
-    Point door1, door2;
-    if(door_length > door_width){
-        door1 = std::make_pair(door_loc[0] - door_width/2, door_loc[1]);
-        door2 = std::make_pair(door_loc[0] + door_width/2, door_loc[1]);
-    } else{
-        door1 = std::make_pair(door_loc[0], door_loc[1] - door_width/2);
-        door2 = std::make_pair(door_loc[0], door_loc[1] + door_width/2);
-    }
-    ROS_ERROR("Step 2 done");
-
-    features.base_path_through_door.resize(soltn.soltn_ids.size());
-    for(int j=0; j<soltn.soltn_ids.size(); j++){
-        features.base_path_through_door[j] = false;
-        // Check all states on the path to see if they go through the door.
-        auto path = base_heur_ptr->getPath(soltn.soltn_ids[j]);
-        for(int i=1; i<path.size(); i++){
-            Point p1 = std::make_pair(path[i-1][0], path[i-1][1]);
-            Point p2 = std::make_pair(path[i][0], path[i][1]);
-            if(doIntersect(p1, p2, door1, door2)){
-                features.base_path_through_door[j] = true;
-                break;
-            }
-        }
-    }
-    return features;
-}
-
-
-class ReadExperimentFromFile {
-    public:
-
-    ReadExperimentFromFile(ros::NodeHandle);
-    moveit_msgs::RobotState getStart(PlanningEpisode);
-    smpl::GoalConstraint getGoal(PlanningEpisode);
-    bool canCallPlanner() const { return true; }
-
-    private:
-
-    ros::NodeHandle m_nh;
-    std::vector<moveit_msgs::RobotState> m_start_states;
-    std::vector<smpl::GoalConstraint> m_goal_constraints;
-
-};
-
-ReadExperimentFromFile::ReadExperimentFromFile(ros::NodeHandle _nh) : m_nh{_nh}{
-    moveit_msgs::RobotState start_state;
-    if (!ReadInitialConfiguration(_nh, start_state)) {
-        ROS_ERROR("Failed to get initial configuration.");
-    }
-    m_start_states.push_back(start_state);
-
-    smpl::Affine3 goal_pose;
-
-    std::vector<double> goal_state( 6, 0 );
-    m_nh.param("goal/x", goal_state[0], 0.0);
-    m_nh.param("goal/y", goal_state[1], 0.0);
-    m_nh.param("goal/z", goal_state[2], 0.0);
-    m_nh.param("goal/roll", goal_state[3], 0.0);
-    m_nh.param("goal/pitch", goal_state[4], 0.0);
-    m_nh.param("goal/yaw", goal_state[5], 0.0);
-
-    geometry_msgs::Pose read_grasp;
-    read_grasp.position.x = goal_state[0];
-    read_grasp.position.y = goal_state[1];
-    read_grasp.position.z = goal_state[2];
-    tf::Quaternion q;
-    q.setRPY( goal_state[3], goal_state[4], goal_state[5] );
-    read_grasp.orientation.x = q[0];
-    read_grasp.orientation.y = q[1];
-    read_grasp.orientation.z = q[2];
-    read_grasp.orientation.w = q[3];
-    tf::poseMsgToEigen( read_grasp, goal_pose);
-
-    smpl::GoalConstraint goal;
-    goal.type = smpl::GoalType::XYZ_RPY_GOAL;
-    goal.pose = goal_pose;
-    goal.xyz_tolerance[0] = 0.03;
-    goal.xyz_tolerance[1] = 0.03;
-    goal.xyz_tolerance[2] = 0.03;
-    goal.rpy_tolerance[0] = 0.30;
-    goal.rpy_tolerance[1] = 0.30;
-    goal.rpy_tolerance[2] = 0.30;
-
-    m_goal_constraints.push_back(goal);
-}
-
-moveit_msgs::RobotState ReadExperimentFromFile::getStart(PlanningEpisode _ep){
-    return m_start_states.back();
-}
-
-smpl::GoalConstraint ReadExperimentFromFile::getGoal(PlanningEpisode _ep){
-    return m_goal_constraints.back();
-}
-
 class ReadExperimentsFromFile {
     public:
-
     ReadExperimentsFromFile(ros::NodeHandle);
     moveit_msgs::RobotState getStart(PlanningEpisode);
     smpl::GoalConstraint getGoal(PlanningEpisode);
     bool canCallPlanner() const { return true; }
 
     private:
-
     ros::NodeHandle m_nh;
     std::vector<moveit_msgs::RobotState> m_start_states;
     std::vector<smpl::GoalConstraint> m_goal_constraints;
@@ -611,7 +309,8 @@ class ReadExperimentsFromFile {
     bool init( std::string, std::string );
 };
 
-ReadExperimentsFromFile::ReadExperimentsFromFile(ros::NodeHandle _nh) : m_nh{_nh}{
+ReadExperimentsFromFile::ReadExperimentsFromFile(ros::NodeHandle _nh) :
+    m_nh{_nh}{
     std::string start_file, goal_file;
     m_nh.getParam("robot_start_states_file", start_file);
     m_nh.getParam("robot_goal_states_file", goal_file);
@@ -678,9 +377,9 @@ smpl::GoalConstraint stringToGoalConstraint(std::string _pose_str){
     goal.xyz_tolerance[0] = 0.05;
     goal.xyz_tolerance[1] = 0.05;
     goal.xyz_tolerance[2] = 0.05;
-    goal.rpy_tolerance[0] = 0.39;
-    goal.rpy_tolerance[1] = 0.39;
-    goal.rpy_tolerance[2] = 0.39;
+    goal.rpy_tolerance[0] = 3.14;
+    goal.rpy_tolerance[1] = 3.14;
+    goal.rpy_tolerance[2] = 3.14;
 
     return goal;
 }
@@ -724,25 +423,18 @@ bool ReadExperimentsFromFile::init( std::string _start_file, std::string _goal_f
 }
 
 moveit_msgs::RobotState ReadExperimentsFromFile::getStart(PlanningEpisode _ep){
-    if(_ep >= m_start_states.size())
-        throw "Not enough start states.";
     return m_start_states[_ep];
 }
 
 smpl::GoalConstraint ReadExperimentsFromFile::getGoal(PlanningEpisode _ep){
-    if(_ep >= m_goal_constraints.size())
-        throw "Not enough goal states.";
     return m_goal_constraints[_ep];
 }
 
-bool writePath(std::string _file_name, std::string _header, std::vector<smpl::RobotState> _path){
+void writePath(std::string _file_name, std::string _header, std::vector<smpl::RobotState> _path){
     std::ofstream file;
     file.open(_file_name, std::ios::out);
-    if(!file.is_open()){
-        SMPL_ERROR("Could not open file.");
-        return false;
-    }
-
+    if(!file)
+        ROS_ERROR("Could not open file.");
     file<<_header<<"\n";
 
     for(const auto& state : _path){
@@ -753,11 +445,11 @@ bool writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
     }
 
     file.close();
-    return true;
 }
 
-int main(int argc, char** argv){
-    ros::init(argc, argv, "mha_planner");
+int main(int argc, char** argv) {
+    SMPL_INFO("MRMHAPlanner");
+    ros::init(argc, argv, "mrmhaplanner");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);
@@ -832,7 +524,6 @@ int main(int argc, char** argv){
 
     // This whole manage storage for all the scene objects and must outlive
     // its associated CollisionSpace instance.
-    //auto scene_ptr = std::make_unique<CollisionSpaceScene>();
     auto scene_ptr = std::make_unique<CollisionSpaceScene>();
 
     smpl::collision::CollisionModelConfig cc_conf;
@@ -874,7 +565,8 @@ int main(int argc, char** argv){
     scene_ptr->SetCollisionSpace(&cc);
 
     ROS_INFO("Setting up robot model");
-    auto rm = SetupRobotModel(robot_description, robot_config);
+    //auto rm = SetupRobotModel<smpl::KDLRobotModel>(robot_description, robot_config);
+    auto rm = SetupRobotModel<smpl::TracIKRobotModel>(robot_description, robot_config);
     if (!rm) {
         ROS_ERROR("Failed to set up Robot Model");
         return 1;
@@ -883,28 +575,44 @@ int main(int argc, char** argv){
     rm->printRobotModelInformation();
 
     SV_SHOW_INFO(grid_ptr->getDistanceFieldVisualization(0.2));
-
     SV_SHOW_INFO(cc.getCollisionRobotVisualization());
     SV_SHOW_INFO(cc.getCollisionWorldVisualization());
 
     ros::Duration(1.0).sleep();
 
     auto resolutions = getResolutions( rm.get(), planning_config );
-    auto action_space = std::make_unique<smpl::ManipLatticeActionSpace>();
-    auto space = std::make_unique<smpl::ManipLattice>();
+    auto action_space = std::make_unique<smpl::ManipLatticeMultiActionSpace>(NUM_ACTION_SPACES);
+    auto space = std::make_unique<smpl::ManipLatticeMultiRep>();
+
+    //auto action_space = std::make_unique<smpl::ManipLatticeActionSpace>();
+    //auto space = std::make_unique<smpl::ManipLattice>();
 
     if (!space->init( rm.get(), &cc, resolutions, action_space.get() )) {
-        SMPL_ERROR("Failed to initialize Manip Lattice");
+        ROS_ERROR("Failed to initialize Manip Lattice");
         return 1;
     }
 
     if (!action_space->init(space.get())) {
-        SMPL_ERROR("Failed to initialize Manip Lattice Action Space");
+        ROS_ERROR("Failed to initialize Manip Lattice Multi Action Space");
         return 1;
     }
 
-    if(!action_space->load(planning_config.mprim_filename))
-        return 1;
+    // XXX Loads from filename
+    std::vector<std::string> mprim_filenames;
+    std::stringstream ss(planning_config.mprim_filenames);
+    std::string temp;
+    while(getline(ss, temp, ',')){
+        mprim_filenames.push_back(temp);
+        ROS_ERROR("mprim_filename: %s", temp.c_str());
+    }
+    for( int i=0; i<NUM_ACTION_SPACES; i++ )
+        if(!action_space->load(i, mprim_filenames[i]))
+            return 1;
+
+    //if(!action_space->load(mprim_filenames[0])){
+        //SMPL_ERROR("Failed to initialize Manip Lattice Action Space");
+        //return 1;
+    //}
 
     space->setVisualizationFrameId(grid_ptr->getReferenceFrame());
 
@@ -918,60 +626,88 @@ int main(int argc, char** argv){
     action_space->ampThresh(MotionPrimitive::SNAP_TO_RPY, planning_config.rpy_snap_dist_thresh);
     action_space->ampThresh(MotionPrimitive::SNAP_TO_XYZ_RPY, planning_config.xyzrpy_snap_dist_thresh);
     action_space->ampThresh(MotionPrimitive::SHORT_DISTANCE, planning_config.short_dist_mprims_thresh);
+    ROS_ERROR("Use Snap: %d", planning_config.use_xyz_snap_mprim);
 
     ///////////////
     //Planning////
     /////////////
 
-
-    std::vector<std::unique_ptr<smpl::RobotHeuristic>> robot_heurs;
+    std::vector< std::unique_ptr<smpl::RobotHeuristic> > robot_heurs;
 
     if(!constructHeuristics( robot_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
 
-    ROS_ERROR("Num heurs: %d", robot_heurs.size());
+    ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
+    assert(robot_heurs.size() == NUM_QUEUES);
+
     assert(robot_heurs[0] != nullptr);
 
-    std::vector<Heuristic*> heurs;
+    std::array<Heuristic*, NUM_QUEUES> heurs_array;
+    for(int i=0; i < robot_heurs.size(); i++)
+        heurs_array[i] = robot_heurs[i].get();
 
+    std::vector<Heuristic*> heurs;
     for(int i=0; i < robot_heurs.size(); i++)
         heurs.push_back(robot_heurs[i].get());
 
     Heuristic* anchor_heur = heurs[0];
     std::vector<Heuristic*> inad_heurs( heurs.begin() + 1, heurs.end() );
 
-    using MotionPlanner = MPlanner::MotionPlanner<MHAPlanner, smpl::ManipLattice>;
-    auto search_ptr = std::make_unique<MHAPlanner>(
-            space.get(), anchor_heur, inad_heurs.data(), inad_heurs.size());
+    std::array<int, NUM_QUEUES> rep_ids;
+    for(auto& ele : rep_ids)
+        ele = (int)Fullbody;
+    rep_ids[0] = (int)Fullbody;
+    rep_ids[1] = (int)Fullbody;
 
-    ROS_ERROR("%f", planning_config.cost_per_cell);
-    ROS_ERROR("%f", planning_config.inflation_radius_2d);
-    ROS_ERROR("%f", planning_config.inflation_radius_3d);
-    ROS_ERROR("%f", planning_config.eps);
-    ROS_ERROR("%f", planning_config.eps_mha);
+    // if aij = 1 :  closed in rep i => closed in rep j
+    //std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
+    //    rep_dependency_matrix = {{ {{1, 1, 1}},
+    //                              {{0, 1, 0}},
+    //                              {{0, 1, 0}} }};
+    std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
+        rep_dependency_matrix = {{ {{1}} }};
+
+
+    //auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);
+    auto round_robin_policy = std::make_unique<RoundRobinPolicy>(inad_heurs.size());
+
+    //using Planner = MRMHAPlanner<NUM_QUEUES, NUM_ACTION_SPACES, UniformlyRandomPolicy>;
+    using Planner = MRMHAPlanner<NUM_QUEUES, NUM_ACTION_SPACES, RoundRobinPolicy>;
+    //using Planner = MHAPlanner<NUM_QUEUES, RoundRobinPolicy>;
+    //using Planner = MHAPlanner<NUM_QUEUES, RoundRobinPolicy>;
+    //auto search_ptr = std::make_unique<Planner>(
+    //        space.get(), heurs_array, rep_ids, rep_dependency_matrix, uniformly_random_policy.get() );
+    auto search_ptr = std::make_unique<Planner>(
+            space.get(), heurs_array, rep_ids, rep_dependency_matrix, round_robin_policy.get() );
+    //auto search_ptr = std::make_unique<Planner>(space.get(), heurs_array, round_robin_policy.get());
 
     const int max_planning_time = planning_config.planning_time;
     const double eps = planning_config.eps;
     const double eps_mha = planning_config.eps_mha;
     MPlanner::PlannerParams planner_params = { max_planning_time, eps, eps_mha, false };
 
+    //using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLatticeMultiRep>;
+    using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLattice>;
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(search_ptr.get(), space.get(), heurs, planner_params);
 
-    MotionPlannerROS< Callbacks<>, ReadExperimentsFromFile, MotionPlanner >
-            mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
+    MotionPlannerROS< Callbacks<smpl::TracIKRobotModel>,
+        ReadExperimentsFromFile,
+        MotionPlanner,
+        smpl::TracIKRobotModel>
+        mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
     ExecutionStatus status = ExecutionStatus::WAITING;
     //while(status == ExecutionStatus::WAITING) {
     std::string file_prefix = "paths/solution_path";
     std::ofstream stats_file;
     PlanningEpisode ep = planning_config.start_planning_episode;
-    while(ep <= planning_config.end_planning_episode ){
+    while(ep <= planning_config.end_planning_episode){
+        ROS_ERROR("Episode: %d", ep);
         loop_rate.sleep();
         std::string file_suffix = std::to_string(ep) + ".txt";
-        space->clearStats();
         status = mplanner_ros.execute(ep);
     //}
         if(status == ExecutionStatus::SUCCESS){
@@ -985,38 +721,18 @@ int main(int argc, char** argv){
             auto plan_stats = mplanner_ros.getPlan(ep);
             stats_file<<std::to_string(ep)<<" "<<max_planning_time<<" ";
             stats_file<<plan_stats.planning_time << " " << plan_stats.num_expansions << " " << plan_stats.cost<<" ";
-            stats_file<<plan_stats.ik_computations<<" "<<plan_stats.ik_evaluations<<" "<<plan_stats.ik_valid<<" ";
             stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<<"\n";
             stats_file.close();
 
             std::string file_name = file_prefix + file_suffix;
             std::string header = "Solution Path";
-            SMPL_ERROR("%s", file_name.c_str());
+            ROS_ERROR("%s", file_name.c_str());
             writePath(file_name, header , plan);
-            ///////////////////
-            //Compute Features
-            //////////////////
-            /*
-            std::vector<moveit_msgs::CollisionObject> landmarks;
-            auto map_config = getMultiRoomMapConfig(ph);
-            auto objects = GetMultiRoomMapCollisionCubes(grid_ptr->getReferenceFrame(), map_config, landmarks );
-            ROS_ERROR("Landmarks: %d", landmarks.size());
-            auto features = computePlanFeatures(plan_stats,
-                    dynamic_cast<BfsHeuristic*>(anchor_heur)->bfs_3d_base.get(),
-                    landmarks[0]);
-            ROS_ERROR("Features size: %d", features.x_rel_door.size());
-            for(int i=0; i<features.x_rel_door.size(); i++){
-                ROS_ERROR("%f", features.x_rel_door[i]);
-                ROS_ERROR("%f", features.y_rel_door[i]);
-                ROS_ERROR("%d", features.base_path_through_door[i]);
-            }
-            */
-
+            //////////////
 
             visualization_msgs::MarkerArray whole_path;
             std::vector<visualization_msgs::Marker> m_all;
 
-            ///*
             int idx = 0;
             for( int pidx=0; pidx<plan.size(); pidx++ ){
                 auto& state = plan[pidx];
@@ -1028,9 +744,8 @@ int main(int argc, char** argv){
                     whole_path.markers.push_back(m);
                 }
                 visualizer.visualize(smpl::visual::Level::Info, markers);
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                //std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
-            //*/
         }
 
         if(status != ExecutionStatus::WAITING){
@@ -1040,5 +755,3 @@ int main(int argc, char** argv){
         ros::spinOnce();
     }
 }
-
-

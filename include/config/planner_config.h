@@ -84,15 +84,26 @@ bool ReadRobotModelConfig(const ros::NodeHandle &nh, RobotModelConfig &config);
 
 bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config);
 
+template <typename T = smpl::KDLRobotModel>
 auto SetupRobotModel(const std::string& urdf, const RobotModelConfig &config)
-    -> std::unique_ptr<smpl::KDLRobotModel>;
+        -> std::unique_ptr<T> {
+    if (config.kinematics_frame.empty() || config.chain_tip_link.empty()) {
+        ROS_ERROR("Failed to retrieve param 'kinematics_frame' or 'chain_tip_link' from the param server");
+        return NULL;
+    }
+
+    ROS_INFO("Construct Generic Robot Model");
+    auto rm = std::make_unique<T>();
+
+    if (!rm->init(urdf, config.kinematics_frame, config.chain_tip_link, 5)) {
+        ROS_ERROR("Failed to initialize robot model.");
+        return NULL;
+    }
+
+    return std::move(rm);
+}
 
 MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh);
-
-template <typename T, typename... Args>
-inline std::unique_ptr<T> make_unique(Args&&... args){
-    return std::move(std::unique_ptr<T>(new T(args...)));
-}
 
 template <typename T>
 void printVector(std::vector<T> v){

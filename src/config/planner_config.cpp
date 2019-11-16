@@ -249,24 +249,6 @@ bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config)
     return true;
 }
 
-auto SetupRobotModel(const std::string& urdf, const RobotModelConfig &config)
-    -> std::unique_ptr<smpl::KDLRobotModel>
-{
-    if (config.kinematics_frame.empty() || config.chain_tip_link.empty()) {
-        ROS_ERROR("Failed to retrieve param 'kinematics_frame' or 'chain_tip_link' from the param server");
-        return NULL;
-    }
-
-    ROS_INFO("Construct Generic KDL Robot Model");
-    std::unique_ptr<smpl::KDLRobotModel> rm(new smpl::KDLRobotModel);
-
-    if (!rm->init(urdf, config.kinematics_frame, config.chain_tip_link, 5)) {
-        ROS_ERROR("Failed to initialize robot model.");
-        return NULL;
-    }
-
-    return std::move(rm);
-}
 
 MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh){
     MultiRoomMapConfig config;

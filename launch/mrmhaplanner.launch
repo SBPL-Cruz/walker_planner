@@ -18,8 +18,8 @@
     <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)"
 required="true" /> -->
 
-    <node pkg="walker_planner" type="test_ik" name="test_ik"
-            launch-prefix="$(arg launch-prefix)" output="screen">
+    <node pkg="walker_planner" type="mrmhaplanner" name="mrmhaplanner"
+            launch-prefix="$(arg launch-prefix)" output="screen" required="true">
         <param name="planning_frame" value="dummy_base"/>
 
         <!-- 1. robot model (for planning) -->
@@ -60,17 +60,20 @@ required="true" /> -->
         <param name="robot_start_states_file" value="$(find
         walker_planner)/experiments/start_states.txt" />
         <param name="robot_goal_states_file" value="$(find
-        walker_planner)/experiments/goal_states.txt" />
+        walker_planner)/experiments/goal_poses.txt" />
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
         <rosparam command="load" file="$(find
         walker_planner)/experiments/walker_goal_mrmha.yaml"/>
 
+        <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
+
         <!-- 2.2 world state -->
-        <param name="object_filename" value="$(find walker_planner)/env/multi_rooms.env"/>
+        <param name="object_filename" value="$(find walker_planner)/env/proj_env.env"/>
 
         <!-- 3. scenario -->
 
     </node>
+
 </launch>

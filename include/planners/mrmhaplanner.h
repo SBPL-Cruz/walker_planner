@@ -9,6 +9,8 @@
 #include <smpl/heap/intrusive_heap.h>
 #include <smpl/console/console.h>
 
+#define INFINITECOST std::numeric_limits<int>::max()
+
 /**
  * N : Number of queues
  * R : Number of representations
@@ -120,7 +122,7 @@ class MRMHAPlanner : public SBPLPlanner {
 
     int num_heuristics() const { return m_h_count; }
 
-    private:
+    protected:
 
     struct MRMHASearchState {
         int call_number;
@@ -217,7 +219,7 @@ class MRMHAPlanner : public SBPLPlanner {
     int sampleIndex(const std::array<double, N>& likelihoods);
     int chooseQueue();
     int compute_heuristic(int state_id, int hidx);
-    void expand(MRMHASearchState* state, int hidx);
+    virtual void expand(MRMHASearchState* state, int hidx);
 
     int get_minf(CHeap& pq) const {
         return pq.min()->f;

@@ -13,12 +13,16 @@
 #include <smpl/heuristic/arm_retract_heuristic.h>
 #include <smpl/heuristic/base_rot_euclidean_heuristic.h>
 #include <smpl/heuristic/base_rot_bfs_heuristic.h>
+#include <trac_ik_robot_model/trac_ik_robot_model.h>
 #include <smpl/debug/marker_utils.h>
 #include <sbpl/planners/mrmhaplanner.h>
 #include "motion_planner.h"
 #include "motion_planner_ros.h"
 
 #define PI 3.14
+
+//using RobotModel = smpl::KDLRobotModel;
+using RobotModel = smpl::TracIKRobotModel;
 
 class ReadExperimentFromFile {
     public:
@@ -83,6 +87,142 @@ moveit_msgs::RobotState ReadExperimentFromFile::getStart(PlanningEpisode _ep){
 
 smpl::GoalConstraint ReadExperimentFromFile::getGoal(PlanningEpisode _ep){
     return m_goal_constraints.back();
+}
+
+class ReadExperimentsFromFile {
+    public:
+    ReadExperimentsFromFile(ros::NodeHandle);
+    moveit_msgs::RobotState getStart(PlanningEpisode);
+    smpl::GoalConstraint getGoal(PlanningEpisode);
+    bool canCallPlanner() const { return true; }
+
+    private:
+    ros::NodeHandle m_nh;
+    std::vector<moveit_msgs::RobotState> m_start_states;
+    std::vector<smpl::GoalConstraint> m_goal_constraints;
+
+    moveit_msgs::RobotState stringToRobotState(std::string, std::string);
+    bool init( std::string, std::string );
+};
+
+ReadExperimentsFromFile::ReadExperimentsFromFile(ros::NodeHandle _nh) : m_nh{_nh}{
+    std::string start_file, goal_file;
+    m_nh.getParam("robot_start_states_file", start_file);
+    m_nh.getParam("robot_goal_states_file", goal_file);
+    init(start_file, goal_file);
+}
+
+moveit_msgs::RobotState ReadExperimentsFromFile::stringToRobotState(
+        std::string _header, std::string _state_str){
+    moveit_msgs::RobotState robot_state;
+    // Assume space separated items.
+    std::stringstream header_stream(_header);
+    std::stringstream state_stream(_state_str);
+
+    std::string joint_name, joint_val;
+    while (header_stream >> joint_name){
+        robot_state.joint_state.name.push_back(joint_name);
+    }
+    while(state_stream >> joint_val){
+        robot_state.joint_state.position.push_back(std::stod(joint_val));
+    }
+
+    assert(robot_state.joint_state.position.size() == robot_state.joint_state.name.size());
+    return robot_state;
+}
+
+smpl::GoalConstraint stringToGoalConstraint(std::string _pose_str){
+
+    std::stringstream state_stream(_pose_str);
+
+    std::string pose_val;
+    std::vector<double> goal_state( 6, 0 );
+
+    state_stream >> pose_val;
+    goal_state[0] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[1] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[2] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[3] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[4] = std::stod(pose_val);
+    state_stream >> pose_val;
+    goal_state[5] = std::stod(pose_val);
+
+    geometry_msgs::Pose read_grasp;
+    read_grasp.position.x = goal_state[0];
+    read_grasp.position.y = goal_state[1];
+    read_grasp.position.z = goal_state[2];
+
+    tf::Quaternion q;
+    q.setRPY( goal_state[3], goal_state[4], goal_state[5] );
+    read_grasp.orientation.x = q[0];
+    read_grasp.orientation.y = q[1];
+    read_grasp.orientation.z = q[2];
+    read_grasp.orientation.w = q[3];
+
+    smpl::Affine3 goal_pose;
+    tf::poseMsgToEigen( read_grasp, goal_pose);
+
+    smpl::GoalConstraint goal;
+    goal.type = smpl::GoalType::XYZ_RPY_GOAL;
+    goal.pose = goal_pose;
+    goal.xyz_tolerance[0] = 0.05;
+    goal.xyz_tolerance[1] = 0.05;
+    goal.xyz_tolerance[2] = 0.05;
+    goal.rpy_tolerance[0] = 0.39;
+    goal.rpy_tolerance[1] = 0.39;
+    goal.rpy_tolerance[2] = 0.39;
+
+    return goal;
+}
+
+bool ReadExperimentsFromFile::init( std::string _start_file, std::string _goal_file ){
+    //Read names of joints from the header.
+    std::ifstream start_stream;
+    start_stream.open(_start_file);
+    ROS_ERROR("%s", _start_file.c_str());
+    if(!start_stream)
+        throw "Could not read Start file.";
+    //std::string header;
+    char header[100];
+    start_stream.getline(header, 100, '\n');
+    std::string header_str(header);
+
+    std::string line_str;
+    char line[100];
+    while(start_stream.getline(line, 100, '\n')){
+        std::string line_str(line);
+        m_start_states.push_back(stringToRobotState( header_str, line_str ));
+    }
+
+    start_stream.close();
+
+    std::ifstream goal_stream;
+    goal_stream.open(_goal_file);
+    ROS_ERROR("%s", _goal_file.c_str());
+    if(!goal_stream)
+        throw "Could not read Goal file.";
+
+    char line2[100];
+    while(goal_stream.getline(line2, 100, '\n')){
+        std::string line_str(line2);
+        m_goal_constraints.push_back(stringToGoalConstraint(line_str));
+    }
+
+    goal_stream.close();
+
+    return true;
+}
+
+moveit_msgs::RobotState ReadExperimentsFromFile::getStart(PlanningEpisode _ep){
+    return m_start_states[_ep];
+}
+
+smpl::GoalConstraint ReadExperimentsFromFile::getGoal(PlanningEpisode _ep){
+    return m_goal_constraints[_ep];
 }
 
 int main(int argc, char** argv){
@@ -202,20 +342,22 @@ int main(int argc, char** argv){
 
     scene_ptr->SetCollisionSpace(&cc);
 
-    auto objects = GetMultiRoomMapCollisionCubes(planning_frame, 20, 15, .8, 1);
+    auto map_config = getMultiRoomMapConfig(nh);
+    std::vector<moveit_msgs::CollisionObject> tmp;
+    auto objects = GetMultiRoomMapCollisionCubes(planning_frame, map_config, tmp);
     for (auto& object : objects) {
         scene_ptr->ProcessCollisionObjectMsg(object);
     }
 
     ROS_INFO("Setting up robot model");
-    auto full_rm = SetupRobotModel(robot_description, robot_config);
+    auto full_rm = SetupRobotModel<RobotModel>(robot_description, robot_config);
     if (!full_rm) {
         ROS_ERROR("Failed to set up Robot Model");
         return 1;
     }
 
     robot_config.kinematics_frame = "base_link";
-    auto arm_rm = SetupRobotModel(robot_description, robot_config);
+    auto arm_rm = SetupRobotModel<RobotModel>(robot_description, robot_config);
     if (!arm_rm) {
         ROS_ERROR("Failed to set up Robot Model");
         return 1;
@@ -230,44 +372,98 @@ int main(int argc, char** argv){
 
     ros::Duration(1.0).sleep();
 
-    ReadExperimentFromFile read_exp(ph);
+    //ReadExperimentFromFile read_exp(ph);
+    ReadExperimentsFromFile read_exp(ph);
 
-    auto _start = read_exp.getStart(0);
-
-    smpl::RobotState initial_positions;
-    std::vector<std::string> missing;
-    if (!leatherman::getJointPositions(
-            _start.joint_state,
-            _start.multi_dof_joint_state,
-            full_rm->getPlanningJoints(),
-            initial_positions,
-            missing)){
-
-        moveit_msgs::RobotState fixed_state = _start;
-        for (auto& variable : missing) {
-            fixed_state.joint_state.name.push_back(variable);
-            fixed_state.joint_state.position.push_back(0.0);
-        }
-
+    int fullbody_ik_successes = 0;
+    int arm_ik_successes = 0;
+    int N = 10;
+    for(int i = 0; i < N; i++){
+        auto _start = read_exp.getStart(i);
+        smpl::RobotState initial_positions;
+        std::vector<std::string> missing;
         if (!leatherman::getJointPositions(
-                fixed_state.joint_state,
-                fixed_state.multi_dof_joint_state,
+                _start.joint_state,
+                _start.multi_dof_joint_state,
                 full_rm->getPlanningJoints(),
                 initial_positions,
                 missing)){
-            return false;
+
+            moveit_msgs::RobotState fixed_state = _start;
+            for (auto& variable : missing) {
+                fixed_state.joint_state.name.push_back(variable);
+                fixed_state.joint_state.position.push_back(0.0);
+            }
+
+            if (!leatherman::getJointPositions(
+                    fixed_state.joint_state,
+                    fixed_state.multi_dof_joint_state,
+                    full_rm->getPlanningJoints(),
+                    initial_positions,
+                    missing)){
+                return false;
+            }
         }
+
+        auto end_eff_pose = full_rm->computeFK(initial_positions);
+
+        SV_SHOW_INFO_NAMED("fk_robot", cc.getCollisionRobotVisualization(initial_positions));
+        SV_SHOW_INFO_NAMED("fk_pose", smpl::visual::MakePoseMarkers(end_eff_pose, planning_frame, "fk_pose"));
+        ROS_INFO("Visualizing FK");
+
+        ROS_WARN("Computing Fullbody IK now");
+
+        smpl::RobotState seed_state(initial_positions.size(), 0);
+        smpl::RobotState arm_seed_state(initial_positions.size() - 3, 0);
+        smpl::RobotState ik_soltn;
+        auto success = full_rm->computeIK(end_eff_pose, seed_state, ik_soltn);
+
+        if(success){
+            ROS_INFO("IK Succeeded");
+            fullbody_ik_successes++;
+            auto markers = cc.getCollisionRobotVisualization(ik_soltn);
+            int idx = 0;
+            for (auto& m : markers.markers) {
+                m.ns = "ik_solution";
+                m.id = idx;
+                idx++;
+            }
+            visualizer.visualize(smpl::visual::Level::Info, markers);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        } else {
+            ROS_ERROR("IK Failed.");
+        }
+
+        //ros::Duration(2.0).sleep();
+
+        ROS_WARN("Computing Arm IK now");
+
+        ik_soltn.clear();
+        //success = arm_rm->computeIK(end_eff_pose, arm_seed_state, ik_soltn);
+
+        if(success){
+            ROS_INFO("IK Succeeded");
+            arm_ik_successes++;
+            auto markers = cc.getCollisionRobotVisualization(ik_soltn);
+            int idx = 0;
+            for (auto& m : markers.markers) {
+                m.ns = "ik_solution";
+                m.id = idx;
+                idx++;
+            }
+            visualizer.visualize(smpl::visual::Level::Info, markers);
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        } else {
+            ROS_ERROR("IK Failed.");
+        }
+        //ros::Duration(2.0).sleep();
     }
 
-    auto end_eff_pose = full_rm->computeFK(initial_positions);
+    ROS_INFO("IK Stats:");
+    ROS_INFO("Fullbody: %d", fullbody_ik_successes);
+    ROS_INFO("Arm: %d", arm_ik_successes);
 
-    SV_SHOW_INFO_NAMED("fk_robot", cc.getCollisionRobotVisualization(initial_positions));
-    SV_SHOW_INFO_NAMED("fk_pose", smpl::visual::MakePoseMarkers(end_eff_pose, planning_frame, "fk_pose"));
-
-    smpl::RobotState seed_state(initial_positions.size(), 0);
-    smpl::RobotState ik_soltn;
-
-    auto goal = read_exp.getGoal(0);
+    /*auto goal = read_exp.getGoal(0);
 
     auto goal_pose = goal.pose;
     double goal_x = goal_pose.translation()[0];
@@ -358,7 +554,7 @@ int main(int argc, char** argv){
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     } else {
         ROS_ERROR("IK Failed.");
-    }
+    }*/
 }
 
 
