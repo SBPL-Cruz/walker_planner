@@ -392,6 +392,7 @@ void MRMHAPlanner<N, R, SP>::expand(MRMHASearchState* _state, int _hidx){
                 // The possibility of having a learnt ``sharing matrix`` is
                 // open.
                 for (int hidx = 1; hidx < num_heuristics(); ++hidx) {
+
                     int fi = compute_key(succ_state, hidx);
                     if(!closed_in_add_search(succ_state, m_rep_ids[hidx])){
                         if(fi <= m_eps_mha * succ_state->od[0].f){

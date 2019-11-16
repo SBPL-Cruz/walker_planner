@@ -182,7 +182,7 @@ namespace MPlanner {
         m_search_ptr->set_initialsolution_eps(m_params.eps);
         m_search_ptr->set_initial_mha_eps(m_params.eps_mha);
         m_search_ptr->set_search_mode(m_params.search_mode);
-        m_planning_time = m_params.planning_time;
+        m_planning_time = (double) m_params.planning_time;
 
         return true;
     }

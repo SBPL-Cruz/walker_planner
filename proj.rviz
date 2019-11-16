@@ -67,15 +67,10 @@ Visualization Manager:
       Marker Topic: /visualization_markers
       Name: MarkerArray
       Namespaces:
-        Start state: true
         collision_model: true
         collision_object_voxels: true
         collision_space_bounds: true
-        distance_field: false
         goal_pose: true
-        occupied_voxels: true
-        path_animation: true
-        start_config: true
         temp_state: true
       Queue Size: 100
       Value: true
@@ -114,25 +109,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 30.1077499
+      Distance: 14.5785065
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 10.3100643
-        Y: 1.72366798
-        Z: -0.0728287324
+        X: 13.6680517
+        Y: 5.84385204
+        Z: 0.857925594
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00100000005
-      Pitch: 1.1797967
+      Pitch: 1.30979645
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.98345733
+      Yaw: 4.7066493
     Saved: ~
 Window Geometry:
   Camera:
@@ -152,5 +147,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1781
-  X: 130
-  Y: 123
+  X: 2427
+  Y: 51
