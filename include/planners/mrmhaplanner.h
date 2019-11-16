@@ -185,7 +185,6 @@ class MRMHAPlanner : public SBPLPlanner {
         int* idxs = environment_->StateID2IndexMapping[state_id];
         if (idxs[MHAMDP_STATEID2IND] == -1) {
             auto s = new MRMHASearchState;
-
             const size_t mha_state_idx = m_search_states.size();
             init_state(s, mha_state_idx, state_id);
 
