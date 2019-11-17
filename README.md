@@ -72,3 +72,11 @@ python create_data.py --env 0
 source activate.sh
 python create_data.py
 ```
+
+Training CVAE
+-------------
+1. Go to cvae folder.
+2. Run following command to run for base cvae
+```
+python run.py --dataset_root ../data/train_clean --num_epochs 50 --dataset_type base
+```
