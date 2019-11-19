@@ -406,25 +406,28 @@ int main(int argc, char** argv) {
 
     const unsigned int seed = 100;
     using PolicyT = ContextualDTSPolicy<ContextArray>;
-    auto dts_policy = std::make_unique<PolicyT>(NUM_ACTION_SPACES, 16, 100);
+    auto dts_policy = std::make_unique<PolicyT>(NUM_ACTION_SPACES, 100);
+    std::string beta_file_name;
+    ph.getParam("beta_prior_file", beta_file_name);
+    dts_policy->loadBetaPrior(beta_file_name);
 
-    std::vector<ContextArray> contexts;
-    std::vector<int> context_ids;
+    //std::vector<ContextArray> contexts;
+    //std::vector<int> context_ids;
 
-    for(int i = 0; i < 16; i++)
-    {
-        ContextArray context = {0, 0, 0, 0};
-        contexts.push_back(context);
-        context_ids.push_back(i);
-    }
-    // Narrow passage near
-    contexts[0] = {0, 0, 0, 1};
-    contexts[1] = {1, 1, 0, 1};
+    //for(int i = 0; i < 16; i++)
+    //{
+        //ContextArray context = {0, 0, 0, 0};
+        //contexts.push_back(context);
+        //context_ids.push_back(i);
+    //}
+    //// Narrow passage near
+    //contexts[0] = {0, 0, 0, 1};
+    //contexts[1] = {1, 1, 0, 1};
 
-    dts_policy->setContextIdMap(contexts, context_ids);
-    dts_policy->setBetaPrior(contexts[0], (int)Fullbody, 9, 1 );
-    dts_policy->setBetaPrior(contexts[0], (int)Arm, 1, 9 );
-    dts_policy->setBetaPrior(contexts[1], (int)Arm, 9, 1 );
+    //dts_policy->setContextIdMap(contexts, context_ids);
+    //dts_policy->setBetaPrior(contexts[0], (int)Fullbody, 9, 1 );
+    //dts_policy->setBetaPrior(contexts[0], (int)Arm, 1, 9 );
+    //dts_policy->setBetaPrior(contexts[1], (int)Arm, 9, 1 );
 
     using Planner = MRMHAPlannerCoBandits<NUM_QUEUES, NUM_ACTION_SPACES, PolicyT, ContextT>;
     auto search_ptr = std::make_unique<Planner>(
