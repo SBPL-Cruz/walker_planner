@@ -1,8 +1,9 @@
 map:
     # train
-    seed: 1000
+    #seed: 1000
     # test
-    # seed: 4000
+    seed: 4000
+    #seed: 31
     x_max: 20
     y_max: 15
     h_max: 1.5
