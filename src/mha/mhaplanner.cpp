@@ -15,86 +15,9 @@
 #include "motion_planner_ros.h"
 #include "scheduling_policies.h"
 #include "utils/utils.h"
+#include "heuristics/walker_heuristics.h"
 
-#define NUM_QUEUES 10
 #define NUM_ACTION_SPACES 1
-
-enum ActionSpace {
-    Fullbody = 0,
-    Arm,
-    Base
-};
-
-bool constructHeuristics(
-        std::vector<std::unique_ptr<smpl::RobotHeuristic>>& heurs,
-        smpl::ManipLattice* pspace,
-        smpl::OccupancyGrid* grid,
-        //smpl::KDLRobotModel* rm,
-        smpl::TracIKRobotModel* rm,
-        PlannerConfig& params ){
-
-    SMPL_INFO("Initialize Heuristics");
-
-    auto bfs_2d = std::make_unique<smpl::Bfs2DHeuristic>();
-    bfs_2d->setCostPerCell(params.cost_per_cell);
-    bfs_2d->setInflationRadius(params.inflation_radius_2d);
-    if (!bfs_2d->init(pspace, grid)) {
-        ROS_ERROR("Could not initialize Bfs2Dheuristic.");
-        return false;
-    }
-
-    auto bfs_3d = std::make_shared<smpl::Bfs3DHeuristic>();
-    bfs_3d->setCostPerCell(params.cost_per_cell);
-    bfs_3d->setInflationRadius(params.inflation_radius_3d);
-    if (!bfs_3d->init(pspace, grid)) {
-        ROS_ERROR("Could not initialize Bfs3Dheuristic.");
-        return false;
-    }
-
-    auto bfs_3d_base = std::make_shared<smpl::Bfs3DBaseHeuristic>();
-    bfs_3d_base->setCostPerCell(params.cost_per_cell);
-    bfs_3d_base->setInflationRadius(params.inflation_radius_2d);
-    if (!bfs_3d_base->init(pspace, grid, 4)) {
-        ROS_ERROR("Could not initialize Bfs3DBaseHeuristic");
-        return false;
-    }
-
-    auto retract_arm = std::make_shared<RetractArmHeuristic>();
-    if(!retract_arm->init(bfs_3d_base, bfs_3d)){
-        ROS_ERROR("Could not initialize RetractArmHeuristic initialize");
-        return false;
-    }
-
-    //Compute a feasible base location.
-    std::vector<int> base_x, base_y;
-    heurs.clear();
-
-    {
-        auto anchor = std::make_unique<AnchorHeuristic>();
-        anchor->init( bfs_3d_base, bfs_3d );
-        heurs.push_back(std::move(anchor));
-    }
-    { //EndEffector
-        auto inad = std::make_unique<ImprovedEndEffHeuristic>();
-        inad->init( bfs_3d_base, bfs_3d, retract_arm );
-        heurs.push_back(std::move(inad));
-    }
-
-    int num_rot_heurs = 8;
-    for(int i=0; i<num_rot_heurs; i++){
-        auto h = std::make_unique<BaseRotHeuristic>();
-        if (!h->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i)) {
-            ROS_ERROR("Could not initialize heuristic.");
-            return false;
-        }
-        heurs.push_back(std::move(h));
-    }
-
-    for (auto& entry : heurs) {
-        pspace->insertHeuristic(entry.get());
-    }
-    return true;
-}
 
 class ReadExperimentsFromFile {
     public:
@@ -369,7 +292,7 @@ int main(int argc, char** argv) {
 
     ROS_INFO("Setting up robot model");
     //auto rm = SetupRobotModel<smpl::KDLRobotModel>(robot_description, robot_config);
-    auto rm = SetupRobotModel<smpl::TracIKRobotModel>(robot_description, robot_config);
+    auto rm = SetupRobotModel<smpl::KDLRobotModel>(robot_description, robot_config);
     if (!rm) {
         ROS_ERROR("Failed to set up Robot Model");
         return 1;
@@ -435,12 +358,17 @@ int main(int argc, char** argv) {
     //Planning////
     /////////////
 
-    std::vector< std::unique_ptr<smpl::RobotHeuristic> > robot_heurs;
+    std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES > robot_heurs;
+    std::vector< std::shared_ptr<smpl::RobotHeuristic> > bfs_heurs;
 
-    if(!constructHeuristics( robot_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    // Set all to 0.
+    std::array<int, NUM_QUEUES> rep_ids;
+    if(!constructHeuristics( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
+    for( int i = 0; i < rep_ids.size(); i++)
+        rep_ids[i] = (int)Fullbody;
 
     ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
     assert(robot_heurs.size() == NUM_QUEUES);
@@ -458,41 +386,29 @@ int main(int argc, char** argv) {
     Heuristic* anchor_heur = heurs[0];
     std::vector<Heuristic*> inad_heurs( heurs.begin() + 1, heurs.end() );
 
-    std::array<int, NUM_QUEUES> rep_ids;
-    for(auto& ele : rep_ids)
-        ele = (int)Fullbody;
-    rep_ids[0] = (int)Fullbody;
-    rep_ids[1] = (int)Fullbody;
-
     // if aij = 1 :  closed in rep i => closed in rep j
     std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
         rep_dependency_matrix = {{ {{1}} }};
 
-
-    //auto uniformly_random_policy = std::make_unique<UniformlyRandomPolicy>(inad_heurs.size(), 100);
     auto round_robin_policy = std::make_unique<RoundRobinPolicy>(inad_heurs.size());
 
     using Planner = MHAPlanner<NUM_QUEUES, RoundRobinPolicy>;
-    //auto search_ptr = std::make_unique<Planner>(
-    //        space.get(), heurs_array, rep_ids, rep_dependency_matrix, uniformly_random_policy.get() );
     auto search_ptr = std::make_unique<Planner>(
             space.get(), heurs_array, rep_ids, rep_dependency_matrix, round_robin_policy.get() );
-    //auto search_ptr = std::make_unique<Planner>(space.get(), heurs_array, round_robin_policy.get());
 
     const int max_planning_time = planning_config.planning_time;
     const double eps = planning_config.eps;
     const double eps_mha = planning_config.eps_mha;
     MPlanner::PlannerParams planner_params = { max_planning_time, eps, eps_mha, false };
 
-    //using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLatticeMultiRep>;
-    using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLattice>;
+    using MotionPlanner = MPlanner::MotionPlanner<Planner, smpl::ManipLatticeMultiRep>;
     auto mplanner = std::make_unique<MotionPlanner>();
     mplanner->init(search_ptr.get(), space.get(), heurs, planner_params);
 
-    MotionPlannerROS< Callbacks<smpl::TracIKRobotModel>,
+    MotionPlannerROS< Callbacks<smpl::KDLRobotModel>,
         ReadExperimentsFromFile,
         MotionPlanner,
-        smpl::TracIKRobotModel>
+        smpl::KDLRobotModel>
         mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get());
 
     ExecutionStatus status = ExecutionStatus::WAITING;
