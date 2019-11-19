@@ -322,13 +322,19 @@ int main(int argc, char** argv){
         }
     }
     ROS_INFO("%d tables found in map.", tables.size());
-    generator.init(&cc, fullbody_rm.get(), 2090);
+    int seed = 0;
+    if(!ph.getParam("map/seed", seed))
+    {
+        ROS_ERROR("Could not read seed.");
+        return 1;
+    }
+    generator.init(&cc, fullbody_rm.get(), seed);
     //addStartGoalRegionsForDoor(generator, rm.get(), doors);
     addStartRegionsForRoom1(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
     //addStartRegionsForRoom5(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
     addGoalRegionsForTable(generator, fullbody_rm.get(), tables);
 
-    const int N = 50;
+    const int N = 25;
     auto status = generator.generate(N);
     if(status)
         ROS_INFO("Generated %d start-goal pairs.", N);

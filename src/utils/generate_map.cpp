@@ -43,9 +43,8 @@ int main( int argc, char** argv ){
     smpl::VisualizerROS visualizer(nh, 100);
     smpl::viz::set_visualizer(&visualizer);
 
-    if(argc < 2)
-        return 1;
-    auto file_name = argv[1];
+    //auto file_name = argv[1];
+    auto file_name = "multi_room_map.env";
 
     std::string planning_frame;
     if (!ph.getParam("planning_frame", planning_frame)) {
