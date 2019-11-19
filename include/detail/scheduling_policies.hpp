@@ -1,23 +1,28 @@
 #ifndef WALKER_SCHEDULING_POLICIES_IMPLEMENTATION_H
 #define WALKER_SCHEDULING_POLICIES_IMPLEMENTATION_H
 
+#include <fstream>
+#include <algorithm>
 #include "../scheduling_policies.h"
+
+#define SAMPLING_LOG "dts.sampling"
+#define UPDATE_LOG "dts.update"
+#define PARAMS_LOG "dts.params"
 
 template <typename C>
 ContextualDTSPolicy<C>::ContextualDTSPolicy( int _num_arms,
-        int _num_contexts,
         unsigned int _seed ) :
     ContextualMABPolicy<C>(_num_arms),
     m_seed{_seed}
 {
-    m_alphas.resize(_num_contexts);
-    m_betas.resize(_num_contexts);
-    for( int i = 0; i < _num_contexts; i++ )
-    {
-        // No Prior
-        m_alphas[i].resize(_num_arms, 1);
-        m_betas[i].resize(_num_arms, 1);
-    }
+    //m_alphas.resize(_num_contexts);
+    //m_betas.resize(_num_contexts);
+    //for( int i = 0; i < _num_contexts; i++ )
+    //{
+        //// No Prior
+        //m_alphas[i].resize(_num_arms, 1);
+        //m_betas[i].resize(_num_arms, 1);
+    //}
     srand(_seed);
     gsl_rng_env_setup();
     m_gsl_rand_T = gsl_rng_default;
@@ -36,9 +41,11 @@ template <typename C> int
 ContextualDTSPolicy<C>::getArm( const std::vector<C>& _contexts, const std::vector<int>& _rep_ids )
 {
     int N = _contexts.size();
-    std::vector<int> context_ids(N, 0);
-    for(auto& context : _contexts)
+    std::vector<int> context_ids;
+    for(auto& context : _contexts){
         context_ids.push_back(m_context_id_map[context]);
+        ROS_DEBUG_NAMED(SAMPLING_LOG, "Context: %d %d %d %d, id: %d", context[0], context[1], context[2], context[3], context_ids.back() );
+    }
 
     std::vector<double> rep_likelihoods(N, 0);
     // Beta distribution for each representation
@@ -49,15 +56,16 @@ ContextualDTSPolicy<C>::getArm( const std::vector<C>& _contexts, const std::vect
         int rep_id = _rep_ids[i];
         auto alpha_i = m_alphas[context_id][rep_id];
         auto beta_i = m_betas[context_id][rep_id];
+        ROS_DEBUG_NAMED(PARAMS_LOG, "   context: %d, rep: %d, params: %f, %f", context_id, rep_id, alpha_i, beta_i);
         if(rep_id < 0)
             rep_likelihoods[i] = 0;
         else
             rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, alpha_i, beta_i);
-        //doubledouble betaMean = alpha[i] / (alpha[i] + beta[i]);
+        double betaMean = alpha_i / (alpha_i + beta_i);
+        //ROS_INFO("h: %d, rep: %d, context: %d, alpha: %f, beta: %f, likelihood: %f, mean: %f", i, rep_id, context_id, alpha_i, beta_i, rep_likelihoods[i], betaMean);
         if(rep_likelihoods[i] > best_likelihood)
             best_likelihood = rep_likelihoods[i];
     }
-
     //because of quantization we can get the exact same random value
     //for multiple queues more often than we'd like
     //especially when beta is very low (we get 1 very easily)
@@ -76,25 +84,43 @@ ContextualDTSPolicy<C>::getArm( const std::vector<C>& _contexts, const std::vect
     //ROS_ERROR("%f, %f, %f", rep_likelihoods[0], rep_likelihoods[1], rep_likelihoods[2]);
     //TODO: Take into account the branching factor of each rep.
     int best_id = near_best_likelihood[rand() % near_best_likelihood.size()];
+    ROS_DEBUG_NAMED(SAMPLING_LOG, "Chosen h: %d, rep: %d", best_id, _rep_ids[best_id] );
+
     return best_id;
 }
 
 template <typename C> void
 ContextualDTSPolicy<C>::updatePolicy(const C& _context, double _reward, int _arm)
 {
-    //ROS_ERROR("Context updating: ");
-    //ROS_ERROR_STREAM(_context[0] << " "<< _context[1]<< " "<< _context[2]<< " "<< _context[3]<<"\n");
+    ROS_DEBUG_NAMED(UPDATE_LOG, "Rep: %d, context: %d, %d, %d, %d", _arm, _context[0], _context[1], _context[2], _context[3]);
+    if(m_context_id_map.count(_context) == 0)
+    {
+        ROS_DEBUG_NAMED(UPDATE_LOG, "New context added: %d, %d, %d, %d", _context[0], _context[1], _context[2], _context[3] );
+        std::vector<int> v(this->numArms(), 1);
+        m_context_id_map[_context] = m_context_id_map.size();
+    }
     int context_id = m_context_id_map[_context];
-    //ROS_ERROR("Updating: ");
-    //ROS_ERROR("  Context id: %d, Reward: %f, Arm: %d", context_id, _reward, _arm);
+    if(m_C_map.count(context_id) == 0){
+        std::vector<double> cs(this->numArms(), m_min_C);
+        m_C_map[context_id] = cs;
+    }
+    //auto dts_C = m_C_map[context_id][_arm];
+    auto dts_C = m_max_C;
+    ROS_DEBUG_NAMED(UPDATE_LOG, "Updating: ");
+    ROS_DEBUG_NAMED(UPDATE_LOG, "  Context id: %d, Reward: %f, Arm: %d", context_id, _reward, _arm);
+    ROS_DEBUG_NAMED(UPDATE_LOG, "  Before: %f, %f", m_alphas[context_id][_arm], m_betas[context_id][_arm]);
     if(_reward > 0)
         m_alphas[context_id][_arm] += 1;
     else
         m_betas[context_id][_arm] += 1;
-    if( m_alphas[context_id][_arm] + m_betas[context_id][_arm] > m_C ){
-        m_alphas[context_id][_arm] *= (m_C/(m_C + 1));
-        m_betas[context_id][_arm] *= (m_C/(m_C + 1));
+    if( m_alphas[context_id][_arm] + m_betas[context_id][_arm] > dts_C ){
+        auto sum = m_alphas[context_id][_arm] + m_betas[context_id][_arm];
+        // Ensures that post update, alpha + beta = C
+        m_alphas[context_id][_arm] *= ((double)dts_C/(sum));
+        m_betas[context_id][_arm] *= ((double)dts_C/(sum));
     }
+    ROS_DEBUG_NAMED(UPDATE_LOG, "  After: %f, %f, C: %f", m_alphas[context_id][_arm], m_betas[context_id][_arm], dts_C);
+    //ros::Duration(0.1).sleep();
 }
 
 template <typename C> bool
@@ -122,6 +148,73 @@ ContextualDTSPolicy<C>::setBetaPrior( const C& _context, int _rep_id, int _alpha
     int context_id = m_context_id_map[_context];
     m_alphas[context_id][_rep_id] = _alpha;
     m_betas[context_id][_rep_id] = _beta;
+}
+
+template <typename C> bool
+ContextualDTSPolicy<C>::loadBetaPrior(std::string _file_name)
+{
+    std::ifstream stream;
+    stream.open(_file_name, std::ios::in);
+    if(!stream.is_open()){
+        ROS_ERROR("Could not open file to load beta prior.");
+        return false;
+    }
+    std::string line;
+    int i = 0;
+    while(std::getline(stream, line))
+    {
+        std::istringstream iss(line);
+        int val;
+        std::vector<int> vals;
+        while(iss>> val)
+        {
+            vals.push_back(val);
+            ROS_WARN("%d\n", val);
+        }
+
+        int num_arms = this->numArms();
+        ROS_WARN("Size of line: %d", vals.size());
+        ROS_WARN("Num of arms: %d", num_arms);
+        //assert( vals.size() == ( C::size_type + 2*num_arms) );
+        C context;
+        int idx = 0;
+        for(auto it = vals.begin(); it != vals.end() - 2*num_arms; it++)
+        {
+            ROS_WARN("%d\n", *it);
+            context[idx++] = (double)*it;
+        }
+        std::vector<int> params(vals.end() - 2*num_arms, vals.end());
+        m_context_id_map[context] = i;
+        std::vector<double> alphas;
+        std::vector<double> betas;
+        std::vector<double> dts_C;
+        for(int j = 0; j < 2*num_arms; j++)
+        {
+            if(j % 2)
+            {
+                betas.push_back((double)params[j]);
+                dts_C.back() += params[j];
+                //dts_C.back() = std::min<double>( m_max_C, std::max((double)m_min_C, dts_C.back()) );
+                //dts_C.back() = std::min<double>( m_max_C,  dts_C.back() );
+                dts_C.back() = m_max_C;
+
+            }
+            else
+            {
+                alphas.push_back((double)params[j]);
+                dts_C.push_back((double)params[j]);
+            }
+        }
+        m_alphas[i] = alphas;
+        m_betas[i] = betas;
+        m_C_map[i] = dts_C;
+        i++;
+        ROS_WARN("Id %d loaded", i);
+    }
+    ROS_WARN("Number of contexts: %d", m_context_id_map.size());
+
+    stream.close();
+    return true;
 }
 
 #endif

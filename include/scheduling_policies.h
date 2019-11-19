@@ -7,6 +7,7 @@
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 #include <boost/functional/hash.hpp>
+#include <fstream>
 
 #include <smpl/types.h>
 #include <smpl/heuristic/mother_heuristic.h>
@@ -127,6 +128,7 @@ class MABPolicy : public SchedulingPolicy
 };
 
 class DTSPolicy : public MABPolicy
+
 {
     public:
     DTSPolicy( int num_arms, unsigned int seed );
@@ -196,7 +198,7 @@ template <typename ContextArray>
 class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
 {
     public:
-    ContextualDTSPolicy( int num_arms, int num_contexts, unsigned int seed);
+    ContextualDTSPolicy( int num_arms, unsigned int seed);
     ~ContextualDTSPolicy();
 
     using ContextualMABPolicy<ContextArray>::getAction;
@@ -221,16 +223,118 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
 
     bool setContextIdMap( const std::vector<ContextArray>&, const std::vector<int>& );
     void setBetaPrior( const ContextArray& context, int rep_id, int alpha, int beta );
+    bool loadBetaPrior(std::string file_name);
 
     private:
     unsigned int m_seed;
     std::unordered_map< ContextArray, int, ContextArrayHash<ContextArray> > m_context_id_map;
-    std::vector< std::vector<double> > m_alphas {}, m_betas {} ;
-    double m_C = 20;
+    std::unordered_map<int, std::vector<double> > m_alphas, m_betas;
+    //std::vector< std::vector<double> > m_alphas {}, m_betas {} ;
+    int m_min_C = 10;
+    int m_max_C = 20;//std::numeric_limits<int>::max();
+    std::unordered_map<int, std::vector<double> > m_C_map;
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
 };
 
+
+template <typename ContextArray>
+class ContextualMABTrainPolicy : public ContextualMABPolicy<ContextArray>
+{
+    public:
+    ContextualMABTrainPolicy( int num_reps, int num_queues, unsigned int seed ) :
+        ContextualMABPolicy<ContextArray>(num_reps),
+        m_num_queues{num_queues}{}
+
+    ~ContextualMABTrainPolicy() {}
+
+    int getArm( const std::vector<ContextArray>&, const std::vector<int>& rep_ids )
+    {
+        return getAction();
+    }
+    int getAction() override
+    {
+        int arm = m_queue;
+        m_queue = (m_queue + 1) % m_num_queues;
+        return arm;
+    }
+
+    int getAction(const std::vector<ContextArray>&)
+    {
+        throw "Not Implemented";
+    }
+
+    void updatePolicy( double, int )
+    {
+        throw "Not Implemented";
+    }
+
+    void updatePolicy( const ContextArray& context, double reward, int arm )
+    {
+        if(  m_context_arm_reward.count(context) == 0 )
+        {
+            std::vector<double> rewards(this->numArms(), 0);
+            m_context_arm_reward[context] = std::move(rewards);
+        }
+        m_context_arm_reward[context][arm] += reward;
+
+        // Ensures every reward is 1 or 0.
+        m_contexts.push_back(context);
+        std::vector<double> arm_reward(2, 0);
+        arm_reward[0] = arm;
+        arm_reward[1] = reward;
+        m_rewards.push_back(arm_reward);
+    }
+
+    bool writeToFile(std::string file_name = "context_rewards.txt")
+    {
+        ROS_ERROR("Size of context: %d", m_context_arm_reward.size());
+        std::ofstream stream;
+        stream.open(file_name, std::ios::app);
+        if(!stream.is_open())
+        {
+            ROS_ERROR("Could not open context file to write to.");
+            return false;
+        }
+        //for(auto& entry : m_context_arm_reward)
+        for(int i = 0; i < m_contexts.size(); i++)
+        {
+            //auto context = entry.first;
+            auto context = m_contexts[i];
+            for(auto& val : context)
+            {
+                stream<< val<< "\t";
+            }
+            //auto rewards = entry.second;
+            auto rewards = m_rewards[i];
+            for(auto i = 0; i < rewards.size(); i++)
+            {
+                stream<< rewards[i]<< "\t";
+            }
+            stream<< "\n";
+        }
+        stream.close();
+        return true;
+    }
+
+    void clear()
+    {
+        m_context_arm_reward.clear();
+        m_contexts.clear();
+        m_rewards.clear();
+    }
+
+    private:
+    int m_queue = 0;
+    int m_iter = 0;
+    int m_num_queues = 0;
+
+    // Context is row, arm is column and reward is value.
+    std::unordered_map< ContextArray, std::vector<double>,
+        ContextArrayHash<ContextArray> > m_context_arm_reward;
+    std::vector<ContextArray> m_contexts;
+    std::vector< std::vector<double> > m_rewards;
+};
 
 //using Point = std::array<double, 2>;
 
