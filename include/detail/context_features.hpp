@@ -87,27 +87,52 @@ auto MobManipDiscreteFeatures<4>::getContext( int _state_id )
     assert(base_link_frame!= nullptr);
     auto base_link_to_end_eff = base_link_frame->inverse() * end_eff_frame;
     auto trans = base_link_to_end_eff.translation();
-    int circum_radius = (int) ( sqrt(trans.x()*trans.x() + trans.y()*trans.y()) / res );
+    int circum_radius = (int) ( sqrt(trans.x()*trans.x() + trans.y()*trans.y()) / res + 0.5 );
 
     context[2] = circum_radius;
 
     // Find BFS2D_Base path and compute distance to the nearest narrow passage.
     auto path_to_goal = m_bfs_3d_base->getPathToGoal(robot_state);
-    // Ignore narrow passages beyond 1m.
-    const int MAX_HORIZON = 20;
+    // Ignore narrow passages beyond 1.5m.
+    const int MAX_HORIZON = 30;
     context[3] = 0;
     for(int i = 0; i < std::min(MAX_HORIZON, (int) path_to_goal.size()); i++)
     {
         auto point = path_to_goal[i];
-        if( grid->getDistance(point[0], point[1], 15) / res < circum_radius)
+        context[3] = i;
+        //ROS_WARN( "Dist on bfs path: %d", (int)(grid->getDistance(point[0], point[1], 15)/res) );
+        if( grid->getDistance(point[0], point[1], 15) < res*circum_radius)
         {
-            context[3] = 1;
             break;
         }
     }
     ROS_DEBUG_NAMED(LOG, "Context for state: %d", _state_id);
-    ROS_DEBUG_NAMED(LOG, "  3D-base  3D   Circum-radius  2D Path length");
+    ROS_DEBUG_NAMED(LOG, "  3D-base  3D   Circum-radius  Dist-to-narrow-passage");
     ROS_DEBUG_NAMED(LOG, "  %d,      %d    %d,           %d", context[0], context[1], context[2], context[3]);
+
+    context[0] = std::min(context[0], 50);
+    context[1] = std::min(context[0], 30);
+    //if(context[0] < 25)
+        //context[0] = 0;
+    //else
+        //context[0] = 1;
+
+    //if(context[1] < 20)
+        //context[1] = 0;
+    //else
+        //context[1] = 1;
+
+    //if(context[2] < 6)
+        //context[2] = 0;
+    //else
+        //context[2] = 1;
+
+    //if(context[3] < 10)
+        //context[3] = 0;
+    //else
+        //context[3] = 1;
+    //for(auto& val : context)
+        //val = (int)(val / 5);
 
     return context;
 }
