@@ -65,6 +65,39 @@ void DTSPolicy::updatePolicy( double _reward, int _arm )
     }
 }
 
+RepDTSPolicy::RepDTSPolicy(int _num_reps, std::vector<int>& _rep_ids, unsigned int _seed) :
+    DTSPolicy(_num_reps, _seed)
+{
+    m_rep_hids.resize(_num_reps);
+    for(int i = 1; i < _rep_ids.size(); i++)
+    {
+        m_rep_hids[_rep_ids[i]].push_back(i);
+    }
+    m_rep_ids = _rep_ids;//std::vector<int>(_rep_ids.begin() + 1, _rep_ids.end());
+    // Skip rep if no queue corresponding to it.
+    for(int i = 0; i < _num_reps; i++)
+    {
+        if(!m_rep_hids[i].size())
+        {
+            DTSPolicy::m_alphas[i] = 0;
+            DTSPolicy::m_betas[i] = 0;
+        }
+    }
+}
+
+int RepDTSPolicy::getArm()
+{
+    int rep = DTSPolicy::getAction();
+    int id = rand() % m_rep_hids[rep].size();
+    // hidx is incremented by 1 in the planner
+    return m_rep_hids[rep][id] - 1;
+}
+
+void RepDTSPolicy::updatePolicy(double _reward, int _hidx)
+{
+    DTSPolicy::updatePolicy(_reward, m_rep_ids[_hidx]);
+}
+
 UCBPolicy::UCBPolicy( int _num_arms, unsigned int _seed ) :
     MABPolicy(_num_arms),
     m_T{_num_arms}

@@ -128,21 +128,39 @@ class MABPolicy : public SchedulingPolicy
 };
 
 class DTSPolicy : public MABPolicy
-
 {
     public:
     DTSPolicy( int num_arms, unsigned int seed );
     ~DTSPolicy();
 
     int getAction() override;
+    int getArm() { return getAction(); }
     void updatePolicy( double reward, int arm );
+    void setSeed(unsigned int seed)
+    {
+        gsl_rng_set(m_gsl_rand, seed);
+    }
 
-    private:
+    protected:
     unsigned int m_seed;
     std::vector<double> m_alphas {}, m_betas {} ;
     double m_C = 10;
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
+};
+
+class RepDTSPolicy : public DTSPolicy
+{
+    public:
+    RepDTSPolicy(int num_reps, std::vector<int>& rep_ids, unsigned int seed);
+
+    int getArm();
+    void updatePolicy(double reward, int arm);
+
+    private:
+    std::vector< std::vector<int> > m_rep_hids;
+    std::vector<int> m_rep_ids;
+
 };
 
 class UCBPolicy : public MABPolicy
@@ -207,6 +225,13 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
         throw "Not Implemented";
     }
 
+    void setSeed(unsigned int seed)
+    {
+        gsl_rng_set(m_gsl_rand, seed);
+    }
+
+    int getContextId(ContextArray);
+
     //Get the context-array for the state at the top of every inadmissible
     //queue and the queue's rep-id.
     // Pick the right beta distributions on that basis and then TS.
@@ -221,8 +246,14 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
     // Get reward for arm i and update distribution..
     void updatePolicy( const ContextArray&, double reward, int  arm );
 
-    bool setContextIdMap( const std::vector<ContextArray>&, const std::vector<int>& );
-    void setBetaPrior( const ContextArray& context, int rep_id, int alpha, int beta );
+    //bool setContextIdMap( const std::vector<ContextArray>&, const std::vector<int>& );
+    //void setBetaPrior( const ContextArray& context, int rep_id, int alpha, int beta );
+    void resetPrior()
+    {
+        //for(int i = 0; i < this->numArms(); i++)
+            //m_alphas[-1][i] = 1;
+    }
+
     bool loadBetaPrior(std::string file_name);
 
     private:
@@ -231,8 +262,8 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
     std::unordered_map<int, std::vector<double> > m_alphas, m_betas;
     //std::vector< std::vector<double> > m_alphas {}, m_betas {} ;
     int m_min_C = 10;
-    int m_max_C = 20;//std::numeric_limits<int>::max();
-    std::unordered_map<int, std::vector<double> > m_C_map;
+    int m_max_C = 60;//std::numeric_limits<int>::max();
+    std::unordered_map<int, std::vector<int> > m_C_map;
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
 };
@@ -254,9 +285,10 @@ class ContextualMABTrainPolicy : public ContextualMABPolicy<ContextArray>
     }
     int getAction() override
     {
-        int arm = m_queue;
-        m_queue = (m_queue + 1) % m_num_queues;
-        return arm;
+        //int arm = m_queue;
+        //m_queue = (m_queue + 1) % m_num_queues;
+        //return arm;
+        return rand() % m_num_queues;
     }
 
     int getAction(const std::vector<ContextArray>&)
