@@ -119,6 +119,8 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
         std::vector<decltype(m_context->getContext(1))> contexts;
         //std::vector<C::ContextArray> contexts;
         std::vector<int> rep_ids;
+
+        auto features_start_time = smpl::clock::now();
         for( int hidx = 1; hidx < num_heuristics(); hidx++ )
         {
             // Dummy state_id referring to the start.
@@ -133,6 +135,12 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
                         // Solution found
                         this->m_eps_satisfied = m_eps*m_eps_mha;
                         this->extract_path(_solution, _soltn_cost);
+
+                        ROS_WARN("Planning Stats:");
+                        ROS_INFO("Total time: %f", this->m_stats.total);
+                        ROS_INFO("Expand time: %f", this->m_stats.expand);
+                        ROS_INFO("Features time: %f", this->m_stats.features);
+                        ROS_INFO("Scheduling time: %f", this->m_stats.scheduling);
                         return 1;
                     }
                 } else {
@@ -140,6 +148,12 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
                         // Solution found
                         this->m_eps_satisfied = m_eps*m_eps_mha;
                         this->extract_path(_solution, _soltn_cost);
+
+                        ROS_WARN("Planning Stats:");
+                        ROS_INFO("Total time: %f", this->m_stats.total);
+                        ROS_INFO("Expand time: %f", this->m_stats.expand);
+                        ROS_INFO("Features time: %f", this->m_stats.features);
+                        ROS_INFO("Scheduling time: %f", this->m_stats.scheduling);
                         return 1;
                     }
                 }
@@ -154,6 +168,10 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
             contexts.push_back(context);
             rep_ids.push_back(rep_id);
         }
+        auto features_end_time = smpl::clock::now();
+        this->m_stats.features +=  smpl::to_seconds(features_end_time - features_start_time) / 1000;
+        auto scheduling_start_time = smpl::clock::now();
+
         int hidx = this->m_scheduling_policy->getArm(contexts, rep_ids) + 1; // Policy doesn't know about anchor
         int rep_id = m_rep_ids[hidx];
         auto context = contexts[hidx-1];
@@ -165,7 +183,12 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
             ROS_DEBUG_NAMED(LOG, "Inadmissible expansion");
             auto s = this->state_from_open_state(m_open[hidx].min());
             ROS_DEBUG_NAMED(LOG, "State: %d, f: %d", s->state_id, s->od[hidx].f);
+            auto expand_start_time = smpl::clock::now();
+
             this->expand(s, hidx);
+
+            auto expand_end_time = smpl::clock::now();
+            this->m_stats.expand +=  smpl::to_seconds(expand_end_time - expand_start_time);
             // Use the dependency matrix.
             // to partially close the state.
             for(int i = 0; i < R; i++){
@@ -182,14 +205,25 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
             //Anchor expansion
             ROS_DEBUG_NAMED(LOG, "Anchor Expansion");
             auto s = this->state_from_open_state(m_open[0].min());
+
+            auto expand_start_time = smpl::clock::now();
+
             this->expand(s, 0);
+
+            auto expand_end_time = smpl::clock::now();
+            this->m_stats.expand +=  smpl::to_seconds(expand_end_time - expand_start_time);
             s->closed_in_anc = true;
         }
         ROS_DEBUG_NAMED(LOG, "Size of Anchor: %d", m_open[0].size());
+        scheduling_start_time = smpl::clock::now();
+
         this->m_scheduling_policy->updatePolicy(context, reward, rep_id);
+
         auto end_time = smpl::clock::now();
+        this->m_stats.scheduling += smpl::to_seconds(end_time - scheduling_start_time);
         this->m_time_elapsed += smpl::to_seconds(end_time - start_time);
     }
+    this->m_stats.total = this->m_time_elapsed;
 
     if (m_open[0].empty()) {
         SMPL_INFO("Anchor search exhausted");
@@ -197,6 +231,11 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
     if (this->time_limit_reached()) {
         SMPL_INFO("Time limit reached");
     }
+    ROS_WARN("Planning Stats:");
+    ROS_INFO("Total time: %f", this->m_stats.total);
+    ROS_INFO("Expand time: %f", this->m_stats.expand);
+    ROS_INFO("Features time: %f", this->m_stats.features);
+    ROS_INFO("Scheduling time: %f", this->m_stats.scheduling);
 
     return 0;
 }
@@ -251,13 +290,13 @@ void MRMHAPlannerCoBandits<N, R, SP, C>::expand(MRMHASearchState* _state, int _h
                 for (int hidx = 1; hidx < num_heuristics(); ++hidx) {
                     int fi = compute_key(succ_state, hidx);
                     if(!this->closed_in_add_search(succ_state, m_rep_ids[hidx])){
-                        if(fi <= m_eps_mha * succ_state->od[0].f){
+                        //if(fi <= m_eps_mha * succ_state->od[0].f){
                             succ_state->od[hidx].f = fi;
                             this->insert_or_update(succ_state, hidx);
                             if(succ_state->od[hidx].h < m_prev_best_h[hidx])
                                 m_best_h[hidx] = succ_state->od[hidx].h;
-                            //ROS_DEBUG_NAMED(LOG, "Inserted/Updated successor %d in Queue %d", succ_state->state_id, hidx);
-                        }
+                            ROS_DEBUG_NAMED(LOG, "Inserted/Updated successor %d in Queue %d", succ_state->state_id, hidx);
+                        //}
                     }
                 }
             }

@@ -450,6 +450,8 @@ int main(int argc, char** argv) {
     PlanningEpisode ep = planning_config.start_planning_episode;
     while(ep <= planning_config.end_planning_episode){
         ROS_ERROR("Episode: %d", ep);
+        dts_policy->setSeed(rand());
+        dts_policy->resetPrior();
         loop_rate.sleep();
         std::string file_suffix = std::to_string(ep) + ".txt";
         status = mplanner_ros.execute(ep);
@@ -461,7 +463,6 @@ int main(int argc, char** argv) {
             auto plan = mplanner_ros.getPlan(ep).robot_states;
             space->clearStates();
             search_ptr->force_planning_from_scratch();
-
 
             // Write to file.
             stats_file.open("planning_stats.txt", std::ios::app);

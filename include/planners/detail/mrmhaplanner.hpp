@@ -305,6 +305,7 @@ void MRMHAPlanner<N, R, SP>::clear(){
     }
 
     m_search_states.clear();
+    m_stats  = {};
 
     m_start_state = nullptr;
     m_goal_state = nullptr;

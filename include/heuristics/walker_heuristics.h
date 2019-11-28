@@ -17,7 +17,9 @@
 #include "config/planner_config.h"
 #include "motion_planner.h"
 
-#define NUM_QUEUES 41
+//#define NUM_QUEUES 33
+#define NUM_QUEUES 20
+//#define NUM_QUEUES 23 //1 + 3 + 3 + 16
 #define NUM_ACTION_SPACES 3
 
 static const int DefaultCostMultiplier = 1000;
