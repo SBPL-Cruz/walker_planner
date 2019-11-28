@@ -115,7 +115,7 @@ bool MotionPlannerROS<SP, EP, Planner, RM>::canCallPlanner() const {
 
 template <typename SP, typename EP, typename Planner, typename RM>
 ExecutionStatus MotionPlannerROS<SP, EP, Planner, RM>::execute(PlanningEpisode _ep){
-    if(this->canCallPlanner()){
+    if( this->canCallPlanner() ) {
         // XXX The map/environment should be updated automatically??
         SMPL_INFO("Executing episode %d", _ep);
         this->updateMap(_ep);
@@ -139,7 +139,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner, RM>::execute(PlanningEpisode _
         //ROS_ERROR("BFS3DBase: %d", heur->bfs_3d_base->GetGoalHeuristic(1));
         //SV_SHOW_INFO(heur->bfs_3d_base->getValuesVisualization());
 
-	 ros::param::set("/walker_planner_request", 0);
+        ros::param::set("/walker_planner_request", 0);
         if(!m_planner_ptr->plan(soltn)){
             ROS_WARN("Planning Episode %d Failed", _ep);
             return ExecutionStatus::FAILURE;
@@ -148,7 +148,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner, RM>::execute(PlanningEpisode _
             m_planner_soltns.emplace(_ep, soltn);
             return ExecutionStatus::SUCCESS;
         }
-    } else{
+    } else {
         ROS_WARN_ONCE("Can't call planner");
         return ExecutionStatus::WAITING;
     }

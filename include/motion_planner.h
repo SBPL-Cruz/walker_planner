@@ -201,6 +201,12 @@ namespace MPlanner {
         //_planner_soltn.num_expansions = m_search_ptr->get_num_expansions();
         _planner_soltn.num_expansions = m_search_ptr->get_n_expands();
         _planner_soltn.soltn_ids = soltn_ids;
+        ROS_INFO("Planning Stats:");
+        ROS_INFO("---------------\n");
+        ROS_INFO("Planning time: %f\n", planning_time);
+        ROS_INFO("Expansions:    %d\n", _planner_soltn.num_expansions );
+
+
         /*_planner_soltn.ik_computations =
             m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_RPY) +
             m_env_ptr->getMprimComputations(smpl::MotionPrimitive::SNAP_TO_XYZ) +
