@@ -19,14 +19,14 @@ planning:
   #xyzrpy_snap_dist_thresh: 0.5
   xyz_snap_dist_thresh: 0.1
   rpy_snap_dist_thresh: .05
-  xyzrpy_snap_dist_thresh: 0.1
+  xyzrpy_snap_dist_thresh: 0.10
   short_dist_mprims_thresh: 0.1
   cost_per_cell: 500
   inflation_radius_2d: 0.285
   inflation_radius_3d: 0.02
   eps: 10
-  eps_mha: 1.5
-  planning_time: 120
+  eps_mha: 2.0
+  planning_time: 180
   start_planning_episode: 0
   end_planning_episode: 24
   seed: 100

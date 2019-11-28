@@ -2,3 +2,7 @@
 smpl_visual.ini
 rosconsole.config
 experiments
+.gitignore*
+tags
+results/
+results-single-param-mha/
