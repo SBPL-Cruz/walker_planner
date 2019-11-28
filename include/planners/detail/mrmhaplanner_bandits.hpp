@@ -6,6 +6,7 @@
 #include <panini/algo.h>
 
 #define LOG "mrmha_bandits"
+#define E_LOG "mrmha_bandits_expansions"
 
 template <int N, int R, typename SP>
 MRMHAPlannerBandits<N, R, SP>::MRMHAPlannerBandits(
@@ -116,55 +117,55 @@ int MRMHAPlannerBandits<N, R, SP>::replan(
         // Picks a queue among all non-empty inadmissible queue.
         // If an inadmissible queue is empty, it is skipped.
         //int hidx = chooseQueue();
-        int rep_id = this->m_scheduling_policy->getAction();
+        //int rep_id = this->m_scheduling_policy->getAction();
+        int hidx = this->m_scheduling_policy->getArm() + 1;
+        int rep_id = m_rep_ids[hidx];
         ROS_DEBUG_NAMED(LOG, "Expanding Rep %d", rep_id);
         ROS_DEBUG_NAMED(LOG, "==================");
         int reward = 0;
-        for(int hidx = 1; hidx < num_heuristics(); hidx++)
-        {
-            if(m_rep_ids[hidx] != rep_id)
-                continue;
-            if ( get_minf(m_open[hidx]) <= m_eps_mha * get_minf(m_open[0]) ){
-                if (m_goal_state->g <= get_minf(m_open[hidx])) {
-                    // Solution found
-                    this->m_eps_satisfied = m_eps*m_eps_mha;
-                    this->extract_path(_solution, _soltn_cost);
-                    return 1;
-                } else {
-                    // Inadmissible expansion
-                    ROS_DEBUG_NAMED(LOG, "Inadmissible expansion");
-                    auto s = this->state_from_open_state(m_open[hidx].min());
-                    ROS_DEBUG_NAMED(LOG, "State: %d, f: %d", s->state_id, s->od[hidx].f);
-                    this->expand(s, hidx);
-                    // Use the dependency matrix.
-                    // to partially close the state.
-                    for(int i = 0; i < R; i++){
-                        if(this->m_rep_dependency_matrix[this->m_rep_ids[hidx]][i])
-                            s->closed_in_adds[i] = true;
-                    }
-                    // DTS
-                    if( m_best_h[hidx] < m_prev_best_h[hidx] )
-                    {
-                        m_prev_best_h[hidx] = m_best_h[hidx];
-                        reward++;
-                    }
-                }
+        if(m_open[hidx].empty())
+            hidx = 0;
+        ROS_DEBUG_NAMED(LOG, "  Size of hidx %d: %d", hidx, m_open[hidx].size());
+        if ( get_minf(m_open[hidx]) <= m_eps_mha * get_minf(m_open[0]) ){
+            if (m_goal_state->g <= get_minf(m_open[hidx])) {
+                // Solution found
+                this->m_eps_satisfied = m_eps*m_eps_mha;
+                this->extract_path(_solution, _soltn_cost);
+                return 1;
             } else {
-                if (m_goal_state->g <= get_minf(m_open[0])) {
-                    // Solution found
-                    this->m_eps_satisfied = m_eps*m_eps_mha;
-                    this->extract_path(_solution, _soltn_cost);
-                    return 1;
-                } else {
-                    //Anchor expansion
-                    ROS_DEBUG_NAMED(LOG, "Anchor Expansion");
-                    auto s = this->state_from_open_state(m_open[0].min());
-                    this->expand(s, 0);
-                    s->closed_in_anc = true;
+                // Inadmissible expansion
+                ROS_DEBUG_NAMED(LOG, "Inadmissible expansion");
+                auto s = this->state_from_open_state(m_open[hidx].min());
+                ROS_DEBUG_NAMED(LOG, "State: %d, f: %d", s->state_id, s->od[hidx].f);
+                this->expand(s, hidx);
+                // Use the dependency matrix.
+                // to partially close the state.
+                for(int i = 0; i < R; i++){
+                    if(this->m_rep_dependency_matrix[this->m_rep_ids[hidx]][i])
+                        s->closed_in_adds[i] = true;
+                }
+                // DTS
+                if( m_best_h[hidx] < m_prev_best_h[hidx] )
+                {
+                    m_prev_best_h[hidx] = m_best_h[hidx];
+                    reward++;
                 }
             }
+        } else {
+            if (m_goal_state->g <= get_minf(m_open[0])) {
+                // Solution found
+                this->m_eps_satisfied = m_eps*m_eps_mha;
+                this->extract_path(_solution, _soltn_cost);
+                return 1;
+            } else {
+                //Anchor expansion
+                ROS_DEBUG_NAMED(LOG, "Anchor Expansion");
+                auto s = this->state_from_open_state(m_open[0].min());
+                this->expand(s, 0);
+                s->closed_in_anc = true;
+            }
         }
-        this->m_scheduling_policy->updatePolicy(reward, rep_id);
+        this->m_scheduling_policy->updatePolicy(reward, hidx);
         auto end_time = smpl::clock::now();
         this->m_time_elapsed += smpl::to_seconds(end_time - start_time);
     }
@@ -234,7 +235,7 @@ void MRMHAPlannerBandits<N, R, SP>::expand(MRMHASearchState* _state, int _hidx)
                             this->insert_or_update(succ_state, hidx);
                             if(succ_state->od[hidx].h < m_prev_best_h[hidx])
                                 m_best_h[hidx] = succ_state->od[hidx].h;
-                            //ROS_DEBUG_NAMED(LOG, "Inserted/Updated successor %d in Queue %d", succ_state->state_id, hidx);
+                            ROS_DEBUG_NAMED(E_LOG, "Inserted/Updated successor %d in queue %d", succ_state->state_id, hidx);
                         }
                     }
                 }

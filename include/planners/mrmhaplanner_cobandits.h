@@ -29,7 +29,7 @@ class MRMHAPlannerCoBandits : public MRMHAPlanner<N, R, SP> {
         std::array<int, N>& rep_ids,
         std::array<std::array<int, R>, R>& rep_dependency_matrix,
         SP* scheduling_policy,
-        Context* context);
+        Context* context );
 
     virtual ~MRMHAPlannerCoBandits();
 
