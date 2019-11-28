@@ -142,14 +142,24 @@ target_link_libraries( mhaplanner ${catkin_LIBRARIES} smpl::smpl
     #)
 #target_link_libraries( mhaplanner_single_param ${catkin_LIBRARIES} smpl::smpl )
 
-add_executable( mrmhaplanner_dts
-    src/mha/mrmhaplanner_dts.cpp
+add_executable( mrmhaplanner_rdts
+    src/mha/mrmhaplanner_rdts.cpp
     src/motion_planner_ros.cpp
     src/config/planner_config.cpp
     src/config/collision_space_scene.cpp
     src/config/get_collision_objects.cpp
     )
-target_link_libraries( mrmhaplanner_dts ${catkin_LIBRARIES} smpl::smpl
+target_link_libraries( mrmhaplanner_rdts ${catkin_LIBRARIES} smpl::smpl
+    generic_planner)
+
+add_executable( mrmhaplanner_hdts
+    src/mha/mrmhaplanner_hdts.cpp
+    src/motion_planner_ros.cpp
+    src/config/planner_config.cpp
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+target_link_libraries( mrmhaplanner_hdts ${catkin_LIBRARIES} smpl::smpl
     generic_planner)
 
 #add_executable( mrmhaplanner_ucb
