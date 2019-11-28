@@ -18,7 +18,7 @@
     <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)"
 required="true" /> -->
 
-    <node pkg="walker_planner" type="mrmhaplanner_cobandits" name="mrmhaplanner_cobandits"
+    <node pkg="walker_planner" type="mrmhaplanner_cobandits_train" name="mrmhaplanner_cobandits_train"
             launch-prefix="$(arg launch-prefix)" output="screen" required="true">
         <param name="planning_frame" value="dummy_base"/>
 
@@ -55,8 +55,8 @@ required="true" /> -->
         <param name="planning/mprim_filename" value="$(find
         walker_planner)/config/walker_multi_rep.mprim"/>
 
-        <!-- <param name="robot_start_states_file" value="$(find walker_planner)/experiments/train/easy/short/start_states.txt" /> -->
-        <!-- <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/train/easy/short/goal_poses.txt" /> -->
+        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/train-cobandits/start_states.txt" />
+        <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/train-cobandits/goal_poses.txt" />
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
@@ -66,9 +66,9 @@ required="true" /> -->
         <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
 
         <!-- 2.2 world state -->
-        <!-- <param name="object_filename" value="$(find walker_planner)/experiments/train/easy/multi_room_map.env"/> -->
+        <param name="object_filename" value="$(find walker_planner)/experiments/train-cobandits/multi_room_map.env"/>
 
-        <!-- <param name="beta_prior_file" value="$(find walker_planner)/learning/beta_prior.txt"/> -->
+        <!-- 3. scenario -->
 
     </node>
 

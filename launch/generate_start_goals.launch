@@ -53,11 +53,6 @@ required="true" /> -->
         <param name="planning/mprim_filename" value="$(find
         walker_planner)/config/walker_multi_rep.mprim"/>
 
-        <param name="allowed_planning_time" value="300.0"/>
-        <param name="read_goal_from_file" value="true"/>
-        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/walker_start_states.txt" />
-        <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/walker_goal_states.txt" />
-
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
         <rosparam command="load" file="$(find
