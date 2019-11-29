@@ -92,6 +92,7 @@ set( PLANNERS
 set( SOURCE_FILES
     src/heuristics/walker_heuristics.cpp
     src/scheduling_policies.cpp
+    src/cvae_scheduling_policies.cpp
     src/utils/utils.cpp
     )
 
@@ -222,6 +223,16 @@ add_executable(generate_start_goals
     src/config/collision_space_scene.cpp
     src/config/get_collision_objects.cpp)
 target_link_libraries(generate_start_goals ${catkin_LIBRARIES} smpl::smpl generic_planner)
+
+add_executable( test_mrmha_cvae
+    test/test_mrmha_cvae.cpp
+    src/motion_planner_ros.cpp
+    src/config/planner_config.cpp
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+target_link_libraries( test_mrmha_cvae ${catkin_LIBRARIES} smpl::smpl
+    generic_planner)
 
 add_executable( test_ik
     test/test_ik.cpp
