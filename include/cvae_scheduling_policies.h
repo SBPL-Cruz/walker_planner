@@ -25,30 +25,42 @@ class CVAEPolicy : public SchedulingPolicy
     }
 
     virtual int getAction(int state_id) = 0;
+    virtual int getAction() = 0;
 };
 
 
+template <typename ContextArray>
 class CVAENNPolicy : public CVAEPolicy
 {
     public:
-    CVAENNPolicy(int num_arms);
+    CVAENNPolicy(int num_arms, int num_reps);
     ~CVAENNPolicy();
+
+    //Required from Scheduling Policy
+    int getAction() override;
 
     // Required from CVAEPolicy //
     int getAction(int state_id) override;
 
+    int getArm( const std::vector<ContextArray>&, const std::vector<int>& rep_ids );
+    void updatePolicy(ContextArray& context, double reward, int rep_id);
+
     // Reads (x, y) points in a map along with their rep label.
     // Constructs n k-d trees with those points- one for each rep.
     // Constructing different k-d trees is makes query faster (O(log n)).
-    bool loadRepDistribution(std::string file_name);
+    bool loadRepDistribution(std::string file_name, int rep_id);
 
     private:
     using Point = bg::model::point<double, 2, bg::cs::cartesian>;
-    using Value = std::pair<Point, unsigned int>;
+    using Box = bg::model::box<Point>;
+    using Value = Point;//std::pair<Point, unsigned int>;
+    using RTree = bgi::rtree< Value, bgi::rstar<16> >;
     // Stores base (x, y) points where are representation should be searched.
     // Linear has fastest construction time but slowest query time.
     // rstar has slowest construction time but fastest query time.
-    bgi::rtree< Value, bgi::rstar<16> > m_kd_tree_arm;
+    std::vector<RTree> m_rtrees;
 };
+
+#include "detail/cvae_scheduling_policies.hpp"
 
 #endif
