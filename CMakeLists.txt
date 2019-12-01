@@ -92,7 +92,6 @@ set( PLANNERS
 set( SOURCE_FILES
     src/heuristics/walker_heuristics.cpp
     src/scheduling_policies.cpp
-    src/cvae_scheduling_policies.cpp
     src/utils/utils.cpp
     )
 

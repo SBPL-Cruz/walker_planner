@@ -406,11 +406,19 @@ int main(int argc, char** argv) {
             dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[1].get()) );
 
     const unsigned int seed = 100;
-    using PolicyT = ContextualDTSPolicy<ContextArray>;
-    auto dts_policy = std::make_unique<PolicyT>(NUM_ACTION_SPACES, 100);
-    std::string beta_file_name;
-    ph.getParam("beta_prior_file", beta_file_name);
-    dts_policy->loadBetaPrior(beta_file_name);
+    using PolicyT = CVAENNPolicy<ContextArray>;
+    auto cvae_policy = std::make_unique<PolicyT>(NUM_QUEUES, NUM_ACTION_SPACES);
+    std::string arm_file_name, base_file_name;
+    ph.getParam("arm_file_name", arm_file_name);
+    ph.getParam("base_file_name", base_file_name);
+    ROS_WARN("Arm file name: %s", arm_file_name.c_str());
+    ROS_WARN("Base file name: %s", base_file_name.c_str());
+    if(!cvae_policy->loadRepDistribution(arm_file_name,  ActionSpace::Arm) ||
+            !cvae_policy->loadRepDistribution(base_file_name, ActionSpace::Base) )
+    {
+        ROS_ERROR("Could not load rep distributions.");
+        return 1;
+    }
 
     //std::vector<ContextArray> contexts;
     //std::vector<int> context_ids;
@@ -433,7 +441,7 @@ int main(int argc, char** argv) {
     using Planner = MRMHAPlannerCoBandits<NUM_QUEUES, NUM_ACTION_SPACES, PolicyT, ContextT>;
     auto search_ptr = std::make_unique<Planner>(
             space.get(), heurs_array, rep_ids, rep_dependency_matrix,
-            dts_policy.get(), context_features.get() );
+            cvae_policy.get(), context_features.get() );
     const int max_planning_time = planning_config.planning_time;
     const double eps = planning_config.eps;
     const double eps_mha = planning_config.eps_mha;
@@ -451,8 +459,8 @@ int main(int argc, char** argv) {
     PlanningEpisode ep = planning_config.start_planning_episode;
     while(ep <= planning_config.end_planning_episode){
         ROS_ERROR("Episode: %d", ep);
-        dts_policy->setSeed(rand());
-        dts_policy->resetPrior();
+        //cvae_policy->setSeed(rand());
+        //cvae_policy->resetPrior();
         loop_rate.sleep();
         std::string file_suffix = std::to_string(ep) + ".txt";
         status = mplanner_ros.execute(ep);
