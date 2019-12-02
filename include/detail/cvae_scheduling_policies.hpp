@@ -63,24 +63,17 @@ int CVAENNPolicy<C>::getArm( const std::vector<C>& _contexts, const std::vector<
             counts[j] = nearest_neighbours[j].size();
         }
         if( std::any_of(counts.begin() + 1, counts.end(), [](int x){ return x == 0; }) )
-            likelihoods[i] = -1;
+            likelihoods[i] = 100 * 0.5;//-1;
         else
             likelihoods[i] = (int) (100 * ( (double)counts[id] / (double) std::accumulate(counts.begin(), counts.end(), 0) ));
         ROS_DEBUG_NAMED( FINE_LOG, "  Rep: %d, Queue: %d, Likelihood: %d", id, i, likelihoods[i] );
     }
 
     int arm_id = -1;
-    // Chose the best Representation based on nearest neighbour counts
-    if( std::all_of(likelihoods.begin() + 1, likelihoods.end(), [](int x){ return x >= 0; }) )
-    {
-        std::discrete_distribution<int> distribution(likelihoods.begin(), likelihoods.end());
-        arm_id = distribution(m_generator);
-    } else
-    {
-        ROS_DEBUG_NAMED(LOG, "    Uniform Random Selection");
-        arm_id = rand() % _contexts.size();
-    }
-
+    // Chose the best Representation based on representation likelihood
+    // computed using nearest neighbour counts.
+    std::discrete_distribution<int> distribution(likelihoods.begin(), likelihoods.end());
+    arm_id = distribution(m_generator);
 
     ROS_DEBUG_NAMED(LOG, "Chosen Rep: %d, Arm: %d", _rep_ids[arm_id], arm_id);
     //ros::Duration(0.5).sleep();
