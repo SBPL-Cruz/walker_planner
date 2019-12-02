@@ -377,6 +377,11 @@ int main(int argc, char** argv) {
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
+    for(auto& id : rep_ids)
+    {
+        if(id == (int) ActionSpace::Fullbody)
+            id = (int) ActionSpace::Arm;
+    }
 
     ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
     assert(robot_heurs.size() == NUM_QUEUES);

@@ -373,6 +373,11 @@ int main(int argc, char** argv) {
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
+    for(auto& id : rep_ids)
+    {
+        if(id == (int) ActionSpace::Fullbody)
+            id = (int) ActionSpace::Arm;
+    }
 
     ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
     assert(robot_heurs.size() == NUM_QUEUES);
@@ -399,11 +404,13 @@ int main(int argc, char** argv) {
                                   //{{0, 1}} }};
 
     // Context
-    using ContextArray = std::array<int, 4>;
-    using ContextT = MobManipDiscreteFeatures<4>;
-    auto context_features = std::make_unique<ContextT> (rm.get(), space.get(), nullptr,
-            dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[0].get()),
-            dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[1].get()) );
+    using ContextArray = std::array<double, 2>;
+    //using ContextT = MobManipDiscreteFeatures<4>;
+    using ContextT = CVAEContext;
+    //auto context_features = std::make_unique<ContextT> (rm.get(), space.get(), nullptr,
+            //dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[0].get()),
+            //dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[1].get()) );
+    auto context_features = std::make_unique<ContextT>(space.get());
 
     const unsigned int seed = 100;
     using PolicyT = CVAENNPolicy<ContextArray>;

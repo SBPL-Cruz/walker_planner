@@ -55,8 +55,8 @@ required="true" /> -->
         <param name="planning/mprim_filename" value="$(find
         walker_planner)/config/walker_multi_rep.mprim"/>
 
-        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/train/easy/short/start_states.txt" />
-        <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/train/easy/short/goal_poses.txt" />
+        <param name="robot_start_states_file" value="$(find walker_planner)/experiments/start_states.txt" />
+        <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/goal_poses.txt" />
 
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
@@ -67,6 +67,7 @@ required="true" /> -->
 
         <!-- 2.2 world state -->
         <param name="object_filename" value="$(find walker_planner)/experiments/train/easy/multi_room_map.env"/>
+        <param name="object_filename" value="$(find walker_planner)/experiments/cvae_map.env"/>
 
         <param name="arm_file_name" value="$(find walker_planner)/data/cvae_output/arm_output/gen_points_0.txt"/>
         <param name="base_file_name" value="$(find walker_planner)/data/cvae_output/base_output/gen_points_0.txt"/>
