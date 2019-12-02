@@ -91,6 +91,33 @@ class MobManipDiscreteFeatures<4> : public AbstractContext<4, int>
     double m_arm_len = 0.0;
 };
 
+
+class CVAEContext : public AbstractContext<2, double>
+{
+    public:
+    CVAEContext(smpl::ManipLattice* env) :
+        AbstractContext<2, double>(),
+        m_env{env}
+    {}
+
+    std::array<double, 2> getContext(const std::vector<double>& robot_state) override
+    {
+        throw "Not Implemented";
+    }
+
+    std::array<double, 2> getContext(int state_id) override
+    {
+        auto& robot_state = m_env->getHashEntry(state_id)->state;
+        std::array<double, 2> context;
+        context[0] = robot_state[0];
+        context[1] = robot_state[1];
+        return context;
+    }
+
+    private:
+    smpl::ManipLattice* m_env;
+};
+
 #include "detail/context_features.hpp"
 
 #endif

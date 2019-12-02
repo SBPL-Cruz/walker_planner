@@ -4,6 +4,7 @@
 #include <vector>
 #include <utility>
 #include <fstream>
+#include <random>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point.hpp>
 #include <boost/geometry/index/rtree.hpp>
@@ -59,6 +60,8 @@ class CVAENNPolicy : public CVAEPolicy
     // Linear has fastest construction time but slowest query time.
     // rstar has slowest construction time but fastest query time.
     std::vector<RTree> m_rtrees;
+
+    std::default_random_engine m_generator;
 };
 
 #include "detail/cvae_scheduling_policies.hpp"

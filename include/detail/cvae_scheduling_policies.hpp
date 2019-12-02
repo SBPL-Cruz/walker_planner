@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <numeric>
+#include <smpl/debug/marker_utils.h>
 #include "../cvae_scheduling_policies.h"
 
 #define FINE_LOG "cvae_scheduling_policy_detail"
@@ -39,40 +40,51 @@ int CVAENNPolicy<C>::getAction(int _state_id)
 template <typename C>
 int CVAENNPolicy<C>::getArm( const std::vector<C>& _contexts, const std::vector<int>& _rep_ids )
 {
-    std::vector< std::vector<Value> > nearest_neighbours(m_rtrees.size());
+    //std::vector<double> probs(_rep_ids.size());
+    std::vector<int> likelihoods(_rep_ids.size());
+
+    ROS_DEBUG_NAMED(FINE_LOG, "Rep Probabilities: ");
     for(int i = 0; i < _contexts.size(); i++)
     {
+        std::vector< std::vector<Value> > nearest_neighbours(m_rtrees.size());
         // Context is a vector with : x, y of base
         auto& context = _contexts[i];
         int id = _rep_ids[i];
-        double radius = 5.1;
+        double radius = 0.2;
+        std::vector<int> counts(m_rtrees.size(), 0);
         Box box( Point(context[0] - radius, context[1] - radius),
                 Point(context[0] + radius, context[1] + radius) );
-        m_rtrees[id].query( bg::index::within(box),
-                std::back_inserter(nearest_neighbours[id]) );
-    }
-    std::vector<int> counts(m_rtrees.size());
-    std::vector<double> probs(m_rtrees.size());
-    ROS_DEBUG_NAMED(FINE_LOG, "Rep Counts: ");
-    for(auto id : _rep_ids)
-    {
-        counts[id] = nearest_neighbours[id].size();
-        ROS_DEBUG_NAMED(FINE_LOG, "   ID: %d, Count: %d", id, counts[id]);
-    }
-    int total_count = std::accumulate(counts.begin(), counts.end(), 0);
-    int best_id = 0;
-    ROS_DEBUG_NAMED(FINE_LOG, "Rep Probabilities: ");
-    for(auto id : _rep_ids)
-    {
-        probs[id] = counts[id] / total_count;
-        ROS_DEBUG_NAMED(FINE_LOG, "  ID: %d, Count: %d, Prob: %f", id, counts[id], probs[id]);
-        if(probs[id] > probs[best_id])
+
+        //Ignoring Fullbody representation
+        for(int j = 1; j < m_rtrees.size(); j++)
         {
-            best_id = id;
+            m_rtrees[j].query( bg::index::within(box),
+                    std::back_inserter(nearest_neighbours[j]) );
+            counts[j] = nearest_neighbours[j].size();
         }
+        if( std::any_of(counts.begin() + 1, counts.end(), [](int x){ return x == 0; }) )
+            likelihoods[i] = -1;
+        else
+            likelihoods[i] = (int) (100 * ( (double)counts[id] / (double) std::accumulate(counts.begin(), counts.end(), 0) ));
+        ROS_DEBUG_NAMED( FINE_LOG, "  Rep: %d, Queue: %d, Likelihood: %d", id, i, likelihoods[i] );
     }
-    // XXX Right now it assumes reps:queues::1:1
-    return best_id;
+
+    int arm_id = -1;
+    // Chose the best Representation based on nearest neighbour counts
+    if( std::all_of(likelihoods.begin() + 1, likelihoods.end(), [](int x){ return x >= 0; }) )
+    {
+        std::discrete_distribution<int> distribution(likelihoods.begin(), likelihoods.end());
+        arm_id = distribution(m_generator);
+    } else
+    {
+        ROS_DEBUG_NAMED(LOG, "    Uniform Random Selection");
+        arm_id = rand() % _contexts.size();
+    }
+
+
+    ROS_DEBUG_NAMED(LOG, "Chosen Rep: %d, Arm: %d", _rep_ids[arm_id], arm_id);
+    //ros::Duration(0.5).sleep();
+    return arm_id;
 }
 
 template <typename C>
@@ -106,6 +118,7 @@ bool CVAENNPolicy<C>::loadRepDistribution(std::string _file_name, int _rep_id)
         Point point = Point(x, y);
         m_rtrees[_rep_id].insert(point);
         //m_rtrees[_rep_id].insert(std::make_pair(point, idx));
+        SV_SHOW_INFO(smpl::visual::MakeSphereMarker( x, y, 0.0, 0.05, 100.0/_rep_id, "dummy_base", "cvae_base_" + std::to_string(_rep_id), idx ));
         idx++;
     }
     ROS_DEBUG_NAMED( LOG, "    Loaded %d points", m_rtrees[_rep_id].size() );
