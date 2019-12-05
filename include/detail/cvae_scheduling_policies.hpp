@@ -2,6 +2,7 @@
 #define CVAE_SCHEDULING_POLICIES_IMPLEMENTATION_H
 
 #include <ros/ros.h>
+#include <ros/console.h>
 #include <numeric>
 #include <smpl/debug/marker_utils.h>
 #include "../cvae_scheduling_policies.h"
@@ -50,20 +51,31 @@ int CVAENNPolicy<C>::getArm( const std::vector<C>& _contexts, const std::vector<
         // Context is a vector with : x, y of base
         auto& context = _contexts[i];
         int id = _rep_ids[i];
-        double radius = 0.2;
+        double radius = 1.0;
         std::vector<int> counts(m_rtrees.size(), 0);
         Box box( Point(context[0] - radius, context[1] - radius),
                 Point(context[0] + radius, context[1] + radius) );
 
         //Ignoring Fullbody representation
+        ROS_DEBUG_STREAM_NAMED(FINE_LOG, "  Counts: ");
         for(int j = 1; j < m_rtrees.size(); j++)
         {
             m_rtrees[j].query( bg::index::within(box),
                     std::back_inserter(nearest_neighbours[j]) );
             counts[j] = nearest_neighbours[j].size();
+            ROS_DEBUG_STREAM_NAMED(FINE_LOG, "  " << counts[j]);
         }
         if( std::any_of(counts.begin() + 1, counts.end(), [](int x){ return x == 0; }) )
-            likelihoods[i] = 100 * 0.5;//-1;
+        {
+            if(counts[id] == 0)
+                likelihoods[i] = 100 * 0.20;
+            else
+            {
+                //for(int j = 1; j < counts.size(); j++)
+                    //if(counts[j] == 0)
+                likelihoods[i] = 100 * 0.80;
+            }
+        }
         else
             likelihoods[i] = (int) (100 * ( (double)counts[id] / (double) std::accumulate(counts.begin(), counts.end(), 0) ));
         ROS_DEBUG_NAMED( FINE_LOG, "  Rep: %d, Queue: %d, Likelihood: %d", id, i, likelihoods[i] );
