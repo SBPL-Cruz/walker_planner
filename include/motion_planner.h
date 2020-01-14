@@ -16,6 +16,8 @@
 #include <smpl/console/console.h>
 //#include <sbpl/planners/types.h>
 
+#include "config/planner_config.h"
+
 namespace MPlanner {
 
     struct PlannerSolution {
@@ -24,6 +26,9 @@ namespace MPlanner {
         int cost;
         double planning_time;
         int num_expansions;
+        int fullbody_expansions;
+        int base_expansions;
+        int arm_expansions;
         int ik_computations;
         int ik_evaluations;
         int ik_valid;
@@ -33,6 +38,9 @@ namespace MPlanner {
             cost = 0;
             planning_time = 0;
             num_expansions = 0;
+            fullbody_expansions = 0;
+            base_expansions = 0;
+            arm_expansions = 0;
             ik_computations = 0;
             ik_evaluations = 0;
             ik_valid = 0;
@@ -43,6 +51,9 @@ namespace MPlanner {
             cost = soltn.cost;
             planning_time = soltn.planning_time;
             num_expansions = soltn.num_expansions;
+            fullbody_expansions = soltn.fullbody_expansions;
+            base_expansions = soltn.base_expansions;
+            arm_expansions = soltn.arm_expansions;
             ik_computations = soltn.ik_computations;
             ik_evaluations = soltn.ik_evaluations;
             ik_valid = soltn.ik_valid;
@@ -200,11 +211,16 @@ namespace MPlanner {
         _planner_soltn.planning_time = planning_time;
         //_planner_soltn.num_expansions = m_search_ptr->get_num_expansions();
         _planner_soltn.num_expansions = m_search_ptr->get_n_expands();
+        _planner_soltn.fullbody_expansions = m_env_ptr->m_rep_expansions[(int)Fullbody];
+        _planner_soltn.base_expansions = m_env_ptr->m_rep_expansions[(int)Base];
+        _planner_soltn.arm_expansions = m_env_ptr->m_rep_expansions[(int)Arm];
         _planner_soltn.soltn_ids = soltn_ids;
         ROS_INFO("Planning Stats:");
         ROS_INFO("---------------\n");
         ROS_INFO("Planning time: %f\n", planning_time);
         ROS_INFO("Expansions:    %d\n", _planner_soltn.num_expansions );
+        ROS_INFO("Fullbody Expansions:    %d\n", _planner_soltn.fullbody_expansions );
+        ROS_INFO("Base Expansions:    %d\n", _planner_soltn.base_expansions );
 
 
         /*_planner_soltn.ik_computations =

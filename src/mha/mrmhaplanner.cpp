@@ -381,6 +381,12 @@ int main(int argc, char** argv) {
     ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
     assert(robot_heurs.size() == NUM_QUEUES);
 
+    //for(int i = 0; i < NUM_QUEUES; i++)
+    //{
+        //if(rep_ids[i] == (int)Fullbody)
+            //rep_ids[i] = (int)Arm;
+    //}
+
     assert(robot_heurs[0] != nullptr);
 
     std::array<Heuristic*, NUM_QUEUES> heurs_array;
@@ -398,7 +404,7 @@ int main(int argc, char** argv) {
     std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
         rep_dependency_matrix = {{ {{1, 1, 1}},
                                   {{0, 1, 0}},
-                                  {{0, 1, 0}} }};
+                                  {{0, 0, 1}} }};
     //std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
         //rep_dependency_matrix = {{ {{1}} }};
 
@@ -437,6 +443,8 @@ int main(int argc, char** argv) {
         ROS_ERROR("Episode: %d", ep);
         loop_rate.sleep();
         std::string file_suffix = std::to_string(ep) + ".txt";
+        space->clearStates();
+        space->clearStats();
         status = mplanner_ros.execute(ep);
     //}
         if(status == ExecutionStatus::SUCCESS){
@@ -450,7 +458,8 @@ int main(int argc, char** argv) {
             auto plan_stats = mplanner_ros.getPlan(ep);
             stats_file<<std::to_string(ep)<<" "<<max_planning_time<<" ";
             stats_file<<plan_stats.planning_time << " " << plan_stats.num_expansions << " " << plan_stats.cost<<" ";
-            stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<<"\n";
+            stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<< " ";
+            stats_file<< std::to_string(plan_stats.fullbody_expansions)<< " "<< std::to_string(plan_stats.base_expansions)<< " "<< std::to_string(plan_stats.arm_expansions)<< "\n";
             stats_file.close();
 
             std::string file_name = file_prefix + file_suffix;

@@ -48,6 +48,8 @@ class MRMHAPlanner : public SBPLPlanner {
         delete[] m_open;
     }
 
+    std::array<int, R> m_rep_expansions = {};
+
     /// Required from SBPLPlanner:
     //{
     virtual int replan(

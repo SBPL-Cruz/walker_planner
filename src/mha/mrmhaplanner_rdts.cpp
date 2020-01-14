@@ -428,6 +428,8 @@ int main(int argc, char** argv) {
         loop_rate.sleep();
         dts_policy->setSeed(rand());
         std::string file_suffix = std::to_string(ep) + ".txt";
+        //space->clearStates();
+        space->clearStats();
         status = mplanner_ros.execute(ep);
     //}
         if(status == ExecutionStatus::SUCCESS){
@@ -441,7 +443,8 @@ int main(int argc, char** argv) {
             auto plan_stats = mplanner_ros.getPlan(ep);
             stats_file<<std::to_string(ep)<<" "<<max_planning_time<<" ";
             stats_file<<plan_stats.planning_time << " " << plan_stats.num_expansions << " " << plan_stats.cost<<" ";
-            stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<<"\n";
+            stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<< " ";
+            stats_file<< std::to_string(plan_stats.fullbody_expansions)<< " "<< std::to_string(plan_stats.base_expansions)<< " "<< std::to_string(plan_stats.arm_expansions)<< "\n";
             stats_file.close();
 
             std::string file_name = file_prefix + file_suffix;
