@@ -373,6 +373,12 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    //for(int i = 0; i < NUM_QUEUES; i++)
+    //{
+        //if(rep_ids[i] == (int)Base)
+            //rep_ids[i] = (int)Fullbody;
+    //}
+
     ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
     assert(robot_heurs.size() == NUM_QUEUES);
 

@@ -140,13 +140,30 @@ class DTSPolicy : public MABPolicy
     {
         gsl_rng_set(m_gsl_rand, seed);
     }
+    bool setBranchingFactor(std::vector<int>& b_factor)
+    {
+        for( int i = 0; i < b_factor.size(); i++ )
+            m_b_factor[i] = b_factor[i];
+    }
+
+    bool setRepNumQueues(std::vector<int>& rep_num_queues)
+    {
+        for( int i = 0; i < rep_num_queues.size(); i++ )
+            m_rep_num_queues[i] = rep_num_queues[i];
+    }
 
     protected:
     unsigned int m_seed;
     std::vector<double> m_alphas {}, m_betas {} ;
+    std::vector<int> m_b_factor {};
+    std::vector<int> m_rep_num_queues {};
     double m_C = 10;
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
+
+    bool m_use_cached_rep = false;
+    int m_cached_rep = -1;
+    int m_cached_queue_id = 0;
 };
 
 class RepDTSPolicy : public DTSPolicy
@@ -238,7 +255,7 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
     int getAction( const std::vector<ContextArray>&, const std::vector<int>& rep_ids ){}
     int getArm( const std::vector<ContextArray>&, const std::vector<int>& rep_ids );
 
-    void updatePolicy(double, int) override 
+    void updatePolicy(double, int) override
     {
         throw "Not Implemented";
     }

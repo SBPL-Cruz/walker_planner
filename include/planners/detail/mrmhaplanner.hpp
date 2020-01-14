@@ -192,6 +192,7 @@ int MRMHAPlanner<N, R, SP>::set_goal(int _goal_stateID) {
 template <int N, int R, typename SP>
 int MRMHAPlanner<N, R, SP>::set_start(int _start_stateID) {
     m_start_state = get_state(_start_stateID);
+    this->environment_->setRepID(_start_stateID, 0);
     if (!m_start_state) {
         return 0;
     } else {
@@ -363,6 +364,7 @@ void MRMHAPlanner<N, R, SP>::expand(MRMHASearchState* _state, int _hidx){
         if (new_g < succ_state->g) {
             succ_state->g = new_g;
             succ_state->bp = _state;
+            environment_->setRepID(succ_ids[sidx], rep_id);
             if (!closed_in_anc_search(succ_state)) {
                 succ_state->od[0].f = compute_key(succ_state, 0);
                 ROS_DEBUG_NAMED(LOG, "    Inserting/updating in anchor");

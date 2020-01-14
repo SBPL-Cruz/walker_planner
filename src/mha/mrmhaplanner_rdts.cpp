@@ -4,6 +4,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <time.h>
+#include <algorithm>
 
 #include <ros/ros.h>
 #include <smpl/graph/manip_lattice_action_space.h>
@@ -373,6 +374,12 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    //for(int i = 0; i < NUM_QUEUES; i++)
+    //{
+        //if(rep_ids[i] == (int)Fullbody)
+            //rep_ids[i] = (int)Arm;
+    //}
+
     ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
     assert(robot_heurs.size() == NUM_QUEUES);
 
@@ -404,6 +411,14 @@ int main(int argc, char** argv) {
     const unsigned int seed = 100;
     using PolicyT = RepDTSPolicy;
     auto dts_policy = std::make_unique<PolicyT>(NUM_ACTION_SPACES, rep_ids_v, 100);
+
+    std::vector<int> branching_factor = {4, 1, 3};
+    dts_policy->setBranchingFactor(branching_factor);
+
+    std::vector<int> rep_num_queues;
+    for( int i = 0; i < NUM_ACTION_SPACES; i++ )
+        rep_num_queues.push_back(std::count(rep_ids.begin(), rep_ids.end(), i));
+    dts_policy->setRepNumQueues(rep_num_queues);
 
     using Planner = MRMHAPlannerBandits<NUM_QUEUES, NUM_ACTION_SPACES, PolicyT>;
     auto search_ptr = std::make_unique<Planner>(

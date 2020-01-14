@@ -7,6 +7,8 @@ DTSPolicy::DTSPolicy( int _num_arms, unsigned int _seed ) :
 {
     m_alphas.resize(_num_arms, 1);
     m_betas.resize(_num_arms, 1);
+    m_b_factor.resize(_num_arms, 1);
+    m_rep_num_queues.resize(_num_arms, 1);
     srand(_seed);
     gsl_rng_env_setup();
     m_gsl_rand_T = gsl_rng_default;
@@ -18,16 +20,18 @@ DTSPolicy::~DTSPolicy()
     gsl_rng_free(m_gsl_rand);
 }
 
-int DTSPolicy::getAction()
-{
+int DTSPolicy::getAction() {
     //ROS_ERROR("alphas: %f, %f", m_alphas[0], m_alphas[1]);
     std::vector<double> rep_likelihoods(this->numArms(), 0);
     // Beta distribution for each representation
     double best_likelihood = -1;
     for( int i = 0; i < this->numArms(); i++ )
     {
+        //rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, m_alphas[i], m_betas[i]);
         rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, m_alphas[i], m_betas[i]);
-        //doubledouble betaMean = alpha[i] / (alpha[i] + beta[i]);
+        rep_likelihoods[i] /= m_b_factor[i]; // Expand more from rep with smaller branching factor
+        rep_likelihoods[i] *= m_rep_num_queues[i]; //Expand more from rep with more queues.
+        //double betaMean = alpha[i] / (alpha[i] + beta[i]);
         if(rep_likelihoods[i] > best_likelihood)
             best_likelihood = rep_likelihoods[i];
     }
@@ -87,9 +91,22 @@ RepDTSPolicy::RepDTSPolicy(int _num_reps, std::vector<int>& _rep_ids, unsigned i
 
 int RepDTSPolicy::getArm()
 {
+    //if(not m_use_cached_rep)
+    //{
+        //m_cached_rep = DTSPolicy::getAction();
+        //m_cached_queue_id = 0;
+        //m_use_cached_rep = true;
+    //}
+    //int queue_id = m_rep_hids[m_cached_rep][m_cached_queue_id];
+    //m_cached_queue_id++;
+    //if(m_cached_queue_id >= m_rep_hids[m_cached_rep].size())
+        //m_use_cached_rep = false;
+    //return queue_id - 1;
+
+    // Returns a random queue in this rep id.
     int rep = DTSPolicy::getAction();
     int id = rand() % m_rep_hids[rep].size();
-    // hidx is incremented by 1 in the planner
+     //hidx is incremented by 1 in the planner
     return m_rep_hids[rep][id] - 1;
 }
 
