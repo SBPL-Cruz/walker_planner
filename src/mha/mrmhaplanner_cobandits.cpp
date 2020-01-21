@@ -398,15 +398,16 @@ int main(int argc, char** argv) {
                                   //{{0, 1}} }};
 
     // Context
-    using ContextArray = std::array<int, 4>;
-    using ContextT = MobManipDiscreteFeatures<4>;
-    auto context_features = std::make_unique<ContextT> (rm.get(), space.get(), nullptr,
-            dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[0].get()),
-            dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[1].get()) );
+    using ContextArray = std::array<int, 6>;
+    using ContextT = MobManipDiscreteFeatures<6>;
+    //auto context_features = std::make_unique<ContextT> (rm.get(), space.get(), nullptr,
+            //dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[0].get()),
+            //dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[1].get()) );
+    auto context_features = std::make_unique<ContextT> (rm.get(), space.get(),
+            dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[1].get()),
+            dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[2].get()),
+            dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[0].get()) );
 
-    const unsigned int seed = 100;
-    using PolicyT = ContextualDTSPolicy<ContextArray>;
-    auto dts_policy = std::make_unique<PolicyT>(NUM_ACTION_SPACES, 100);
     std::string beta_file_name;
     ph.getParam("beta_prior_file", beta_file_name);
     dts_policy->loadBetaPrior(beta_file_name);
@@ -469,7 +470,8 @@ int main(int argc, char** argv) {
             auto plan_stats = mplanner_ros.getPlan(ep);
             stats_file<<std::to_string(ep)<<" "<<max_planning_time<<" ";
             stats_file<<plan_stats.planning_time << " " << plan_stats.num_expansions << " " << plan_stats.cost<<" ";
-            stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<<"\n";
+            stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<< " ";
+            stats_file<< std::to_string(plan_stats.fullbody_expansions)<< " "<< std::to_string(plan_stats.base_expansions)<< " "<< std::to_string(plan_stats.arm_expansions)<< "\n";
             stats_file.close();
 
             std::string file_name = file_prefix + file_suffix;

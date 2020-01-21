@@ -91,6 +91,49 @@ class MobManipDiscreteFeatures<4> : public AbstractContext<4, int>
     double m_arm_len = 0.0;
 };
 
+template <>
+class MobManipDiscreteFeatures<6> : public AbstractContext<6, int>
+{
+    public:
+    MobManipDiscreteFeatures(
+            smpl::KDLRobotModel* rm,
+            smpl::ManipLattice*,
+            // Goal base 1
+            smpl::Bfs3DBaseHeuristic*,
+            // Goal base 2
+            smpl::Bfs3DBaseHeuristic*,
+            // End-effector
+            smpl::Bfs3DHeuristic*);
+
+    /**Features:
+     * BFS3D distance to goal
+     * BFS3DBase distance to goal base 1
+     * BFS3DBase distance to goal base 2
+     * Yaw diff bw goal and base
+     * Circum radius
+     * Distance to nearest narrow passage on 2D BFS path
+     **/
+    using ContextArray = std::array<int, 6>;
+
+    ContextArray getContext( int state_id ) override;
+
+    std::array<int, 6> getContext(const std::vector<double>& robot_state)
+    {
+        throw "Not Implemented";
+    }
+
+    void setRobotArmLength( double );
+
+    private:
+    smpl::KDLRobotModel* m_rm = nullptr;
+    smpl::ManipLattice* m_env = nullptr;
+    smpl::Bfs3DBaseHeuristic* m_bfs_3d_base1 = nullptr;
+    smpl::Bfs3DBaseHeuristic* m_bfs_3d_base2 = nullptr;
+    smpl::Bfs3DHeuristic* m_bfs_3d = nullptr;
+
+    double m_arm_len = 0.0;
+};
+
 #include "detail/context_features.hpp"
 
 #endif

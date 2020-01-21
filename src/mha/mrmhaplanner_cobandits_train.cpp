@@ -398,11 +398,12 @@ int main(int argc, char** argv) {
                                   //{{0, 1}} }};
 
     // Context
-    using ContextArray = std::array<int, 4>;
-    using ContextT = MobManipDiscreteFeatures<4>;
-    auto context_features = std::make_unique<ContextT> (rm.get(), space.get(), nullptr,
-            dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[0].get()),
-            dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[1].get()) );
+    using ContextArray = std::array<int, 6>;
+    using ContextT = MobManipDiscreteFeatures<6>;
+    auto context_features = std::make_unique<ContextT> (rm.get(), space.get(),
+            dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[1].get()),
+            dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[2].get()),
+            dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[0].get()) );
 
     const unsigned int seed = 100;
     using PolicyT = ContextualMABTrainPolicy<ContextArray>;
