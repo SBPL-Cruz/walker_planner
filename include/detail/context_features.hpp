@@ -129,6 +129,7 @@ auto MobManipDiscreteFeatures<4>::getContext( int _state_id )
         //}
     //}
 
+    /**
     // Base dist
     context[0] = std::min(context[0], 16);
     // 3D BFS
@@ -137,6 +138,7 @@ auto MobManipDiscreteFeatures<4>::getContext( int _state_id )
     context[2] = std::min(context[2], 14);
     // Dist to narrow passage
     context[3] = std::min(context[3], 10);
+    **/
 
     ROS_DEBUG_NAMED(LOG, "Context for state: %d", _state_id);
     //ROS_DEBUG_NAMED(LOG, "  3D-base  3D   Circum-radius  Dist-to-narrow-passage");

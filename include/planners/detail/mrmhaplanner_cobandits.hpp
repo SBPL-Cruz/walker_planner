@@ -6,6 +6,8 @@
 #include <panini/algo.h>
 
 #define LOG "mrmha_cobandits"
+#define LOG_H "mrmha_cobandits.heurs"
+#define LOG_E "mrmha_cobandits.expansions"
 
 template <int N, int R, typename SP, typename C>
 MRMHAPlannerCoBandits<N, R, SP, C>::MRMHAPlannerCoBandits(
@@ -176,13 +178,13 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
         int rep_id = m_rep_ids[hidx];
         auto context = contexts[hidx-1];
         ROS_DEBUG_NAMED(LOG, "Expanding Queue %d in Rep: %d", hidx, rep_id);
-        ROS_DEBUG_NAMED(LOG, "==================");
+        ROS_DEBUG_NAMED(LOG, "------------------");
         int reward = 0;
         if ( get_minf(m_open[hidx]) <= m_eps_mha * get_minf(m_open[0]) ){
             // Inadmissible expansion
-            ROS_DEBUG_NAMED(LOG, "Inadmissible expansion");
+            ROS_DEBUG_NAMED(LOG_E, "Inadmissible expansion");
             auto s = this->state_from_open_state(m_open[hidx].min());
-            ROS_DEBUG_NAMED(LOG, "State: %d, f: %d", s->state_id, s->od[hidx].f);
+            ROS_DEBUG_NAMED(LOG_H, "State: %d, f(g, h): %d (%d, %d)", s->state_id, s->od[hidx].f, s->g, s->od[hidx].h);
             auto expand_start_time = smpl::clock::now();
 
             this->expand(s, hidx);
@@ -203,7 +205,7 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
             }
         } else {
             //Anchor expansion
-            ROS_DEBUG_NAMED(LOG, "Anchor Expansion");
+            ROS_DEBUG_NAMED(LOG_E, "Anchor Expansion");
             auto s = this->state_from_open_state(m_open[0].min());
 
             auto expand_start_time = smpl::clock::now();
@@ -214,7 +216,7 @@ int MRMHAPlannerCoBandits<N, R, SP, C>::replan(
             this->m_stats.expand +=  smpl::to_seconds(expand_end_time - expand_start_time);
             s->closed_in_anc = true;
         }
-        ROS_DEBUG_NAMED(LOG, "Size of Anchor: %d", m_open[0].size());
+        ROS_DEBUG_NAMED(LOG_E, "Size of Anchor: %d", m_open[0].size());
         scheduling_start_time = smpl::clock::now();
 
         this->m_scheduling_policy->updatePolicy(context, reward, rep_id);
@@ -246,7 +248,7 @@ void MRMHAPlannerCoBandits<N, R, SP, C>::expand(MRMHASearchState* _state, int _h
     int rep_id = m_rep_ids[_hidx];
     // Inserts _state into the closed queues determined by the
     // rep_dependency_matrix.
-    ROS_DEBUG_NAMED(LOG, "Expanding state %d in search %d", _state->state_id, _hidx);
+    ROS_DEBUG_NAMED(LOG_E, "Expanding state %d in search %d", _state->state_id, _hidx);
 
     assert(!this->closed_in_add_search(_state, rep_id) || !this->closed_in_anc_search(_state));
 
@@ -295,13 +297,26 @@ void MRMHAPlannerCoBandits<N, R, SP, C>::expand(MRMHASearchState* _state, int _h
                             this->insert_or_update(succ_state, hidx);
                             if(succ_state->od[hidx].h < m_prev_best_h[hidx])
                                 m_best_h[hidx] = succ_state->od[hidx].h;
-                            ROS_DEBUG_NAMED(LOG, "Inserted/Updated successor %d in Queue %d", succ_state->state_id, hidx);
+                            ROS_DEBUG_NAMED(LOG_E, "Inserted/Updated successor %d in Queue %d", succ_state->state_id, hidx);
                         //}
                     }
                 }
             }
         }
     }
+
+    //XXX
+    // This is a Markovian definition of reward.
+    //for (size_t sidx = 0; sidx < succ_ids.size(); ++sidx)
+    //{
+        //MRMHASearchState* succ_state = this->get_state(succ_ids[sidx]);
+        //if(succ_state->od[_hidx] < _state->od[_hidx])
+        //{
+            //m_reward = 1;
+            //break;
+        //}
+    //}
+
     //ros::Duration(0.1).sleep();
 }
 

@@ -47,7 +47,7 @@ bool constructHeuristics(
             return false;
         }
 
-        bfs_heurs = { bfs_3d_base, bfs_3d };
+        bfs_heurs = { bfs_3d, bfs_3d_base };
 
         auto retract_arm = std::make_shared<RetractArmHeuristic>();
         if(!retract_arm->init(bfs_3d_base, bfs_3d)){
@@ -127,6 +127,8 @@ bool constructHeuristics(
             ROS_ERROR("Could not initialize Bfs3DBaseHeuristic");
             return false;
         }
+
+        bfs_heurs.push_back(bfs_3d_base);
 
         auto retract_arm = std::make_shared<RetractArmHeuristic>();
         if(!retract_arm->init(bfs_3d_base, bfs_3d)){
