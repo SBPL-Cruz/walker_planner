@@ -16,6 +16,7 @@
 #include <sbpl/planners/scheduling_policy.h>
 #include "utils/utils.h"
 
+#include "config/planner_config.h"
 #include "context_features.h"
 
 using CollisionObjects = std::vector<smpl::collision::CollisionObject>;
@@ -152,12 +153,21 @@ class DTSPolicy : public MABPolicy
             m_rep_num_queues[i] = rep_num_queues[i];
     }
 
+    virtual void reset()
+    {
+        for(int i = 0; i < numArms(); i++)
+        {
+            m_alphas[i] = 1.0;
+            m_betas[i] = 1.0;
+        }
+    }
+
     protected:
     unsigned int m_seed;
     std::vector<double> m_alphas {}, m_betas {} ;
     std::vector<int> m_b_factor {};
     std::vector<int> m_rep_num_queues {};
-    double m_C = 10;
+    double m_C = 5;
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
 
@@ -173,6 +183,7 @@ class RepDTSPolicy : public DTSPolicy
 
     int getArm();
     void updatePolicy(double reward, int arm);
+    void reset() override;
 
     private:
     std::vector< std::vector<int> > m_rep_hids;
@@ -346,6 +357,8 @@ class ContextualMABTrainPolicy : public ContextualMABPolicy<ContextArray>
             return false;
         }
         //for(auto& entry : m_context_arm_reward)
+        // Each line corresponds to a pull.
+        // Not need to store the number of tries separately.
         for(int i = 0; i < m_contexts.size(); i++)
         {
             //auto context = entry.first;
@@ -355,10 +368,12 @@ class ContextualMABTrainPolicy : public ContextualMABPolicy<ContextArray>
                 stream<< val<< "\t";
             }
             //auto rewards = entry.second;
+            //auto tries = m_context_arm_tries[context];
             auto rewards = m_rewards[i];
             for(auto i = 0; i < rewards.size(); i++)
             {
                 stream<< rewards[i]<< "\t";
+                //stream<< tries[i]<< "\t";
             }
             stream<< "\n";
         }
@@ -385,73 +400,106 @@ class ContextualMABTrainPolicy : public ContextualMABPolicy<ContextArray>
     std::vector< std::vector<double> > m_rewards;
 };
 
-//using Point = std::array<double, 2>;
+template <typename ContextArray>
+class ContextualHumanPolicy : public ContextualMABPolicy<ContextArray>
+{
+    public:
+    ContextualHumanPolicy( int num_arms, unsigned int seed) :
+            ContextualMABPolicy<ContextArray>(num_arms),
+            m_seed{seed}
+    {
+        srand(seed);
+        gsl_rng_env_setup();
+        m_gsl_rand_T = gsl_rng_default;
+        m_gsl_rand = gsl_rng_alloc(m_gsl_rand_T);
+    }
+    ~ContextualHumanPolicy()
+    {
+        gsl_rng_free(m_gsl_rand);
+    }
 
-//class DirichletPolicy : public SchedulingPolicy {
-    //public:
-    //DirichletPolicy( int _num_queues, unsigned int _seed,
-            //smpl::ManipLatticeMultiRep* _manip_space_mr, smpl::CompoundBfsHeuristic* _base_heur, Point _door_loc ) :
-        //SchedulingPolicy(_num_queues),
-        //m_seed{_seed},
-        //m_manip_space_mr{_manip_space_mr},
-        //m_base_heur{_base_heur},
-        //m_door_loc{_door_loc} {
-        //srand(_seed);
-        //const gsl_rng_type* T;
-        //gsl_rng_env_setup();
-        //gsl_rng_default_seed = _seed;
-        //T = gsl_rng_default;
-        //m_gsl_rng = gsl_rng_alloc( T );
-    //}
+    void setSeed(unsigned int seed)
+    {
+        gsl_rng_set(m_gsl_rand, seed);
+        srand(seed);
+    }
 
-    //~DirichletPolicy(){
-        //gsl_rng_free(m_gsl_rng);
-    //}
+    using ContextualMABPolicy<ContextArray>::getAction;
+    int getAction(const std::vector<ContextArray>&)
+    {
+        throw "Not Implemented";
+    }
 
-    //[>
-    //inline virtual int getNextQueue(const smpl::RobotState& s) override {
-        //auto sqrd = [](double x){return x*x;};
-        //if(sqrt( sqrd(s[0] - m_door_loc.first) + sqrd(s[1] - m_door_loc.second) ) < m_thresh){
+    // The hand-designed policy goes here.
+    int getArm( const std::vector<ContextArray>& context, const std::vector<int>& rep_ids )
+    {
+        std::vector<int> arm_ids, base_ids;
+        std::vector<double> likelihoods(rep_ids.size(), 1);
+        // Based on the distance to sampled base poses.
+        for(int i = 0; i < rep_ids.size(); i++)
+        {
+            if(rep_ids[i] == (int)Fullbody)
+                arm_ids.push_back(i);
+            else
+                base_ids.push_back(i);
+        }
 
-        //}
-    //}
-    //*/
+        // Base
+        for(int i = 0; i < base_ids.size(); i++)
+        {
+            int id = base_ids[i];
+            if(context[id][1] > 2 && context[id][2] > 2 )
+                likelihoods[id] = 10;
+            if(context[id][1] <= 2 || context[id][2] <= 2)
+            {
+                for(int j = 0; j < arm_ids.size(); j++)
+                    likelihoods[arm_ids[j]]+=5;
+            }
+        }
 
-    //inline virtual double getActionSpaceProb( int state_id, int hidx ){
-        ////if state_id near goal
-        //if(state_id == 0)
-            //return 1.0;
-        //auto robot_state = m_manip_space_mr->getHashEntry(state_id)->state;
-        //double probs[9];
-        //if( m_base_heur->getMetricGoalDistance(robot_state[0], robot_state[1], 0) < 0.5){
-            //std::vector<double> conc_params = {50, 5, 5, 5, 5, 5, 5, 5, 5};
-            //gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
-        //}
+        //Arm
+        for(int i = 0; i < arm_ids.size(); i++)
+        {
+            int id = arm_ids[i];
+            if(context[id][1] <= 2 && context[id][2] <= 2 )
+                likelihoods[id] = 10;
+        }
 
-        //////if state_id near door
-        //else if( euclidDist(robot_state.data(), m_door_loc.data(), 2) < 0.5 ){
-            //std::vector<double> conc_params = {50, 5, 5, 5, 5, 5, 5, 5, 5};
-            //gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
-        //}
+        auto discrete_t = gsl_ran_discrete_preproc(likelihoods.size(), likelihoods.data());
+        return gsl_ran_discrete(m_gsl_rand, discrete_t);
+        //if(context[1] > 2 && context[2] > 2 )
+            //return base_ids[rand() % base_ids.size()];
+        //else
+            //return arm_ids[rand() % arm_ids.size()];
+    }
 
-        ////otherwise: high prob on base and low on arm
-        //// 2 params
-        //else {
-            //std::vector<double> conc_params = {10, 10, 10, 10, 10, 10, 10, 10, 10};
-            //gsl_ran_dirichlet( m_gsl_rng, 9, conc_params.data(), probs );
-        //}
-        ////Ignoring anchor
-        //return probs[hidx-1];
-    //}
+    void updatePolicy(double, int) override
+    {
+        throw "Not Implemented";
+    }
 
-    //private:
-    //smpl::ManipLatticeMultiRep* m_manip_space_mr;
-    //smpl::CompoundBfsHeuristic* m_base_heur;
-    //Point m_door_loc;
-    //double m_thresh = 0.8;
-    //unsigned int m_seed;
-    //gsl_rng* m_gsl_rng;
- //};
+    // Get reward for arm i and update distribution..
+    void updatePolicy( const ContextArray&, double reward, int  arm )
+    {
+        // Eh!
+    }
+
+    void resetPrior()
+    {
+        //Eh!
+    }
+
+    private:
+    unsigned int m_seed;
+    std::unordered_map< ContextArray, int, ContextArrayHash<ContextArray> > m_context_id_map;
+    std::unordered_map<int, std::vector<double> > m_alphas, m_betas;
+    //std::vector< std::vector<double> > m_alphas {}, m_betas {} ;
+    int m_min_C = 10;
+    int m_max_C = 60;//std::numeric_limits<int>::max();
+    std::unordered_map<int, std::vector<int> > m_C_map;
+    const gsl_rng_type* m_gsl_rand_T;
+    gsl_rng* m_gsl_rand;
+};
 
 #include "detail/scheduling_policies.hpp"
 

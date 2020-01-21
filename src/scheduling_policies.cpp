@@ -1,5 +1,10 @@
 #include "scheduling_policies.h"
 #include <panini/algo.h>
+#include <cmath>
+
+#define SAMPLING_LOG "dts.sampling"
+#define UPDATE_LOG "dts.update"
+#define PARAMS_LOG "dts.params"
 
 DTSPolicy::DTSPolicy( int _num_arms, unsigned int _seed ) :
     MABPolicy(_num_arms),
@@ -29,8 +34,8 @@ int DTSPolicy::getAction() {
     {
         //rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, m_alphas[i], m_betas[i]);
         rep_likelihoods[i] = gsl_ran_beta(m_gsl_rand, m_alphas[i], m_betas[i]);
-        rep_likelihoods[i] /= m_b_factor[i]; // Expand more from rep with smaller branching factor
-        rep_likelihoods[i] *= m_rep_num_queues[i]; //Expand more from rep with more queues.
+        //rep_likelihoods[i] /= m_b_factor[i]; // Expand more from rep with smaller branching factor
+        //rep_likelihoods[i] *= m_rep_num_queues[i]; //Expand more from rep with more queues.
         //double betaMean = alpha[i] / (alpha[i] + beta[i]);
         if(rep_likelihoods[i] > best_likelihood)
             best_likelihood = rep_likelihoods[i];
@@ -67,6 +72,10 @@ void DTSPolicy::updatePolicy( double _reward, int _arm )
         m_alphas[_arm] *= (m_C/(m_C + 1));
         m_betas[_arm] *= (m_C/(m_C + 1));
     }
+    m_alphas[_arm] = ceil(m_alphas[_arm]);
+    m_betas[_arm] = ceil(m_betas[_arm]);
+    ROS_DEBUG_NAMED(PARAMS_LOG, "    arm: %d, params(alpha, beta, mean): %f, %f, %f", _arm, m_alphas[_arm], m_betas[_arm], m_alphas[_arm] / ( m_alphas[_arm] + m_betas[_arm] ));
+    //ros::Duration(0.5).sleep();
 }
 
 RepDTSPolicy::RepDTSPolicy(int _num_reps, std::vector<int>& _rep_ids, unsigned int _seed) :
@@ -113,6 +122,22 @@ int RepDTSPolicy::getArm()
 void RepDTSPolicy::updatePolicy(double _reward, int _hidx)
 {
     DTSPolicy::updatePolicy(_reward, m_rep_ids[_hidx]);
+}
+
+void RepDTSPolicy::reset()
+{
+    for(int i = 0; i < numArms(); i++)
+    {
+        if(!m_rep_hids[i].size())
+        {
+            DTSPolicy::m_alphas[i] = 0;
+            DTSPolicy::m_betas[i] = 0;
+        } else
+        {
+            DTSPolicy::m_alphas[i] = 1.0;
+            DTSPolicy::m_betas[i] = 1.0;
+        }
+    }
 }
 
 UCBPolicy::UCBPolicy( int _num_arms, unsigned int _seed ) :
