@@ -14,3 +14,13 @@ std::vector<double> poseToXYZRPY(Eigen::Affine3d& _pose){
 
     return pose_vector;
 }
+
+Eigen::Affine3d XYZRPYToPose(std::vector<double> _xyzrpy)
+{
+    assert(_xyzrpy.size() == 6);
+    return Eigen::Affine3d(
+            Eigen::Translation3d(_xyzrpy[0], _xyzrpy[1], _xyzrpy[2]) *
+            Eigen::AngleAxisd(_xyzrpy[3], Eigen::Vector3d::UnitZ()) *
+            Eigen::AngleAxisd(_xyzrpy[4], Eigen::Vector3d::UnitY()) *
+            Eigen::AngleAxisd(_xyzrpy[5], Eigen::Vector3d::UnitX()));
+}

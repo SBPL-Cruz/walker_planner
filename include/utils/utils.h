@@ -70,4 +70,6 @@ inline bool areClose(const double a, const double b){
 
 std::vector<double> poseToXYZRPY(Eigen::Affine3d& _pose);
 
+Eigen::Affine3d XYZRPYToPose(std::vector<double> xyzrpy);
+
 #endif

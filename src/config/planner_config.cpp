@@ -249,7 +249,6 @@ bool ReadPlannerConfig(const ros::NodeHandle &nh, PlannerConfig &config)
     return true;
 }
 
-
 MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh){
     MultiRoomMapConfig config;
     nh.param("map/seed", config.seed, 1000);
