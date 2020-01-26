@@ -18,7 +18,7 @@
 #include "motion_planner.h"
 
 //#define NUM_QUEUES 33
-#define NUM_QUEUES 20
+#define NUM_QUEUES 2
 //#define NUM_QUEUES 23 //1 + 3 + 3 + 16
 #define NUM_ACTION_SPACES 3
 
@@ -68,12 +68,17 @@ struct EndEffHeuristic : public smpl::CompoundBfsHeuristic
             qb = smpl::Quaternion(-qb.w(), -qb.x(), -qb.y(), -qb.z());
             dot = qa.dot(qb);
         }
-        int rot_dist = DefaultCostMultiplier*smpl::angles::normalize_angle(2.0 * std::acos(dot));
+        double theta = smpl::angles::normalize_angle(2.0 * std::acos(dot));
+        int rot_dist = DefaultCostMultiplier*theta;
+        //double rot_dist = smpl::angles::normalize_angle(2.0 * std::acos(dot));
+        //rot_dist *= DefaultCostMultiplier;
+        ROS_ERROR("Angle: %f", theta);
 
         int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
         int arm_dist = bfs_3d->GetGoalHeuristic(state_id);
 
         int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
+        //ROS_ERROR("BFS + Rot : %d + %d", arm_dist, rot_dist);
         return heuristic;
     }
 
@@ -215,6 +220,15 @@ struct BaseRotHeuristic : public smpl::CompoundBfsHeuristic
 };
 
 bool constructHeuristics(
+        std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
+        std::array<int, NUM_QUEUES>& rep_ids,
+        std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,
+        smpl::ManipLattice* pspace,
+        smpl::OccupancyGrid* grid,
+        smpl::KDLRobotModel* rm,
+        PlannerConfig& params );
+
+bool constructHeuristicsArmOnly(
         std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
         std::array<int, NUM_QUEUES>& rep_ids,
         std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,
