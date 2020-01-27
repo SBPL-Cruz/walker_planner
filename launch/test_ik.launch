@@ -61,7 +61,7 @@ required="true" /> -->
         walker_planner)/experiments/walker_goal_mrmha.yaml"/>
 
         <param name="robot_start_states_file" value="$(find
-        walker_planner)/experiments/start_states.txt" />
+        walker_planner)/experiments/debug/ik/start_states.txt" />
 
         <!-- 2.2 world state -->
         <param name="object_filename" value="$(find walker_planner)/env/multi_rooms.env"/>

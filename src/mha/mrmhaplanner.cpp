@@ -310,6 +310,15 @@ int main(int argc, char** argv) {
 
     rm->printRobotModelInformation();
 
+    robot_config.kinematics_frame = "base_link";
+    auto arm_rm = SetupRobotModel<smpl::KDLRobotModel>(robot_description, robot_config);
+    if (!arm_rm) {
+        ROS_ERROR("Failed to set up ArmRobot Model");
+        return 1;
+    }
+
+    arm_rm->printRobotModelInformation();
+
     SV_SHOW_INFO(grid_ptr->getDistanceFieldVisualization(0.2));
     SV_SHOW_INFO(cc.getCollisionRobotVisualization());
     SV_SHOW_INFO(cc.getCollisionWorldVisualization());
@@ -327,6 +336,9 @@ int main(int argc, char** argv) {
         ROS_ERROR("Failed to initialize Manip Lattice");
         return 1;
     }
+
+    // Set arm model
+    space->setArmRobotModel(arm_rm.get());
 
     if (!action_space->init(space.get())) {
         ROS_ERROR("Failed to initialize Manip Lattice Multi Action Space");
@@ -374,6 +386,7 @@ int main(int argc, char** argv) {
     std::array<int, NUM_QUEUES> rep_ids;
 
     if(!constructHeuristics( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    //if(!constructHeuristicsArmOnly( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
@@ -386,6 +399,8 @@ int main(int argc, char** argv) {
         //if(rep_ids[i] == (int)Fullbody)
             //rep_ids[i] = (int)Arm;
     //}
+
+
 
     assert(robot_heurs[0] != nullptr);
 

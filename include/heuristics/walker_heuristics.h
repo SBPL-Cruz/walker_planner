@@ -18,7 +18,7 @@
 #include "motion_planner.h"
 
 //#define NUM_QUEUES 33
-#define NUM_QUEUES 2
+#define NUM_QUEUES 20
 //#define NUM_QUEUES 23 //1 + 3 + 3 + 16
 #define NUM_ACTION_SPACES 3
 
@@ -72,7 +72,7 @@ struct EndEffHeuristic : public smpl::CompoundBfsHeuristic
         int rot_dist = DefaultCostMultiplier*theta;
         //double rot_dist = smpl::angles::normalize_angle(2.0 * std::acos(dot));
         //rot_dist *= DefaultCostMultiplier;
-        ROS_ERROR("Angle: %f", theta);
+        //ROS_ERROR("Angle: %f", theta);
 
         int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
         int arm_dist = bfs_3d->GetGoalHeuristic(state_id);
