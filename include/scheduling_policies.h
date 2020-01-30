@@ -8,6 +8,9 @@
 #include <gsl/gsl_randist.h>
 #include <boost/functional/hash.hpp>
 #include <fstream>
+#include "xtensor/xarray.hpp"
+#include "xtensor/xio.hpp"
+#include "xtensor/xview.hpp"
 
 #include <smpl/types.h>
 #include <smpl/heuristic/mother_heuristic.h>
@@ -21,49 +24,35 @@
 
 using CollisionObjects = std::vector<smpl::collision::CollisionObject>;
 
-/*
-class DoorFeaturePolicy {
+class MetaAStarPolicy : SchedulingPolicy
+{
     public:
-    DoorFeaturePolicy(
-            CollisionObjects//,
-            )  {}
-    inline std::vector<double> getFeatures(std::vector<double> _state){
-        // Check the 2d/3d base path to see if it goes through any door.
-        // Compute x, y distance from it.
-        //
+    MetaAStarPolicy(int num_queues, std::vector<int> delta_h, std::vector<double> edge_costs, double w);
+    ~MetaAStarPolicy()
+    {}
+
+     double getActionSpaceProb(int state_id, int hidx) override
+     {
+        throw "Not Implemented";
     }
+
+    void initialize(std::vector<int>& start_h);
+    int getAction() override;
+    void updatePolicy(int hidx, int min_h);
+    void updateMinH(int hidx, int min_h);
+    void reset();
 
     private:
-    CollisionObjects m_doors;
+    std::vector<int> m_G;
+    std::vector<int> m_H;
+    std::vector<int> m_F;
+    std::vector<int> m_delta_h;
+    std::vector<int> m_edge_costs;
 
-    std::vector<std::string> m_feature_names = {
-        "x_rel_door",
-        "y_rel_door",
-        "arm_retracted" // {0, 1} i.e. yes or no.
-    };
-}
+    double m_w = 1.0;
+    int m_MULTIPLIER = 1000;
 
-template <typename FeaturePolicy>
-class DecisionTreePolicy : public SchedulingPolicy {
-    public:
-    DecisionTreePolicy( int _num_queues,
-            unsigned int _seed,
-            const FeaturePolicy* _features_policy ) :
-        SchedulingPolicy(_num_queues),
-        m_features_policy_ptr{_features_policy} {
-        srand(_seed);
-    }
-
-    inline virtual int getNextQueue(smpl::RobotState _s){
-        auto features = m_features_policy_ptr->getFeatures(_s);
-
-    }
-
-    private:
-    FeaturePolicy* m_features_policy_ptr;
-    //std::unique_ptr<DecisionTree> m_decision_tree;
 };
-*/
 
 class UniformlyRandomPolicy : public SchedulingPolicy {
     public:
@@ -105,7 +94,6 @@ class RoundRobinPolicy : public SchedulingPolicy {
     int m_queue = 0;
     int m_iter = 0;
 };
-
 
 class MABPolicy : public SchedulingPolicy
 {
@@ -296,7 +284,6 @@ class ContextualDTSPolicy : public ContextualMABPolicy<ContextArray>
     gsl_rng* m_gsl_rand;
 };
 
-
 template <typename ContextArray>
 class ContextualMABTrainPolicy : public ContextualMABPolicy<ContextArray>
 {
@@ -449,11 +436,12 @@ class ContextualHumanPolicy : public ContextualMABPolicy<ContextArray>
         {
             int id = base_ids[i];
             if(context[id][1] > 2 && context[id][2] > 2 )
-                likelihoods[id] = 10;
+                likelihoods[id] += 5;
             if(context[id][1] <= 2 || context[id][2] <= 2)
             {
                 for(int j = 0; j < arm_ids.size(); j++)
                     likelihoods[arm_ids[j]]+=5;
+                //likelihoods[id] /= 10;
             }
         }
 
@@ -461,8 +449,9 @@ class ContextualHumanPolicy : public ContextualMABPolicy<ContextArray>
         for(int i = 0; i < arm_ids.size(); i++)
         {
             int id = arm_ids[i];
-            if(context[id][1] <= 2 && context[id][2] <= 2 )
-                likelihoods[id] = 10;
+            if(context[id][1] <= 2 || context[id][2] <= 2)// || context[id][0] <= 2 )
+                //likelihoods[id] *= 10;
+                likelihoods[id] += 5;
         }
 
         auto discrete_t = gsl_ran_discrete_preproc(likelihoods.size(), likelihoods.data());
