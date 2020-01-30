@@ -385,8 +385,8 @@ int main(int argc, char** argv) {
 
     std::array<int, NUM_QUEUES> rep_ids;
 
-    if(!constructHeuristics( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
-    //if(!constructHeuristicsArmOnly( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    //if(!constructHeuristics( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    if(!constructHeuristicsSmall( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
@@ -396,8 +396,8 @@ int main(int argc, char** argv) {
 
     //for(int i = 0; i < NUM_QUEUES; i++)
     //{
-        //if(rep_ids[i] == (int)Fullbody)
-            //rep_ids[i] = (int)Arm;
+        //if(rep_ids[i] == (int)Base)
+            //rep_ids[i] = (int)Fullbody;
     //}
 
 

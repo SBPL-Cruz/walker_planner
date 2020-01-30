@@ -373,7 +373,7 @@ int main(int argc, char** argv) {
         //ROS_ERROR("Could not construct heuristics.");
         //return 0;
     //}
-    if(!constructHeuristicsArmOnly( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    if(!constructHeuristicsSmall( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }

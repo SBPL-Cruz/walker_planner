@@ -18,7 +18,7 @@
 #include "motion_planner.h"
 
 //#define NUM_QUEUES 33
-#define NUM_QUEUES 20
+#define NUM_QUEUES 6
 //#define NUM_QUEUES 23 //1 + 3 + 3 + 16
 #define NUM_ACTION_SPACES 3
 
@@ -228,7 +228,7 @@ bool constructHeuristics(
         smpl::KDLRobotModel* rm,
         PlannerConfig& params );
 
-bool constructHeuristicsArmOnly(
+bool constructHeuristicsSmall(
         std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
         std::array<int, NUM_QUEUES>& rep_ids,
         std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,

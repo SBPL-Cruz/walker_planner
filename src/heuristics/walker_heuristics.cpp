@@ -274,7 +274,7 @@ bool constructHeuristics(
     return true;
 }
 
-bool constructHeuristicsArmOnly(
+bool constructHeuristicsSmall(
         std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
         std::array<int, NUM_QUEUES>& rep_ids,
         std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,
@@ -332,8 +332,64 @@ bool constructHeuristicsArmOnly(
         auto end_eff_rot = std::make_shared<EndEffHeuristic>();
         end_eff_rot->init(bfs_3d_base, bfs_3d);
         heurs[hidx] = end_eff_rot;
+        rep_ids[hidx] = (int) Arm;//Fullbody;
+        hidx++;
+
+        heurs[hidx] = end_eff_rot;
+        rep_ids[hidx] = (int) Base;//Fullbody;
+        hidx++;
+
+        // End-eff + Base
+        auto inad = std::make_shared<ImprovedEndEffHeuristic>();
+        inad->init( bfs_3d_base, bfs_3d, retract_arm );
+        heurs[hidx] = inad;
         rep_ids[hidx] = (int) Fullbody;
         hidx++;
+
+        int num_rot_heurs = 1;
+        for(int i = 0; i < num_rot_heurs; i++){
+            auto inad = std::make_shared<BaseRotHeuristic>();
+            if (!inad->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i)) {
+                ROS_ERROR("Could not initialize heuristic.");
+                return false;
+            }
+            inad->orientation_coeff = 0.0;
+            heurs[hidx] = inad;
+            rep_ids[hidx] = (int) Base;
+            hidx++;
+        }
+
+    }
+    {
+        auto bfs_3d_base = std::make_shared<smpl::Bfs3DBaseHeuristic>();
+        bfs_3d_base->setCostPerCell(params.cost_per_cell);
+        bfs_3d_base->setInflationRadius(params.inflation_radius_2d);
+        if (!bfs_3d_base->init(pspace, grid, 4, goal_base_idx++)) {
+            ROS_ERROR("Could not initialize Bfs3DBaseHeuristic");
+            return false;
+        }
+
+        bfs_heurs.push_back(bfs_3d_base);
+
+        auto retract_arm = std::make_shared<RetractArmHeuristic>();
+        if(!retract_arm->init(bfs_3d_base, bfs_3d)){
+            ROS_ERROR("Could not initialize RetractArmHeuristic initialize");
+            return false;
+        }
+
+        // Base Only
+        int num_rot_heurs = 1;
+        for(int i = 0; i < num_rot_heurs; i++){
+            auto inad = std::make_shared<BaseRotHeuristic>();
+            if (!inad->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i)) {
+                ROS_ERROR("Could not initialize heuristic.");
+                return false;
+            }
+            inad->orientation_coeff = 0.0;
+            heurs[hidx] = inad;
+            rep_ids[hidx] = (int) Base;
+            hidx++;
+        }
     }
 
     // Base heuristics
