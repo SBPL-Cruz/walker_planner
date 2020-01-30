@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(walker_planner)
 
 add_compile_options(-std=c++17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -31,6 +32,9 @@ find_package(smpl REQUIRED)
 find_package(Eigen3 REQUIRED)
 list(APPEND CMAKE_PREFIX_PATH "~/lolocal")
 find_package(sbpl REQUIRED)
+#find_package(xtl REQUIRED)
+#find_package(xtensor REQUIRED)
+
 #find_package(panini REQUIRED)
 #find_package(hsearch REQUIRED)
 
@@ -43,6 +47,8 @@ include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 include_directories(SYSTEM ${orocos_kdl_INCLUDE_DIRS})
 include_directories(SYSTEM "~/lolocal/include/panini")
+#include_directories(SYSTEM ${xtensor_INCLUDE_DIRS})
+
 #include_directories(SYSTEM ${CATKIN_DEVEL_PREFIX}/include})
 
 
@@ -97,6 +103,7 @@ set( SOURCE_FILES
 
 add_library(generic_planner SHARED ${SOURCE_FILES})
 target_link_libraries(generic_planner ${gsl_LIBRARIES})
+#xtensor xtensor::optimize xtensor::use_xsimd)
 
 add_executable(collision_model_visualizer src/debug/collision_model_visualizer.cpp
     src/config/collision_space_scene.cpp)
@@ -141,6 +148,16 @@ target_link_libraries( mhaplanner ${catkin_LIBRARIES} smpl::smpl
     #src/config/get_collision_objects.cpp
     #)
 #target_link_libraries( mhaplanner_single_param ${catkin_LIBRARIES} smpl::smpl )
+
+add_executable( mrmhaplanner_meta_a
+    src/mha/mrmhaplanner_meta_a.cpp
+    src/motion_planner_ros.cpp
+    src/config/planner_config.cpp
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+target_link_libraries( mrmhaplanner_meta_a ${catkin_LIBRARIES} smpl::smpl
+    generic_planner)
 
 add_executable( mrmhaplanner_rdts
     src/mha/mrmhaplanner_rdts.cpp
