@@ -23,6 +23,16 @@ std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     const MultiRoomMapConfig config,
     std::vector<moveit_msgs::CollisionObject>&);
 
+std::vector<moveit_msgs::CollisionObject> GetMultiRoomMap2CollisionCubes(
+    const std::string& frame_id,
+    const MultiRoomMapConfig config,
+    std::vector<moveit_msgs::CollisionObject>&);
+
+std::vector<moveit_msgs::CollisionObject> GetTablesMapCollisionCubes(
+    const std::string& frame_id,
+    const TablesMapConfig config,
+    std::vector<moveit_msgs::CollisionObject>&);
+
 std::vector<moveit_msgs::CollisionObject> GetMultiRoomMapCollisionCubes(
     std::vector<moveit_msgs::CollisionObject>& doors,
     const std::string& frame_id,

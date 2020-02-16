@@ -262,7 +262,24 @@ MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh){
     nh.param("map/max_table_len", config.max_table_len, 0.0);
     nh.param("map/table_height", config.table_height, 0.0);
     nh.param("map/n_objects", config.n_objects_per_table, 0);
- 
+
+    return config;
+}
+
+TablesMapConfig getTablesMapConfig(ros::NodeHandle nh)
+{
+    TablesMapConfig config;
+    nh.param("map/seed", config.seed, 1000);
+    nh.param("map/x_max", config.x_max, 0.0);
+    nh.param("map/y_max", config.y_max, 0.0);
+    nh.param("map/n_tables", config.n_tables, 1);
+    nh.param("map/overlap", config.overlap, false);
+    nh.param("map/min_table_len", config.min_table_len, 0.5);
+    nh.param("map/max_table_len", config.max_table_len, 1.0);
+    nh.param("map/table_height", config.table_height, 0.6);
+    nh.param("map/min_dist_bw_tables", config.min_dist_bw_tables, 1.5);
+    nh.param("map/n_objects", config.n_objects_per_table, 0);
+
     return config;
 }
 

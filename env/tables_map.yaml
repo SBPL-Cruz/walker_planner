@@ -1,0 +1,15 @@
+map:
+    # train
+    seed: 1000
+    # test
+    #seed: 4000
+    #seed: 31
+    x_max: 5.0
+    y_max: 5.0
+    n_tables: 10
+    overlap: false
+    min_table_len: 0.4
+    max_table_len: 0.6
+    table_height: 0.70
+    min_dist_bw_tables: 0.0
+    n_objects: 4

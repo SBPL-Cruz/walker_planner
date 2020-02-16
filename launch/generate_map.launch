@@ -3,8 +3,6 @@
 
     <arg name="debug" default="false"/>
     <arg name="rvizconfig" default ="$(find walker_planner)/config/urdf.rviz" />
-    <arg name="file_name" default="multi_room_map.env"/>
-
 
     <include file="$(find walker_planner)/launch/planning_context_walker.launch"/>
 
@@ -12,10 +10,11 @@
     <arg     if="$(arg debug)" name="launch-prefix" value="gdb -ex run --args"/>
     <env name="SMPL_VISUALIZE_CONFIG_FILE" value="$(find walker_planner)/config/smpl_visual.ini"/>
 
-    <node pkg="walker_planner" type="generate_map" name="generate_map" args="-$(arg file_name)"
+    <node pkg="walker_planner" type="generate_map" name="generate_map"
             launch-prefix="$(arg launch-prefix)" output="screen" required="true">
         <param name="planning_frame" value="dummy_base"/>
-        <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
+        <param name="file_name" value="tables_map.env"/>
+        <rosparam command="load" file="$(find walker_planner)/env/tables_map.yaml" />
 
         <!-- planner params -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>

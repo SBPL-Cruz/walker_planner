@@ -11,13 +11,13 @@
 bool writeCollisionCubesToFile(
         std::vector<moveit_msgs::CollisionObject>& _cubes,
         std::string _file_name){
+    ROS_INFO("Writing to %s", _file_name.c_str());
     std::ofstream file_stream;
     file_stream.open(_file_name);
     if(!file_stream.is_open()){
         ROS_ERROR("Could not open file.");
         return false;
     }
-
     file_stream<< _cubes.size() << "\n";
     for(const auto& cube : _cubes){
         auto pose = cube.primitive_poses[0];
@@ -43,8 +43,9 @@ int main( int argc, char** argv ){
     smpl::VisualizerROS visualizer(nh, 100);
     smpl::viz::set_visualizer(&visualizer);
 
-    //auto file_name = argv[1];
-    auto file_name = "multi_room_map.env";
+    std::string file_name;
+    ph.getParam("file_name", file_name);
+    //auto file_name = "multi_room_map.env";
 
     std::string planning_frame;
     if (!ph.getParam("planning_frame", planning_frame)) {
@@ -76,7 +77,9 @@ int main( int argc, char** argv ){
     grid_ptr->setReferenceFrame(planning_frame);
     SV_SHOW_INFO(grid_ptr->getBoundingBoxVisualization());
     std::vector<moveit_msgs::CollisionObject> doors;
-    auto map_config = getMultiRoomMapConfig(ph);
-    auto objects = GetMultiRoomMapCollisionCubes( grid_ptr->getReferenceFrame(), map_config, doors );
+    //auto map_config = getMultiRoomMapConfig(ph);
+    auto map_config = getTablesMapConfig(ph);
+    //auto objects = GetMultiRoomMap2CollisionCubes( grid_ptr->getReferenceFrame(), map_config, doors );
+    auto objects = GetTablesMapCollisionCubes( grid_ptr->getReferenceFrame(), map_config, doors );
     writeCollisionCubesToFile(objects, file_name);
 }

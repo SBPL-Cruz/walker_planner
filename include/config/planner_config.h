@@ -75,6 +75,21 @@ struct MultiRoomMapConfig {
     int n_objects_per_table = 0;
 };
 
+struct TablesMapConfig
+{
+    int seed = 1000;
+    double x_max = 5;
+    double y_max = 5;
+    int n_tables = 1;
+    bool overlap = false;
+    double min_table_len = 0.5;
+    double max_table_len = 1.0;
+    double table_height = 0.6;
+    double min_dist_bw_tables = 1.5;
+    //Objects
+    int n_objects_per_table = 0;
+};
+
 void FillGoalConstraint(
     const std::vector<double>& pose,
     std::string frame_id,
@@ -110,6 +125,7 @@ auto SetupRobotModel(const std::string& urdf, const RobotModelConfig &config)
 }
 
 MultiRoomMapConfig getMultiRoomMapConfig(ros::NodeHandle nh);
+TablesMapConfig getTablesMapConfig(ros::NodeHandle nh);
 
 template <typename T>
 void printVector(std::vector<T> v){
