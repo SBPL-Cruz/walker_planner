@@ -18,10 +18,9 @@
 #include "motion_planner.h"
 
 //#define NUM_QUEUES 33
-#define NUM_QUEUES 6
+#define NUM_QUEUES 14
 //#define NUM_QUEUES 23 //1 + 3 + 3 + 16
-#define NUM_ACTION_SPACES 3
-
+#define NUM_ACTION_SPACES 3 
 static const int DefaultCostMultiplier = 1000;
 
 struct AnchorHeuristic : public smpl::CompoundBfsHeuristic
@@ -139,6 +138,12 @@ struct ImprovedEndEffHeuristic : public smpl::CompoundBfsHeuristic
         return true;
     }
 
+    inline void updateGoal(const smpl::GoalConstraint& _goal) override
+    {
+        //m_island_reached = false;
+        CompoundBfsHeuristic::updateGoal(_goal);
+    }
+
     int GetGoalHeuristic(int state_id){
         if (state_id == bfs_3d->planningSpace()->getGoalStateID()) {
             return 0;
@@ -165,18 +170,27 @@ struct ImprovedEndEffHeuristic : public smpl::CompoundBfsHeuristic
         else
             base_dist = 0;
         auto arm_dist = bfs_3d->GetGoalHeuristic(state_id);
-        if(arm_dist/bfs_3d->getCostPerCell() > 30){
+        //arm_dist = m_retract_arm_heur->GetGoalHeuristic(state_id);
+            //rot_dist = 0.0;
+        //}
+        int heuristic;
+        //ROS_ERROR("base: %d, arm: %d, rot: %d", base_dist, arm_dist, rot_dist);
+        //if(m_island_reached)
+        if(base_dist/bfs_3d_base->costPerCell() > 5)
+        {
             arm_dist = m_retract_arm_heur->GetGoalHeuristic(state_id);
-            rot_dist = 0.0;
+            heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
+        } else
+        {
+            heuristic = arm_coeff*arm_dist + rot_coeff*rot_dist;
         }
-        int heuristic = base_coeff*base_dist + arm_coeff*arm_dist + rot_coeff*rot_dist;
         return heuristic;
     }
 
     double base_coeff=0.5;
-    double arm_coeff=0.2;
+    double arm_coeff=0.5;
     //double rot_coeff=0.5;
-    double rot_coeff=0.2;
+    double rot_coeff=0.1;//0.2;
 
     std::shared_ptr<RetractArmHeuristic> m_retract_arm_heur;
     smpl::PoseProjectionExtension* pose_ext = nullptr;
@@ -215,8 +229,8 @@ struct BaseRotHeuristic : public smpl::CompoundBfsHeuristic
     std::shared_ptr<RetractArmHeuristic> m_retract_arm_heur;
     double base_coeff = 0.5;
     double orientation = 0.0;
-    double orientation_coeff = 0.5;
-    double arm_fold_coeff = 0.1;
+    double orientation_coeff = 0.0;
+    double arm_fold_coeff = 0.1;//0.1;
 };
 
 bool constructHeuristics(
@@ -228,7 +242,25 @@ bool constructHeuristics(
         smpl::KDLRobotModel* rm,
         PlannerConfig& params );
 
-bool constructHeuristicsSmall(
+bool constructHeuristicsMeta(
+        std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
+        std::array<int, NUM_QUEUES>& rep_ids,
+        std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,
+        smpl::ManipLattice* pspace,
+        smpl::OccupancyGrid* grid,
+        smpl::KDLRobotModel* rm,
+        PlannerConfig& params );
+
+bool constructHeuristicsFullbody(
+        std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
+        std::array<int, NUM_QUEUES>& rep_ids,
+        std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,
+        smpl::ManipLattice* pspace,
+        smpl::OccupancyGrid* grid,
+        smpl::KDLRobotModel* rm,
+        PlannerConfig& params );
+
+bool constructHeuristicsMultiRep(
         std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
         std::array<int, NUM_QUEUES>& rep_ids,
         std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,

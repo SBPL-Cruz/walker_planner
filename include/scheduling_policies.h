@@ -27,7 +27,7 @@ using CollisionObjects = std::vector<smpl::collision::CollisionObject>;
 class MetaAStarPolicy : SchedulingPolicy
 {
     public:
-    MetaAStarPolicy(int num_queues, std::vector<int> delta_h, std::vector<double> edge_costs, double w);
+    MetaAStarPolicy(int num_queues, std::vector<int> delta_h, std::vector<int> edge_costs, double w);
     ~MetaAStarPolicy()
     {}
 
