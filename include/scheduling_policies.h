@@ -24,6 +24,36 @@
 
 using CollisionObjects = std::vector<smpl::collision::CollisionObject>;
 
+class MetaMHAStarPolicy : SchedulingPolicy
+{
+    public:
+    MetaMHAStarPolicy(int num_queues, std::vector<int> delta_h, std::vector<int> edge_costs, double w);
+    ~MetaMHAStarPolicy()
+    {}
+
+     double getActionSpaceProb(int state_id, int hidx) override
+     {
+        throw "Not Implemented";
+    }
+
+    void initialize(std::vector<int>& start_h);
+    int getAction() override;
+    void updatePolicy(int hidx, int min_h);
+    void updateMinH(int hidx, int min_h);
+    void reset();
+
+    private:
+    std::vector<int> m_G;
+    std::vector<int> m_H;
+    std::vector<int> m_F;
+    std::vector<int> m_delta_h;
+    std::vector<int> m_edge_costs;
+
+    double m_w = 1.0;
+    int m_MULTIPLIER = 1;//000;
+
+};
+
 class MetaAStarPolicy : SchedulingPolicy
 {
     public:

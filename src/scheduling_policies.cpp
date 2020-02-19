@@ -9,6 +9,71 @@
 #define UPDATE_LOG "policy.update"
 #define PARAMS_LOG "policy.params"
 
+MetaMHAStarPolicy::MetaMHAStarPolicy(int _num_queues,
+        std::vector<int> _delta_h,
+        std::vector<int> _edge_costs,
+        double _w) :
+    SchedulingPolicy(_num_queues),
+    m_delta_h{_delta_h},
+    m_w{_w},
+    m_edge_costs{_edge_costs}
+{
+    ROS_DEBUG_NAMED(PARAMS_LOG, "  Edge Cost: %d, %d, %d, %d", m_edge_costs[0], m_edge_costs[1], m_edge_costs[2], m_edge_costs[3]);
+    m_G.resize(_num_queues, 0);
+    m_H.resize(_num_queues, INFINITECOST);
+    m_F.resize(_num_queues, INFINITECOST);
+}
+
+void MetaMHAStarPolicy::initialize(std::vector<int>& _start_h)
+{
+    assert(_start_h.size() == numQueues());
+    ROS_DEBUG_NAMED(PARAMS_LOG, "Initializing: ");
+    for(int i = 0; i < _start_h.size(); i++)
+    {
+        m_H[i] = m_MULTIPLIER*( _start_h[i] / m_delta_h[i] );
+        m_F[i] = m_w * m_H[i];
+        ROS_DEBUG_NAMED(PARAMS_LOG, "  id: %d, H: %d, F: %d", i, m_H[i], m_F[i]);
+    }
+}
+
+int MetaMHAStarPolicy::getAction()
+{
+    ROS_DEBUG_NAMED(PARAMS_LOG, "h0: %d h1: %d h2: %d", m_H[0], m_H[1], m_H[2]);
+    int min_idx = 0;
+    for(int i = 0; i < numQueues(); i++)
+    {
+        if(m_F[i] < m_F[min_idx] && m_H[i] > 0)
+            min_idx = i;
+    }
+    ROS_DEBUG_NAMED(PARAMS_LOG, "  Chosen action: %d", min_idx);
+    //ros::Duration(0.1).sleep();
+    return min_idx;
+}
+
+void MetaMHAStarPolicy::updatePolicy(int _hidx, int _min_h)
+{
+    assert(_hidx < numQueues());
+    m_G[_hidx] += m_MULTIPLIER*m_edge_costs[_hidx];//1;
+    // Each expansion is weighted by edge cost
+    updateMinH(_hidx, _min_h);
+    ROS_DEBUG_NAMED(UPDATE_LOG, " Meta A*: Queue: %d  F: %d G: %d H: %d", _hidx, m_F[_hidx], m_G[_hidx], m_H[_hidx]);
+}
+
+void MetaMHAStarPolicy::updateMinH(int _hidx, int _min_h)
+{
+    assert(_hidx < numQueues());
+    m_H[_hidx] = m_MULTIPLIER*(1.0 *_min_h / m_delta_h[_hidx]) * m_edge_costs[_hidx];
+    m_F[_hidx] = m_G[_hidx] + m_w * m_H[_hidx];
+    ROS_DEBUG_NAMED(UPDATE_LOG, " Meta A*: Queue: %d  F: %d G: %d H: %d", _hidx, m_F[_hidx], m_G[_hidx], m_H[_hidx]);
+}
+
+void MetaMHAStarPolicy::reset()
+{
+    m_G.resize(numQueues(), 0);
+    m_H.resize(numQueues(), INFINITECOST);
+    m_F.resize(numQueues(), INFINITECOST);
+}
+
 MetaAStarPolicy::MetaAStarPolicy(int _num_queues, std::vector<int> _delta_h, std::vector<int> _edge_costs, double _w) :
     SchedulingPolicy(_num_queues),
     m_delta_h{_delta_h},
