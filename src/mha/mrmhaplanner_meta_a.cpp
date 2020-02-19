@@ -440,18 +440,19 @@ int main(int argc, char** argv) {
     // --------
 
     // Branching Factor dependent
-    std::vector<int> edge_costs;
-    for(int i = 1; i < NUM_QUEUES; i++)
-    {
-        if(rep_ids[i] == (int) Fullbody)
-            edge_costs.push_back(36);
-        else if(rep_ids[i] == (int) Arm)
-            edge_costs.push_back(28);
-        else if(rep_ids[i] == (int) Base)
-            edge_costs.push_back(8);
-        else
-            throw "Action Space not understood";
-    }
+    std::vector<int> edge_costs(NUM_QUEUES, 1.0);
+    //for(int i = 1; i < NUM_QUEUES; i++)
+    //{
+        //edge
+        //if(rep_ids[i] == (int) Fullbody)
+            //edge_costs.push_back(36);
+        //else if(rep_ids[i] == (int) Arm)
+            //edge_costs.push_back(28);
+        //else if(rep_ids[i] == (int) Base)
+            //edge_costs.push_back(8);
+        //else
+            //throw "Action Space not understood";
+    //}
 
     // Unit Edge Cost
     //std::vector<double> edge_costs(NUM_QUEUES - 1, 1.0);

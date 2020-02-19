@@ -17,6 +17,8 @@
 #include "config/planner_config.h"
 #include "motion_planner.h"
 
+#define LOG "walker_heursitics"
+
 //#define NUM_QUEUES 33
 #define NUM_QUEUES 14
 //#define NUM_QUEUES 23 //1 + 3 + 3 + 16
@@ -206,7 +208,20 @@ struct BaseRotHeuristic : public smpl::CompoundBfsHeuristic
             return false;
         m_retract_arm_heur = _retract_arm;
         orientation = _orientation;
+
         return true;
+    }
+
+    inline void updateGoal(const smpl::GoalConstraint& _goal) override {
+        CompoundBfsHeuristic::updateGoal(_goal);
+        auto island_state = bfs_3d_base->m_goal_base_pose;
+        smpl::Vector3 p;
+        bfs_3d->m_pp->projectToPoint(island_state, p);
+        Eigen::Vector3i dp;
+        bfs_3d->grid()->worldToGrid(p.x(), p.y(), p.z(), dp.x(), dp.y(), dp.z());
+        offset = bfs_3d->getCostPerCell() * bfs_3d->getBfsCostToGoal(dp.x(), dp.y(), dp.z());
+        ROS_DEBUG_NAMED(LOG, "Base: %d, %d, %d", dp.x(), dp.y(), dp.z());
+        ROS_DEBUG_NAMED(LOG, "Offset: %d", offset);
     }
 
     int GetGoalHeuristic(int state_id){
