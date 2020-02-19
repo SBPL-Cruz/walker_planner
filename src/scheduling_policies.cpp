@@ -9,13 +9,12 @@
 #define UPDATE_LOG "policy.update"
 #define PARAMS_LOG "policy.params"
 
-MetaAStarPolicy::MetaAStarPolicy(int _num_queues, std::vector<int> _delta_h, std::vector<double> _edge_costs, double _w) :
+MetaAStarPolicy::MetaAStarPolicy(int _num_queues, std::vector<int> _delta_h, std::vector<int> _edge_costs, double _w) :
     SchedulingPolicy(_num_queues),
     m_delta_h{_delta_h},
-    m_w{_w}
+    m_w{_w},
+    m_edge_costs{_edge_costs}
 {
-    for(auto val : _edge_costs)
-        m_edge_costs.push_back(m_MULTIPLIER * val);
     ROS_DEBUG_NAMED(PARAMS_LOG, "  Edge Cost: %d, %d, %d, %d", m_edge_costs[0], m_edge_costs[1], m_edge_costs[2], m_edge_costs[3]);
     m_G.resize(_num_queues, 0);
     m_H.resize(_num_queues, INFINITECOST);
@@ -43,22 +42,24 @@ int MetaAStarPolicy::getAction()
         if(m_F[i] < m_F[min_idx] && m_H[i] > 0)
             min_idx = i;
     }
+    ROS_DEBUG_NAMED(PARAMS_LOG, "  Chosen action: %d", min_idx);
+    //ros::Duration(0.1).sleep();
     return min_idx;
 }
 
 void MetaAStarPolicy::updatePolicy(int _hidx, int _min_h)
 {
     assert(_hidx < numQueues());
-    m_G[_hidx] += m_edge_costs[_hidx];//1;
-    m_H[_hidx] = m_MULTIPLIER*(_min_h / m_delta_h[_hidx]);
-    m_F[_hidx] = m_G[_hidx] + m_w * m_H[_hidx];
+    m_G[_hidx] += m_MULTIPLIER*m_edge_costs[_hidx];//1;
+    // Each expansion is weighted by edge cost
+    updateMinH(_hidx, _min_h);
     ROS_DEBUG_NAMED(UPDATE_LOG, " Meta A*: Queue: %d  F: %d G: %d H: %d", _hidx, m_F[_hidx], m_G[_hidx], m_H[_hidx]);
 }
 
 void MetaAStarPolicy::updateMinH(int _hidx, int _min_h)
 {
     assert(_hidx < numQueues());
-    m_H[_hidx] = m_MULTIPLIER*(_min_h / m_delta_h[_hidx]);
+    m_H[_hidx] = m_MULTIPLIER*(1.0 *_min_h / m_delta_h[_hidx]) * m_edge_costs[_hidx];
     m_F[_hidx] = m_G[_hidx] + m_w * m_H[_hidx];
     ROS_DEBUG_NAMED(UPDATE_LOG, " Meta A*: Queue: %d  F: %d G: %d H: %d", _hidx, m_F[_hidx], m_G[_hidx], m_H[_hidx]);
 }

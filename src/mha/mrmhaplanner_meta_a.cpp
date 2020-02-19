@@ -373,7 +373,7 @@ int main(int argc, char** argv) {
         //ROS_ERROR("Could not construct heuristics.");
         //return 0;
     //}
-    if(!constructHeuristicsSmall( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    if(!constructHeuristicsMeta( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
@@ -420,6 +420,15 @@ int main(int argc, char** argv) {
 
     // H Value
     std::vector<int> delta_h(NUM_QUEUES - 1, 1000);
+    //delta_h[0] = 10000;
+    //delta_h[NUM_QUEUES - 3] = 5000;
+    //delta_h[NUM_QUEUES - 2] = 5000;
+    //delta_h[0] = 4000;
+    //delta_h[1] = 1000;
+    //delta_h[2] = 1500;
+    //delta_h[3] = 1000;
+    //delta_h[4] = 1000;
+
     //delta_h[2] = 4000;
     //delta_h[3] = 4000;
     //for(int i = 3; i < 11; i++)
@@ -431,15 +440,15 @@ int main(int argc, char** argv) {
     // --------
 
     // Branching Factor dependent
-    std::vector<double> edge_costs;
+    std::vector<int> edge_costs;
     for(int i = 1; i < NUM_QUEUES; i++)
     {
         if(rep_ids[i] == (int) Fullbody)
-            edge_costs.push_back(1.0);
+            edge_costs.push_back(36);
         else if(rep_ids[i] == (int) Arm)
-            edge_costs.push_back(28.0 / 36.0);
+            edge_costs.push_back(28);
         else if(rep_ids[i] == (int) Base)
-            edge_costs.push_back(8.0 / 36.0);
+            edge_costs.push_back(8);
         else
             throw "Action Space not understood";
     }
@@ -447,7 +456,7 @@ int main(int argc, char** argv) {
     // Unit Edge Cost
     //std::vector<double> edge_costs(NUM_QUEUES - 1, 1.0);
 
-    auto meta_a_policy = std::make_unique<PolicyT>(NUM_QUEUES - 1, delta_h, edge_costs, 2.0);
+    auto meta_a_policy = std::make_unique<PolicyT>(NUM_QUEUES - 1, delta_h, edge_costs, 10.0);
 
     //std::vector<int> branching_factor = {4, 1, 3};
     //meta_a_policy->setBranchingFactor(branching_factor);
