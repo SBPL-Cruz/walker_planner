@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <fstream>
 // Beta distribution
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
@@ -64,6 +65,8 @@ class MRMHAPlannerMetaA: public MRMHAPlanner<N, R, SP> {
     using MRMHAPlanner<N, R, SP>::m_eps_mha;
 
     virtual void expand(MRMHASearchState* state, int hidx);
+    bool m_write_stats = true;
+    int m_iter = 0;
 
     // 0 index reserved for the anchor queue
     // even if we won't be updating anchor's values.
@@ -73,6 +76,8 @@ class MRMHAPlannerMetaA: public MRMHAPlanner<N, R, SP> {
     std::array<int, R> m_rep_h_count {};
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
+
+    std::ofstream m_delta_h_file;
 };
 
 #include "detail/mrmhaplanner_meta_a.hpp"

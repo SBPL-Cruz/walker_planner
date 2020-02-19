@@ -28,15 +28,18 @@ MRMHAPlannerMetaA<N, R, SP>::MRMHAPlannerMetaA(
         if(i > 0)
             m_rep_h_count[ m_rep_ids[i] ]++;
     }
-  gsl_rng_env_setup();
-  m_gsl_rand_T = gsl_rng_default;
-  m_gsl_rand = gsl_rng_alloc(m_gsl_rand_T);
+    gsl_rng_env_setup();
+    m_gsl_rand_T = gsl_rng_default;
+    m_gsl_rand = gsl_rng_alloc(m_gsl_rand_T);
+
+    m_delta_h_file.open("delta_h.txt", std::ios::app);
 }
 
 template <int N, int R, typename SP>
 MRMHAPlannerMetaA<N, R, SP>::~MRMHAPlannerMetaA()
 {
     gsl_rng_free(m_gsl_rand);
+    m_delta_h_file.close();
 }
 
 template <int N, int R, typename SP>
@@ -185,6 +188,7 @@ int MRMHAPlannerMetaA<N, R, SP>::replan(
 template <int N, int R, typename SP>
 void MRMHAPlannerMetaA<N, R, SP>::expand(MRMHASearchState* _state, int _hidx)
 {
+    m_iter++;
     int rep_id = m_rep_ids[_hidx];
     // Inserts _state into the closed queues determined by the
     // rep_dependency_matrix.
@@ -229,19 +233,31 @@ void MRMHAPlannerMetaA<N, R, SP>::expand(MRMHASearchState* _state, int _hidx)
                 // XXX Currently does full sharing of all states.
                 // The possibility of having a learnt ``sharing matrix`` is
                 // open.
+                int prev_best_h = m_best_h[_hidx];
                 for (int hidx = 1; hidx < num_heuristics(); ++hidx) {
                     int fi = compute_key(succ_state, hidx);
+                    // if write_stats
+                    //int prev_best_h = m_best_h[hidx];
+
                     if(!this->closed_in_add_search(succ_state, m_rep_ids[hidx])){
                         if(fi <= m_eps_mha * succ_state->od[0].f){
                             succ_state->od[hidx].f = fi;
                             this->insert_or_update(succ_state, hidx);
+
                             // Meta A
                             if(succ_state->od[hidx].h < m_best_h[hidx])
+                            {
+                                ROS_DEBUG_NAMED(E_LOG, "  Updated best h: %d", m_best_h[hidx]);
                                 m_best_h[hidx] = succ_state->od[hidx].h;
-                            ROS_DEBUG_NAMED(E_LOG, "Inserted/Updated successor %d in queue %d", succ_state->state_id, hidx);
+                            }
+                            //ROS_DEBUG_NAMED(E_LOG, "Inserted/Updated successor %d in queue %d", succ_state->state_id, hidx);
                         }
                     }
+                    //if(m_write_stats)
+                        //m_delta_h_file<< hidx<< " "<< prev_best_h - m_best_h[hidx]<< "\n";
                 }
+                //if(m_write_stats)
+                    //m_delta_h_file<< _hidx<< " "<< m_iter<< " "<<  prev_best_h - m_best_h[_hidx]<< "\n";
             }
         }
     }
