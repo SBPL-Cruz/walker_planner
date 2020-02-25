@@ -4,6 +4,7 @@
 // standard includes
 #include <stdlib.h>
 #include <unordered_map>
+#include <sstream>
 
 //ROS
 #include <nav_msgs/OccupancyGrid.h>
@@ -118,17 +119,26 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner, RM>::execute(PlanningEpisode _
     if( this->canCallPlanner() ) {
         // XXX The map/environment should be updated automatically??
         SMPL_INFO("Executing episode %d", _ep);
-        this->updateMap(_ep);
+        if(!this->updateMap(_ep))
+            return ExecutionStatus::FAILURE;
 
         //std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        updateGoal(this->getGoal(_ep));
+        if(!updateGoal(this->getGoal(_ep)))
+        {
+            ROS_ERROR("Failed to update goal");
+            return ExecutionStatus::FAILURE;
+        }
         ROS_WARN("Goal updated.");
 
         // Allow heuristics to be computed.
         //std::this_thread::sleep_for(std::chrono::seconds(5));
 
-        updateStart(this->getStart(_ep));
+        if(!updateStart(this->getStart(_ep)))
+        {
+            ROS_ERROR("Failed to update start");
+            return ExecutionStatus::FAILURE;
+        }
 
         ROS_WARN("Start updated.");
 
@@ -190,6 +200,10 @@ bool MotionPlannerROS<SP, EP, Planner, RM>::updateStart(
         }
     }
 
+    std::stringstream ss;
+    for(int j = 0; j < initial_positions.size(); j++)
+            ss<< initial_positions[j] <<" ";
+    ROS_ERROR_STREAM(ss.str());
     SP::updateStart(_start, m_rm_ptr);
     return m_planner_ptr->updateStart(initial_positions);
 }

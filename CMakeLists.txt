@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   moveit_msgs
   moveit_ros_planning
   roscpp
+  rospy
   sbpl_collision_checking
   sbpl_kdl_robot_model
   trac_ik_robot_model
@@ -155,6 +156,16 @@ target_link_libraries( mhaplanner ${catkin_LIBRARIES} smpl::smpl
     #src/config/get_collision_objects.cpp
     #)
 #target_link_libraries( mhaplanner_single_param ${catkin_LIBRARIES} smpl::smpl )
+
+add_executable( mrmhaplanner_meta_mha
+    src/mha/mrmhaplanner_meta_mha.cpp
+    src/motion_planner_ros.cpp
+    src/config/planner_config.cpp
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+target_link_libraries( mrmhaplanner_meta_mha ${catkin_LIBRARIES} smpl::smpl
+    generic_planner)
 
 add_executable( mrmhaplanner_meta_mha_train
     src/mha/mrmhaplanner_meta_mha_train.cpp

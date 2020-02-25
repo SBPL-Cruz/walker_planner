@@ -149,7 +149,7 @@ namespace MPlanner {
             ROS_ERROR("Failed to set start state");
             return false;
         }
-
+        return true;
     }
 
     template <typename Search, typename Env>
@@ -167,9 +167,11 @@ namespace MPlanner {
             return false;
         }
 
-        ROS_INFO("Goal: %f, %f", _goal_constraint.pose.translation()[0], _goal_constraint.pose.translation()[1]);
+        int i = 0;
         for (auto& h : m_heurs) {
             dynamic_cast<smpl::RobotHeuristic*>(h)->updateGoal(_goal_constraint);
+            //ROS_ERROR("In update goal: hidx: %d, size: %d", i, dynamic_cast<smpl::RobotHeuristic*>(h)->m_goal_base_pose.size());
+            i++;
         }
 
         // set planner goal
