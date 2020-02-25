@@ -26,6 +26,7 @@
 #include "motion_planner_ros.h"
 #include "scheduling_policies.h"
 #include "utils/utils.h"
+#include "walker_planner/DeltaH.h"
 
 class ReadExperimentsFromFile {
     public:
@@ -179,6 +180,31 @@ void writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
 
     file.close();
 }
+
+struct DeltaHClient
+{
+    DeltaHClient(ros::NodeHandle nh) :
+        m_nh{nh}
+    {
+        m_client = nh.serviceClient<walker_planner::DeltaH>("/delta_h_service/delta_h");
+    }
+    double getDeltaH(std::vector<double> features)
+    {
+        walker_planner::DeltaH srv;
+        srv.request.features = features;
+        //while(!m_client.call(srv));
+        if(!m_client.call(srv))
+        {
+            ROS_ERROR("Did not get a response");
+            return -1;
+        }
+
+        return srv.response.delta_h;
+    }
+
+    ros::NodeHandle m_nh;
+    ros::ServiceClient m_client;
+};
 
 int main(int argc, char** argv) {
     SMPL_INFO("Testing the MRMHAPlanner Representation Meta A");
@@ -369,11 +395,11 @@ int main(int argc, char** argv) {
 
     std::array<int, NUM_QUEUES> rep_ids;
 
-    //if(!constructHeuristics( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    //if(!constructHeuristicsMeta( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         //ROS_ERROR("Could not construct heuristics.");
         //return 0;
     //}
-    if(!constructHeuristicsMeta( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    if(!constructHeuristicsFullbody( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
@@ -389,6 +415,10 @@ int main(int argc, char** argv) {
 
     assert(robot_heurs[0] != nullptr);
 
+    std::vector<smpl::RobotHeuristic*> inad_heurs;
+    for(int i = 1; i < robot_heurs.size(); i++)
+        inad_heurs.push_back(robot_heurs[i].get());
+
     std::array<Heuristic*, NUM_QUEUES> heurs_array;
     for(int i=0; i < robot_heurs.size(); i++)
         heurs_array[i] = robot_heurs[i].get();
@@ -397,8 +427,11 @@ int main(int argc, char** argv) {
     for(int i=0; i < robot_heurs.size(); i++)
         heurs.push_back(robot_heurs[i].get());
 
+    std::vector<smpl::RobotHeuristic*> all_robot_heurs;
+    for(int i = 0; i < robot_heurs.size(); i++)
+        all_robot_heurs.push_back(robot_heurs[i].get());
+
     Heuristic* anchor_heur = heurs[0];
-    std::vector<Heuristic*> inad_heurs( heurs.begin() + 1, heurs.end() );
 
     //if aij = 1 :  closed in rep i => closed in rep j
     std::array< std::array<int, NUM_ACTION_SPACES>, NUM_ACTION_SPACES >
@@ -413,7 +446,7 @@ int main(int argc, char** argv) {
         rep_ids_v.push_back(val);
 
     const unsigned int seed = 100;
-    using PolicyT = MetaAStarPolicy;
+    using PolicyT = MetaMHAStarPolicy;
 
     // Meta Graph
     // ##########
@@ -456,7 +489,15 @@ int main(int argc, char** argv) {
     // Unit Edge Cost
     //std::vector<double> edge_costs(NUM_QUEUES - 1, 1.0);
 
-    auto meta_mha_policy = std::make_unique<PolicyT>(NUM_QUEUES - 1, delta_h, edge_costs, 10.0);
+    auto meta_mha_policy = std::make_unique<PolicyT>(NUM_QUEUES - 1, delta_h, edge_costs, 2.0, grid_ptr.get(), all_robot_heurs);
+
+    // Ros-Service Client
+    DeltaHClient client(ph);
+    std::vector<double> a(347, 1);
+    auto val = client.getDeltaH(a);
+    ROS_ERROR("Delta_h : %f", val);
+
+    return 0;
 
     //std::vector<int> branching_factor = {4, 1, 3};
     //meta_mha_policy->setBranchingFactor(branching_factor);
