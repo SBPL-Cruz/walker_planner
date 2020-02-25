@@ -47,7 +47,8 @@ class MRMHAPlannerMetaMHA: public MRMHAPlanner<N, R, SP> {
             ReplanParams params,
             int* soltn_cost) override;
 
-    private:
+    //private:
+    public:
 
     using MRMHASearchState = typename MRMHAPlanner<N, R, SP>::MRMHASearchState;
     using MRMHAPlanner<N, R, SP>::reinit_search;
@@ -75,9 +76,11 @@ class MRMHAPlannerMetaMHA: public MRMHAPlanner<N, R, SP> {
     std::array<double, R> m_alphas {}, m_betas {} ;
     double m_C = 10;
     std::array<int, N> m_best_h;
+    std::array<int, N> m_initial_h;
     std::array<int, R> m_rep_h_count {};
     const gsl_rng_type* m_gsl_rand_T;
     gsl_rng* m_gsl_rand;
+    int m_inad_expansions = 0;
 
     std::ofstream m_delta_h_file;
 };

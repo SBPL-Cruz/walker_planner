@@ -99,6 +99,7 @@ int MRMHAPlannerMetaMHA<N, R, SP>::replan(
 
     // reset time limits
     this->m_num_expansions = 0;
+    this->m_inad_expansions = 0;
     this->m_time_elapsed = 0.0;
 
     auto start_time = smpl::clock::now();
@@ -108,16 +109,20 @@ int MRMHAPlannerMetaMHA<N, R, SP>::replan(
     reinit_state(m_start_state);
     m_start_state->g = 0;
 
-    std::vector<int> start_h;
+    std::vector<int> start_h, start_offsets;
     for (int hidx = 0; hidx < num_heuristics(); ++hidx)
     {
         m_start_state->od[hidx].f = compute_key(m_start_state, hidx);
         m_open[hidx].push(&m_start_state->od[hidx]);
         m_best_h[hidx] = m_start_state->od[hidx].h;
+        m_initial_h[hidx] = m_start_state->od[hidx].h;
         if(hidx != 0)
+        {
             start_h.push_back(m_best_h[hidx]);
+            start_offsets.push_back(m_heuristic_offsets[hidx]);
+        }
     }
-    this->m_scheduling_policy->initialize(start_h);
+    this->m_scheduling_policy->initialize(start_h, start_offsets);
 
     //reinitSearch();
 
@@ -176,10 +181,10 @@ int MRMHAPlannerMetaMHA<N, R, SP>::replan(
         for(int j = 1; j < num_heuristics(); j++)
         {
             ROS_DEBUG_NAMED(LOG, "  hidx: %d, best_h: %d, offset: %d", j, m_best_h[j], m_heuristic_offsets[j]);
-            this->m_scheduling_policy->updateMinH(j - 1, m_best_h[j] + m_heuristic_offsets[j]);
+            this->m_scheduling_policy->updateMinH(j - 1, m_best_h[j], m_heuristic_offsets[j]);
         }
 
-        this->m_scheduling_policy->updatePolicy(hidx - 1, m_best_h[hidx]);
+        this->m_scheduling_policy->updatePolicy(hidx - 1, m_best_h[hidx], m_heuristic_offsets[hidx]);
         auto end_time = smpl::clock::now();
         this->m_time_elapsed += smpl::to_seconds(end_time - start_time);
     }
@@ -206,6 +211,8 @@ void MRMHAPlannerMetaMHA<N, R, SP>::expand(MRMHASearchState* _state, int _hidx)
     assert(!this->closed_in_add_search(_state, rep_id) || !this->closed_in_anc_search(_state));
 
     ++this->m_num_expansions;
+    if(_hidx != 0)
+        ++this->m_inad_expansions;
 
     // remove s from  all OPEN lists.
     for (int hidx = 0; hidx < num_heuristics(); ++hidx) {
