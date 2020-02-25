@@ -13,6 +13,7 @@
 #include "xtensor/xview.hpp"
 
 #include <smpl/types.h>
+#include <smpl/occupancy_grid.h>
 #include <smpl/heuristic/mother_heuristic.h>
 #include <smpl/graph/manip_lattice_multi_rep.h>
 #include <sbpl_collision_checking/shapes.h>
@@ -27,7 +28,9 @@ using CollisionObjects = std::vector<smpl::collision::CollisionObject>;
 class MetaMHAStarPolicy : SchedulingPolicy
 {
     public:
-    MetaMHAStarPolicy(int num_queues, std::vector<int> delta_h, std::vector<int> edge_costs, double w);
+    MetaMHAStarPolicy(int num_queues, std::vector<int> delta_h,
+            std::vector<int> edge_costs, double w,
+            smpl::OccupancyGrid* _grid, std::vector<smpl::RobotHeuristic*> _inad_heurs);
     ~MetaMHAStarPolicy()
     {}
 
@@ -36,22 +39,29 @@ class MetaMHAStarPolicy : SchedulingPolicy
         throw "Not Implemented";
     }
 
-    void initialize(std::vector<int>& start_h);
+    void initialize(std::vector<int>& start_h, std::vector<int>& offsets);
     int getAction() override;
-    void updatePolicy(int hidx, int min_h);
-    void updateMinH(int hidx, int min_h);
+    void updatePolicy(int hidx, int min_h, int offset = 0);
+    void updateMinH(int hidx, int min_h, int offset = 0);
     void reset();
+    void computeRayCast(double start_pose[3], Eigen::VectorXd& ray_cast);
 
     private:
+    //HeuristicGradient* m_heur_grad_ptr;
+    smpl::OccupancyGrid* m_grid;
+    std::vector<smpl::RobotHeuristic*> m_all_heurs;
+
     std::vector<int> m_G;
     std::vector<int> m_H;
     std::vector<int> m_F;
     std::vector<int> m_delta_h;
     std::vector<int> m_edge_costs;
 
+    std::vector<bool> m_goal_reached {};
     double m_w = 1.0;
     int m_MULTIPLIER = 1;//000;
 
+    double m_torso_height = 1.1;
 };
 
 class MetaAStarPolicy : SchedulingPolicy
@@ -80,8 +90,7 @@ class MetaAStarPolicy : SchedulingPolicy
     std::vector<int> m_edge_costs;
 
     double m_w = 1.0;
-    int m_MULTIPLIER = 1000;
-
+    int m_MULTIPLIER = 1;//000;
 };
 
 class UniformlyRandomPolicy : public SchedulingPolicy {
@@ -119,6 +128,12 @@ class RoundRobinPolicy : public SchedulingPolicy {
         m_queue = (m_queue + 1) % numQueues();
         return arm;
     }
+
+    // Just so I can generate training data for MetaMHA
+    void initialize(std::vector<int>& start_h, std::vector<int>& offsets){}
+    void updatePolicy(int hidx, int min_h, int offset = 0){}
+    void updateMinH(int hidx, int min_h, int offset = 0){}
+    void reset(){}
 
     private:
     int m_queue = 0;

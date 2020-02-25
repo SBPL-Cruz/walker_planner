@@ -156,6 +156,18 @@ target_link_libraries( mhaplanner ${catkin_LIBRARIES} smpl::smpl
     #)
 #target_link_libraries( mhaplanner_single_param ${catkin_LIBRARIES} smpl::smpl )
 
+add_executable( mrmhaplanner_meta_mha_train
+    src/mha/mrmhaplanner_meta_mha_train.cpp
+    src/motion_planner_ros.cpp
+    src/config/planner_config.cpp
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+add_dependencies(mrmhaplanner_meta_mha_train ${mrmhaplanner_meta_mha_train_EXPORTED_TARGETS}
+    ${catkin_EXPORTED_TARGETS})
+target_link_libraries( mrmhaplanner_meta_mha_train ${catkin_LIBRARIES} smpl::smpl
+    generic_planner)
+
 add_executable( mrmhaplanner_meta_a
     src/mha/mrmhaplanner_meta_a.cpp
     src/motion_planner_ros.cpp
