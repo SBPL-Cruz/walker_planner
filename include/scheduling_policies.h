@@ -22,15 +22,44 @@
 
 #include "config/planner_config.h"
 #include "context_features.h"
+#include "walker_planner/DeltaH.h"
 
 using CollisionObjects = std::vector<smpl::collision::CollisionObject>;
+
+struct DeltaHClient
+{
+    DeltaHClient(ros::NodeHandle nh) :
+        m_nh{nh}
+    {
+        m_client = nh.serviceClient<walker_planner::DeltaH>("/delta_h_service/delta_h");
+    }
+    double getDeltaH(std::vector<double> features)
+    {
+        walker_planner::DeltaH srv;
+        srv.request.features = features;
+        //while(!m_client.call(srv));
+        if(!m_client.call(srv))
+        {
+            ROS_ERROR("Did not get a response");
+            return -1;
+        }
+
+        return srv.response.delta_h;
+    }
+
+    ros::NodeHandle m_nh;
+    ros::ServiceClient m_client;
+};
+
 
 class MetaMHAStarPolicy : SchedulingPolicy
 {
     public:
     MetaMHAStarPolicy(int num_queues, std::vector<int> delta_h,
             std::vector<int> edge_costs, double w,
-            smpl::OccupancyGrid* _grid, std::vector<smpl::RobotHeuristic*> _inad_heurs);
+            smpl::OccupancyGrid* _grid,
+            std::vector<smpl::RobotHeuristic*> _inad_heurs,
+            DeltaHClient* _delta_h_client);
     ~MetaMHAStarPolicy()
     {}
 
@@ -50,11 +79,13 @@ class MetaMHAStarPolicy : SchedulingPolicy
     //HeuristicGradient* m_heur_grad_ptr;
     smpl::OccupancyGrid* m_grid;
     std::vector<smpl::RobotHeuristic*> m_all_heurs;
+    DeltaHClient* m_delta_h_client;
 
     std::vector<int> m_G;
     std::vector<int> m_H;
     std::vector<int> m_F;
     std::vector<int> m_delta_h;
+    std::vector<double> m_offset_delta_h;
     std::vector<int> m_edge_costs;
 
     std::vector<bool> m_goal_reached {};
