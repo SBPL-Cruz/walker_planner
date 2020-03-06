@@ -6,3 +6,7 @@ experiments
 tags
 results/
 results-single-param-mha/
+learning/data
+__pycache__/
+*.pyc
+.pkl

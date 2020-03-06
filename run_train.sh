@@ -16,41 +16,55 @@ fi
 mkdir -p "${home}"/.ros/paths
 
 mode="train"
-for method in mrmhaplanner_meta_mha_train; do
-#for method in mrmhaplanner_meta_mha; do
+#mode="val"
+instance_id="$1"
+#instance_start=$1
+#instance_end=$2
 
-    dataset="${mode}"
+#for method in mrmhaplanner_meta_mha_train; do
+for method in mrmhaplanner_meta_mha; do
+#for method in mrmhaplanner_meta_mha_adm; do
+#for method in estimate_fullbody_delta_h; do
+#for method in mrmhaplanner; do
 
-    start_path="${ros}/experiments/${dataset}/start_states.txt"
-    #start_path="${ros}/experiments/start_states.txt"
+    #for instance_id in $(seq $instance_start $instance_end);do
 
-    goal_path="${ros}/experiments/${dataset}/goal_poses.txt"
-    #goal_path="${ros}/experiments/goal_poses.txt"
+        dataset="${mode}"
 
-    env_path="${ros}/experiments/${mode}/tables_map.env"
-    #env_path="${ros}/experiments/tables_map.env"
+        start_path="${ros}/experiments/${dataset}/start_states${instance_id}.txt"
 
-    #rosparam set "${method}/robot_start_states_file" ${start_path}
-    #rosparam set "${method}/robot_goal_states_file" ${goal_path}
-    #rosparam set "${method}/object_filename" ${env_path}
+        goal_path="${ros}/experiments/${dataset}/goal_poses${instance_id}.txt"
 
-    echo "start_path = ${start_path}"
-    echo "goal_path = ${goal_path}"
-    echo "object_filename = ${env_path}"
+        env_path="${ros}/experiments/${dataset}/tables_map${instance_id}.env"
 
-    echo "Calling planner ${method}"
-    roslaunch walker_planner ${method}.launch debug:=false instance:=$1 start_path:=${start_path} goal_path:=${goal_path} env_path:=${env_path}
-    sleep 5
+        #rosparam set "${method}/robot_start_states_file" ${start_path}
+        #rosparam set "${method}/robot_goal_states_file" ${goal_path}
+        #rosparam set "${method}/object_filename" ${env_path}
 
-    folder="$(date +%d-%m-%y)/${method}-zero-arm"
+        echo "start_path = ${start_path}"
+        echo "goal_path = ${goal_path}"
+        echo "object_filename = ${env_path}"
 
-    if [ ${SAVE} = true ]; then
-        echo "Moving stats"
-        mkdir -p "${ros}/results/${folder}/${mode}/paths"
+        echo "Calling planner ${method}"
+        roslaunch walker_planner ${method}.launch debug:=false instance:=$instance_id start_path:=${start_path} goal_path:=${goal_path} env_path:=${env_path}
+        sleep 5
 
-        mv "${home}"/.ros/planning_stats.txt "${ros}/results/${folder}/${mode}/"
-        mv "${home}"/.ros/paths/* "${ros}/results/${folder}/${mode}/paths/"
-        mv "${home}"/.ros/train_features$1.txt "${ros}/results/${folder}/${mode}/"
-        mv "${home}"/.ros/train_delta_h$1.txt "${ros}/results/${folder}/${mode}/"
-    fi
+        folder="$(date +%d-%m-%y)/${method}"
+        #folder="$(date +%d-%m-%y)/${method}-zero-arm"
+
+        if [ ${SAVE} = true ]; then
+            echo "Moving stats"
+            mkdir -p "${ros}/results/${mode}/paths"
+
+            #mv "${home}"/.ros/planning_stats.txt "${ros}/results/${folder}/${mode}/"
+            #mv "${home}"/.ros/paths/* "${ros}/results/${folder}/${mode}/paths/"
+            #mv "${home}"/.ros/train_features$1.txt "${ros}/results/${folder}/${mode}/"
+            #mv "${home}"/.ros/train_delta_h$1.txt "${ros}/results/${folder}/${mode}/"
+
+            mv "${home}"/.ros/planning_stats.txt "${ros}/results/${mode}/"
+            mv "${home}"/.ros/paths/* "${ros}/results/${mode}/paths/"
+            mv "${home}"/.ros/train_features${instance_id}.txt "${ros}/results/${mode}/"
+            mv "${home}"/.ros/train_delta_h${instance_id}.txt "${ros}/results/${mode}/"
+        fi
+    #done
 done
