@@ -20,7 +20,7 @@
 #define LOG "walker_heursitics"
 
 //#define NUM_QUEUES 33
-#define NUM_QUEUES 14
+#define NUM_QUEUES 10 //2
 //#define NUM_QUEUES 23 //1 + 3 + 3 + 16
 #define NUM_ACTION_SPACES 3 
 static const int DefaultCostMultiplier = 1000;
@@ -214,13 +214,13 @@ struct BaseRotHeuristic : public smpl::CompoundBfsHeuristic
 
     inline void updateGoal(const smpl::GoalConstraint& _goal) override {
         CompoundBfsHeuristic::updateGoal(_goal);
-        auto island_state = bfs_3d_base->m_goal_base_pose;
+        m_goal_base_pose = bfs_3d_base->m_goal_base_pose;
         smpl::Vector3 p;
-        bfs_3d->m_pp->projectToPoint(island_state, p);
+        bfs_3d->m_pp->projectToPoint(m_goal_base_pose, p);
         Eigen::Vector3i dp;
         bfs_3d->grid()->worldToGrid(p.x(), p.y(), p.z(), dp.x(), dp.y(), dp.z());
         offset = bfs_3d->getCostPerCell() * bfs_3d->getBfsCostToGoal(dp.x(), dp.y(), dp.z());
-        ROS_DEBUG_NAMED(LOG, "Base: %d, %d, %d", dp.x(), dp.y(), dp.z());
+        ROS_DEBUG_NAMED(LOG, "Goal Base Pose: %d, %d, %d", dp.x(), dp.y(), dp.z());
         ROS_DEBUG_NAMED(LOG, "Offset: %d", offset);
     }
 
@@ -229,6 +229,19 @@ struct BaseRotHeuristic : public smpl::CompoundBfsHeuristic
             return 0;
         auto robot_state = (dynamic_cast<smpl::ManipLattice*>(
                     bfs_3d->planningSpace()))->extractState(state_id);
+
+        // Recalculate offset.
+        //smpl::RobotState goal_base_state = robot_state;
+        //goal_base_state[0] = m_goal_base_pose[0];
+        //goal_base_state[1] = m_goal_base_pose[1];
+        //goal_base_state[2] = m_goal_base_pose[2];
+
+        //smpl::Vector3 p;
+        //bfs_3d->m_pp->projectToPoint(goal_base_state, p);
+        //Eigen::Vector3i dp;
+        //bfs_3d->grid()->worldToGrid(p.x(), p.y(), p.z(), dp.x(), dp.y(), dp.z());
+        //offset = bfs_3d->getCostPerCell() * bfs_3d->getBfsCostToGoal(dp.x(), dp.y(), dp.z());
+
         int yaw_dist = DefaultCostMultiplier*smpl::angles::shortest_angle_dist(robot_state[2], orientation);
 
         int base_dist = bfs_3d_base->GetGoalHeuristic(state_id);
@@ -267,6 +280,15 @@ bool constructHeuristicsMeta(
         PlannerConfig& params );
 
 bool constructHeuristicsFullbody(
+        std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
+        std::array<int, NUM_QUEUES>& rep_ids,
+        std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,
+        smpl::ManipLattice* pspace,
+        smpl::OccupancyGrid* grid,
+        smpl::KDLRobotModel* rm,
+        PlannerConfig& params );
+
+bool constructHeuristicsBase(
         std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
         std::array<int, NUM_QUEUES>& rep_ids,
         std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,

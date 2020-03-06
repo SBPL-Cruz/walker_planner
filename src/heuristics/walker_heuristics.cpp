@@ -336,7 +336,7 @@ bool constructHeuristicsMeta(
         auto end_eff_rot = std::make_shared<EndEffHeuristic>();
         end_eff_rot->init(bfs_3d_base, bfs_3d);
         heurs[hidx] = end_eff_rot;
-        rep_ids[hidx] = (int) Fullbody;//Arm;
+        rep_ids[hidx] = (int) Arm;//Arm;
         hidx++;
 
         //heurs[hidx] = end_eff_rot;
@@ -347,13 +347,14 @@ bool constructHeuristicsMeta(
         auto inad = std::make_shared<ImprovedEndEffHeuristic>();
         inad->init( bfs_3d_base, bfs_3d, retract_arm );
         heurs[hidx] = inad;
-        rep_ids[hidx] = (int) Fullbody;
+        rep_ids[hidx] = (int) Arm;
         hidx++;
 
         int num_rot_heurs = 1;
         for(int i = 0; i < num_rot_heurs; i++){
             auto inad = std::make_shared<BaseRotHeuristic>();
-            if (!inad->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i)) {
+            if (!inad->init(bfs_3d_base, bfs_3d, retract_arm, 6.28/num_rot_heurs*i))
+            {
                 ROS_ERROR("Could not initialize heuristic.");
                 return false;
             }
@@ -365,7 +366,7 @@ bool constructHeuristicsMeta(
 
     }
 
-    for(int i = 0; i < 5; i++)
+    for(int i = 0; i < 3; i++)
     {
         auto bfs_3d_base = std::make_shared<smpl::Bfs3DBaseHeuristic>();
         bfs_3d_base->setCostPerCell(params.cost_per_cell);
@@ -386,7 +387,7 @@ bool constructHeuristicsMeta(
         auto inad = std::make_shared<ImprovedEndEffHeuristic>();
         inad->init( bfs_3d_base, bfs_3d, retract_arm );
         heurs[hidx] = inad;
-        rep_ids[hidx] = (int) Fullbody;
+        rep_ids[hidx] = (int) Arm;
         hidx++;
 
         // Base Only
@@ -481,6 +482,7 @@ bool constructHeuristicsFullbody(
         //rep_ids[hidx] = (int) Fullbody;
         //hidx++;
 
+        /*
         int num_rot_heurs = 1;
         for(int i = 0; i < num_rot_heurs; i++){
             auto inad = std::make_shared<BaseRotHeuristic>();
@@ -493,9 +495,58 @@ bool constructHeuristicsFullbody(
             rep_ids[hidx] = (int) Fullbody;
             hidx++;
         }
+        */
 
     }
-    /*
+
+    // Base heuristics
+
+    assert( hidx == NUM_QUEUES );
+
+    for (auto& entry : heurs) {
+        pspace->insertHeuristic(entry.get());
+    }
+    return true;
+}
+
+bool constructHeuristicsBase(
+        std::array< std::shared_ptr<smpl::RobotHeuristic>, NUM_QUEUES >& heurs,
+        std::array<int, NUM_QUEUES>& rep_ids,
+        std::vector< std::shared_ptr<smpl::RobotHeuristic> >& bfs_heurs,
+        smpl::ManipLattice* pspace,
+        smpl::OccupancyGrid* grid,
+        smpl::KDLRobotModel* rm,
+        PlannerConfig& params ){
+
+    SMPL_INFO("Initialize Heuristics");
+    const int DefaultCostMultiplier = 1000;
+
+
+    auto bfs_3d = std::make_shared<smpl::Bfs3DHeuristic>();
+    bfs_3d->setCostPerCell(params.cost_per_cell);
+    bfs_3d->setInflationRadius(params.inflation_radius_3d);
+    if (!bfs_3d->init(pspace, grid)) {
+        ROS_ERROR("Could not initialize Bfs3Dheuristic.");
+        return false;
+    }
+
+    int hidx = 0;
+    ROS_INFO("Creating Fullbody Anchor Heuristic");
+    {
+        // This won't be admissible
+        //auto anchor = std::make_unique<AnchorHeuristic>();
+        //anchor->init( bfs_3d_base, bfs_3d );
+        heurs[hidx] = bfs_3d;
+        rep_ids[hidx] = (int) Fullbody;
+        hidx++;
+    }
+
+    // Fullbody Heuristics
+    ROS_INFO("Creating Fullbody and Arm Inadmissible heuristics.");
+
+    int goal_base_idx = 0;
+
+    // First goal base pose.
     {
         auto bfs_3d_base = std::make_shared<smpl::Bfs3DBaseHeuristic>();
         bfs_3d_base->setCostPerCell(params.cost_per_cell);
@@ -505,7 +556,7 @@ bool constructHeuristicsFullbody(
             return false;
         }
 
-        bfs_heurs.push_back(bfs_3d_base);
+        bfs_heurs = { bfs_3d, bfs_3d_base };
 
         auto retract_arm = std::make_shared<RetractArmHeuristic>();
         if(!retract_arm->init(bfs_3d_base, bfs_3d)){
@@ -513,7 +564,6 @@ bool constructHeuristicsFullbody(
             return false;
         }
 
-        // Base Only
         int num_rot_heurs = 1;
         for(int i = 0; i < num_rot_heurs; i++){
             auto inad = std::make_shared<BaseRotHeuristic>();
@@ -527,7 +577,6 @@ bool constructHeuristicsFullbody(
             hidx++;
         }
     }
-    */
 
     // Base heuristics
 
