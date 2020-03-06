@@ -548,7 +548,7 @@ std::vector<moveit_msgs::CollisionObject> GetTablesMapCollisionCubes(
     // XXX Ignoring the overlap flag
     for(int i = 0; i < config.n_tables; i++){
         object_id = "table" + std::to_string(i);
-        double offset = 0.4;
+        double offset = 1.0;
         bool no_overlap = false;
         while(!no_overlap){
             ROS_ERROR( "x_max: %f", config.x_max);
@@ -581,7 +581,7 @@ std::vector<moveit_msgs::CollisionObject> GetTablesMapCollisionCubes(
 
     // Outer Walls
     double thickness = 0.1;
-    double height = 1.5;
+    double height = 1.0;
     auto x_max = config.x_max;
     auto y_max = config.y_max;
 

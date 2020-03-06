@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <tf2/LinearMath/Quaternion.h>
+#include <stdlib.h>
 
 #include <smpl/debug/visualizer_ros.h>
 #include <smpl/distance_map/euclid_distance_map.h>
@@ -166,7 +167,8 @@ bool addStartRegionsForRoom5(
 }
 
 int main(int argc, char** argv){
-    ros::init(argc, argv, "generate_start_goal");
+    ros::init(argc, argv, "generate_start_goals");
+    std::string instance_id(argv[1]);
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);
@@ -232,6 +234,7 @@ int main(int argc, char** argv){
 
     grid_ptr->setReferenceFrame(planning_frame);
     SV_SHOW_INFO(grid_ptr->getBoundingBoxVisualization());
+    SV_SHOW_INFO(grid_ptr->getOccupiedVoxelsVisualization());
 
     //////////////////////////////////
     // Initialize Collision Checker //
@@ -294,7 +297,7 @@ int main(int argc, char** argv){
     std::string filename;
     ph.getParam("object_filename", filename);
 
-    ROS_INFO("Object filename: %s", filename.c_str());
+    ROS_WARN("Object filename: %s", filename.c_str());
 
     auto objects = GetCollisionObjects(filename, grid_ptr->getReferenceFrame());
     for (auto& object : objects)
@@ -322,19 +325,23 @@ int main(int argc, char** argv){
         }
     }
     ROS_INFO("%d tables found in map.", tables.size());
-    int seed = 0;
-    if(!ph.getParam("map/seed", seed))
-    {
-        ROS_ERROR("Could not read seed.");
-        return 1;
-    }
+    srand(time(NULL));
+    int seed = rand() % 100000;
+    //if(!ph.getParam("map/seed", seed))
+    //{
+        //ROS_ERROR("Could not read seed.");
+        //return 1;
+    //} else
+    //{
+        //ROS_INFO("Seed: %d", seed);
+    //}
     generator.init(&cc, fullbody_rm.get(), seed);
     //addStartGoalRegionsForDoor(generator, rm.get(), doors);
     addStartRegionsForRoom1(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
     //addStartRegionsForRoom5(generator, fullbody_rm.get(), map_config.x_max, map_config.y_max);
     addGoalRegionsForTable(generator, fullbody_rm.get(), tables);
 
-    const int N = 25;
+    const int N = 50;
     auto status = generator.generate(N);
     if(status)
         ROS_INFO("Generated %d start-goal pairs.", N);
@@ -342,6 +349,8 @@ int main(int argc, char** argv){
         ROS_ERROR("Could not generate start-goal pairs.");
     generator.writeToFile(
             "x y theta right_j1 right_j2 right_j3 right_j4 right_j5 right_j6 right_j7\n",
-            "start_states.txt", "goal_states.txt", "goal_poses.txt");
+            "start_states" + instance_id + ".txt",
+            "goal_states" + instance_id + ".txt",
+            "goal_poses" + instance_id + ".txt");
 }
 

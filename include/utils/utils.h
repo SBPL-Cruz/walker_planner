@@ -10,6 +10,9 @@
 #include <smpl/spatial.h>
 #include <smpl/angles.h>
 
+std::vector<double> poseToXYZRPY(const Eigen::Affine3d& _pose);
+Eigen::Affine3d XYZRPYToPose(const std::vector<double> xyzrpy);
+
 template <typename T>
 inline T getRandNum(const T _lo, const T _hi ){
     return _lo + static_cast <T> (rand()) /( static_cast <T> (RAND_MAX/(_hi -_lo)));
@@ -67,9 +70,4 @@ inline bool areClose( const smpl::Affine3& a, const smpl::Affine3& b ){
 inline bool areClose(const double a, const double b){
     return fabs(a - b) < 0.001;
 }
-
-std::vector<double> poseToXYZRPY(Eigen::Affine3d& _pose);
-
-Eigen::Affine3d XYZRPYToPose(std::vector<double> xyzrpy);
-
 #endif

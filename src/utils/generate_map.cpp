@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <stdlib.h>
 
 #include <smpl/debug/visualizer_ros.h>
 #include <smpl/distance_map/euclid_distance_map.h>
@@ -44,8 +45,14 @@ int main( int argc, char** argv ){
     smpl::viz::set_visualizer(&visualizer);
 
     std::string file_name;
-    ph.getParam("file_name", file_name);
-    //auto file_name = "multi_room_map.env";
+    if(!ph.getParam("file_name", file_name))
+    {
+        ROS_ERROR("Could not read file name");
+        return 1;
+    } else
+    {
+        ROS_WARN("File name: %s", file_name.c_str());
+    }
 
     std::string planning_frame;
     if (!ph.getParam("planning_frame", planning_frame)) {
@@ -79,6 +86,15 @@ int main( int argc, char** argv ){
     std::vector<moveit_msgs::CollisionObject> doors;
     //auto map_config = getMultiRoomMapConfig(ph);
     auto map_config = getTablesMapConfig(ph);
+    srand(time(NULL));
+    map_config.seed = rand() % 10000;
+    // rand() %(max + 1 - min) + min
+    map_config.n_tables = rand() % (16 - 10) + 10;
+    map_config.n_objects_per_table = rand() % (5 - 2 ) + 2;
+    ROS_WARN("Seed being used: %d", map_config.seed);
+    ROS_WARN("Number of tables: %d", map_config.n_tables);
+    ROS_WARN("Number of objects: %d", map_config.n_objects_per_table);
+
     //auto objects = GetMultiRoomMap2CollisionCubes( grid_ptr->getReferenceFrame(), map_config, doors );
     auto objects = GetTablesMapCollisionCubes( grid_ptr->getReferenceFrame(), map_config, doors );
     writeCollisionCubesToFile(objects, file_name);

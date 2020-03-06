@@ -1,6 +1,6 @@
 #include "utils/utils.h"
 
-std::vector<double> poseToXYZRPY(Eigen::Affine3d& _pose){
+std::vector<double> poseToXYZRPY(const Eigen::Affine3d& _pose){
     auto trans = _pose.translation();
     auto rot = _pose.rotation();
     double r, p, y;
@@ -15,7 +15,7 @@ std::vector<double> poseToXYZRPY(Eigen::Affine3d& _pose){
     return pose_vector;
 }
 
-Eigen::Affine3d XYZRPYToPose(std::vector<double> _xyzrpy)
+Eigen::Affine3d XYZRPYToPose(const std::vector<double> _xyzrpy)
 {
     assert(_xyzrpy.size() == 6);
     return Eigen::Affine3d(
