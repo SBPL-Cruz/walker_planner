@@ -14,41 +14,51 @@ MetaMHAStarPolicy::MetaMHAStarPolicy(int _num_queues,
         std::vector<int> _edge_costs,
         double _w,
         smpl::OccupancyGrid* _grid,
-        std::vector<smpl::RobotHeuristic*> _all_heurs) :
+        std::vector<smpl::RobotHeuristic*> _all_heurs,
+        DeltaHClient* _delta_h_client) :
     SchedulingPolicy(_num_queues),
     m_delta_h{_delta_h},
     m_w{_w},
     m_edge_costs{_edge_costs},
     m_grid{_grid},
-    m_all_heurs{_all_heurs}
+    m_all_heurs{_all_heurs},
+    m_delta_h_client{_delta_h_client}
 {
     ROS_DEBUG_NAMED(PARAMS_LOG, "  Edge Cost: %d, %d, %d, %d", m_edge_costs[0], m_edge_costs[1], m_edge_costs[2], m_edge_costs[3]);
     m_G.resize(_num_queues, 0);
     m_H.resize(_num_queues, INFINITECOST);
     m_F.resize(_num_queues, INFINITECOST);
+    m_offset_delta_h.resize(_num_queues, INFINITECOST);
 }
 
 void MetaMHAStarPolicy::initialize(std::vector<int>& _start_h, std::vector<int>& _start_offsets)
 {
+    ROS_WARN("Initializing");
     assert(_start_h.size() == numQueues());
     ROS_DEBUG_NAMED(PARAMS_LOG, "Initializing: ");
+
+    m_G.assign(numQueues(), 0);
+    m_H.assign(numQueues(), INFINITECOST);
+    m_F.assign(numQueues(), INFINITECOST);
+    m_goal_reached.assign(numQueues(), false);
+    m_offset_delta_h.assign(numQueues(), INFINITECOST);
+
     for(int i = 0; i < _start_h.size(); i++)
     {
         updateMinH(i, _start_h[i], _start_offsets[i]);
     }
-    m_goal_reached.resize(numQueues(), false);
-    for(int i = 0; i < _start_h.size(); i++)
+    for(int i = 0; i < _start_offsets.size(); i++)
     {
         // first one is anchor
         auto goal_base_pose = m_all_heurs[i+1]->m_goal_base_pose;
-        ROS_INFO("Heuristic %d", i);
-        ROS_ERROR("goal base id: %d", m_all_heurs[i+1]->m_goal_base_idx);
+        //ROS_INFO("Heuristic %d", i);
+        //ROS_ERROR("goal base id: %d", m_all_heurs[i+1]->m_goal_base_idx);
         if(goal_base_pose.size() > 0)
         {
             auto goal_trans = m_all_heurs[0]->planningSpace()->goal().pose.translation();
+            auto goal_xyprpy = poseToXYZRPY(m_all_heurs[0]->planningSpace()->goal().pose);
 
             double ray_root[3];
-            ROS_ERROR("3 base size: %d", goal_base_pose.size());
             ray_root[0] = goal_base_pose[0];//robot_coord[0];
             ray_root[1] = goal_base_pose[1];//robot_coord[1];
             ray_root[2] = m_torso_height;// / grid->resolution() + 0.5);
@@ -57,23 +67,36 @@ void MetaMHAStarPolicy::initialize(std::vector<int>& _start_h, std::vector<int>&
             goal[0] = goal_trans[0];
             goal[1] = goal_trans[1];
             goal[2] = goal_trans[2];
-            //grid->worldToGrid(
-                    //m_bfs_3d->getGoal().pose.translation()[0],
-                    //m_bfs_3d->getGoal().pose.translation()[1],
-                    //m_bfs_3d->getGoal().pose.translation()[2],
-                    //goal[0], goal[1], goal[2]);
 
-            ROS_ERROR("Goal %f, %f, %f", goal[0], goal[1], goal[2]);
-            ROS_ERROR("Root %f, %f, %f", ray_root[0], ray_root[1], ray_root[2]);
+            //ROS_ERROR("Goal %f, %f, %f", goal[0], goal[1], goal[2]);
+            //ROS_ERROR("Root %f, %f, %f", ray_root[0], ray_root[1], ray_root[2]);
+
+            std::vector<double> features;
 
             double dtheta = 10;
             double dr = 0.05;
-            std::vector<int> ray_cast;
+            std::vector<double> ray_cast;
             m_grid->getRayCast(ray_root, goal, dtheta, dr, ray_cast);
 
-            ROS_ERROR("Ray cast for %d", i);
-            for(int i = 0; i < ray_cast.size(); i++)
-                ROS_ERROR("  %d", ray_cast[i]);
+            //ROS_ERROR("Ray cast size: %d", ray_cast.size());
+
+            for(auto& val : ray_cast)
+                features.push_back(val);
+
+            // Goal rpy
+            features.push_back(goal_xyprpy[3]);
+            features.push_back(goal_xyprpy[4]);
+            features.push_back(goal_xyprpy[5]);
+            features.push_back(goal_base_pose[2]);
+
+            //ROS_ERROR("Ray cast for %d", i);
+            //for(int i = 0; i < ray_cast.size(); i++)
+                //ROS_ERROR("  %d", ray_cast[i]);
+
+            // Call client
+            double delta_h = m_delta_h_client->getDeltaH(features);
+            ROS_ERROR("hid: %d, Delta h: %f", i, delta_h);
+            m_offset_delta_h[i] = delta_h;
         }
     }
     ROS_INFO("Done Initializing Meta policy");
@@ -81,14 +104,13 @@ void MetaMHAStarPolicy::initialize(std::vector<int>& _start_h, std::vector<int>&
 
 int MetaMHAStarPolicy::getAction()
 {
-    ROS_DEBUG_NAMED(PARAMS_LOG, "h0: %d h1: %d h2: %d", m_H[0], m_H[1], m_H[2]);
     int min_idx = 0;
     for(int i = 0; i < numQueues(); i++)
     {
         if(m_F[i] < m_F[min_idx] && !m_goal_reached[i])
             min_idx = i;
     }
-    ROS_DEBUG_NAMED(PARAMS_LOG, "  Chosen action: %d", min_idx);
+    ROS_DEBUG_NAMED(PARAMS_LOG, "  Chosen action: %d, (delta_h, offset_delta_h) = (%d, %f)", min_idx, m_delta_h[min_idx], m_offset_delta_h[min_idx]);
     //ros::Duration(0.1).sleep();
     return min_idx;
 }
@@ -99,7 +121,6 @@ void MetaMHAStarPolicy::updatePolicy(int _hidx, int _min_h, int _offset)
     m_G[_hidx] += m_MULTIPLIER*m_edge_costs[_hidx];//1;
     // Each expansion is weighted by edge cost
     updateMinH(_hidx, _min_h, _offset);
-    ROS_DEBUG_NAMED(UPDATE_LOG, " Meta A*: Queue: %d  F: %d G: %d H: %d", _hidx, m_F[_hidx], m_G[_hidx], m_H[_hidx]);
 }
 
 void MetaMHAStarPolicy::updateMinH(int _hidx, int _min_h, int _offset)
@@ -107,12 +128,14 @@ void MetaMHAStarPolicy::updateMinH(int _hidx, int _min_h, int _offset)
     assert(_hidx < numQueues());
     if(_min_h <= 0)
         m_goal_reached[_hidx] = true;
-    if(_hidx == 2 || _hidx == 4)
-        m_H[_hidx] = m_MULTIPLIER*(1.0 *_min_h / m_delta_h[_hidx] + 5*_offset / m_delta_h[_hidx]) * m_edge_costs[_hidx];
+
+    if(_offset > 0)
+        m_H[_hidx] = m_MULTIPLIER*((1.0 * _min_h ) / m_delta_h[_hidx] + _offset / m_offset_delta_h[_hidx]) * m_edge_costs[_hidx];
     else
-        m_H[_hidx] = m_MULTIPLIER*(1.0 *(_min_h + _offset) / m_delta_h[_hidx]) * m_edge_costs[_hidx];
+        m_H[_hidx] = m_MULTIPLIER*((1.0 * _min_h ) / m_delta_h[_hidx]) * m_edge_costs[_hidx];
+
     m_F[_hidx] = m_G[_hidx] + m_w * m_H[_hidx];
-    ROS_DEBUG_NAMED(UPDATE_LOG, " Meta A*: Queue: %d  F: %d G: %d H: %d", _hidx, m_F[_hidx], m_G[_hidx], m_H[_hidx]);
+    ROS_DEBUG_NAMED(UPDATE_LOG, " Meta A*: Queue: %d  F: %d G: %d H: %d | d_h: %d, o_d_h: %f", _hidx, m_F[_hidx], m_G[_hidx], m_H[_hidx], m_delta_h[_hidx], m_offset_delta_h[_hidx]);
 }
 
 void MetaMHAStarPolicy::reset()
