@@ -2,6 +2,10 @@
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find walker_planner)/config/rosconsole.config" />
 
     <arg name="debug" default="false"/>
+    <arg name="instance" default="1" />
+    <arg name="start_path" default="" />
+    <arg name="goal_path" default="" />
+    <arg name="env_path" default="" />
     <arg name="rvizconfig" default ="$(find walker_planner)/config/urdf.rviz" />
 
 
@@ -52,14 +56,12 @@ required="true" /> -->
         walker_planner)/config/walker_multi_rep_base.mprim,$(find
         walker_planner)/config/walker_multi_rep_right_arm.mprim"/>
 
-        <param name="planning/mprim_filename" value="$(find
-        walker_planner)/config/walker_multi_rep.mprim"/>
+        <param name="planning/mprim_filename" value="$(find walker_planner)/config/walker_multi_rep.mprim"/>
 
-        <!-- <param name="robot_start_states_file" value="$(find walker_planner)/experiments/start_states.txt" /> -->
-        <!-- <param name="robot_goal_states_file" value="$(find walker_planner)/experiments/goal_poses.txt" /> -->
+        <param name="robot_start_states_file" value="$(arg start_path)" />
+        <param name="robot_goal_states_file" value="$(arg goal_path)" />
+        <param name="object_filename" value="$(arg env_path)" />
 
-        <!-- 2. scene -->
-        <!-- 2.1 robot state -->
         <rosparam command="load" file="$(find walker_planner)/experiments/walker_goal_mrmha.yaml"/>
 
         <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />

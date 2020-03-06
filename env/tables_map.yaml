@@ -1,12 +1,21 @@
 map:
     # train
-    seed: 1000
-    # test
+    #seed: 8399
+    #seed: 3830
+    #seed: 726
+    #seed: 843
+    #seed: 239
+    # val
+    seed: 3
+    #test
+    #seed: 90
+    #seed: 63892
+    #---
     #seed: 4000
     #seed: 31
-    x_max: 5.0
-    y_max: 5.0
-    n_tables: 10
+    x_max: 6.0
+    y_max: 6.0
+    n_tables: 12
     overlap: false
     min_table_len: 0.4
     max_table_len: 0.6

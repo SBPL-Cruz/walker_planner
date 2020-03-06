@@ -2,6 +2,8 @@
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find walker_planner)/config/rosconsole.config" />
 
     <arg name="debug" default="false"/>
+    <arg name="instance" default="" />
+    <arg name="env_path" default="" />
     <arg name="rvizconfig" default ="$(find walker_planner)/config/urdf.rviz" />
 
 
@@ -20,9 +22,8 @@ required="true" /> -->
 
 
     <node pkg="walker_planner" type="generate_start_goals" name="generate_start_goals"
-            launch-prefix="$(arg launch-prefix)" output="screen">
-        <param name="planning_frame" value="dummy_base"/>
-
+            args="$(arg instance)" launch-prefix="$(arg launch-prefix)"
+            output="screen" required="true">
         <!-- 1. robot model (for planning) -->
         <rosparam param="robot_model">
             group_name: full_body
@@ -43,25 +44,28 @@ required="true" /> -->
                 right_palm_dummy_link
         </rosparam>
 
+        <param name="planning_frame" value="dummy_base"/>
+        <param name="instance_id" value="1" />
+
+
         <!-- collision checking -->
         <rosparam command="load" file="$(find walker_planner)/config/collision_model_walker.yaml"/>
 
-        <rosparam command="load" file="$(find walker_planner)/env/multi_room_map.yaml" />
+        <rosparam command="load" file="$(find walker_planner)/env/tables_map.yaml" />
 
         <!-- planner params -->
         <rosparam command="load" file="$(find walker_planner)/config/walker_right_arm.yaml"/>
         <param name="planning/mprim_filename" value="$(find
         walker_planner)/config/walker_multi_rep.mprim"/>
 
+        <param name="object_filename" value="$(arg env_path)" />
+
         <!-- 2. scene -->
         <!-- 2.1 robot state -->
-        <rosparam command="load" file="$(find
-        walker_planner)/experiments/walker_goal_mrmha.yaml"/>
+        <!-- <rosparam command="load" file="$(find walker_planner)/experiments/walker_goal_mrmha.yaml"/> -->
 
         <!-- 2.2 world state -->
-        <param name="object_filename" value="$(find walker_planner)/env/multi_room_map.env"/>
-
-        <!-- 3. scenario -->
-
+        <!-- <param name="object_filename" value="$(find walker_planner)/env/tables_map.env"/> -->
+        <!-- <param name="object_filename" value="$(find walker_planner)/experiments/test/tables_map5.env"/> -->
     </node>
 </launch>

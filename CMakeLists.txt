@@ -157,6 +157,16 @@ target_link_libraries( mhaplanner ${catkin_LIBRARIES} smpl::smpl
     #)
 #target_link_libraries( mhaplanner_single_param ${catkin_LIBRARIES} smpl::smpl )
 
+add_executable( estimate_fullbody_delta_h
+    src/mha/estimate_fullbody_delta_h.cpp
+    src/motion_planner_ros.cpp
+    src/config/planner_config.cpp
+    src/config/collision_space_scene.cpp
+    src/config/get_collision_objects.cpp
+    )
+target_link_libraries( estimate_fullbody_delta_h ${catkin_LIBRARIES} smpl::smpl
+    generic_planner)
+
 add_executable( mrmhaplanner_meta_mha
     src/mha/mrmhaplanner_meta_mha.cpp
     src/motion_planner_ros.cpp

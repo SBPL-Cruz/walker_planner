@@ -2,6 +2,7 @@
     <env name="ROSCONSOLE_CONFIG_FILE" value="$(find walker_planner)/config/rosconsole.config" />
 
     <arg name="debug" default="false"/>
+    <arg name="file_name" default="" />
     <arg name="rvizconfig" default ="$(find walker_planner)/config/urdf.rviz" />
 
     <include file="$(find walker_planner)/launch/planning_context_walker.launch"/>
@@ -13,7 +14,7 @@
     <node pkg="walker_planner" type="generate_map" name="generate_map"
             launch-prefix="$(arg launch-prefix)" output="screen" required="true">
         <param name="planning_frame" value="dummy_base"/>
-        <param name="file_name" value="tables_map.env"/>
+        <param name="file_name" value="$(arg file_name)"/>
         <rosparam command="load" file="$(find walker_planner)/env/tables_map.yaml" />
 
         <!-- planner params -->
