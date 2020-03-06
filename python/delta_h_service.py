@@ -7,13 +7,21 @@ import numpy as np
 from walker_planner.srv import DeltaH
 
 model = []
+# FEATURES_SIZE = 347
+FEATURES_SIZE = 232
+
+def requestConstantDeltaH(req):
+    response = 2000
+    return response
 
 def requestDeltaH(req):
     global model
+    global FEATURES_SIZE
     print("Service called")
 
-    features = np.array(req.features)
+    features = np.array(req.features)[-FEATURES_SIZE:]
     features = np.reshape(features, (1, features.size))
+
     delta_h = model.predict(features)
 
     # Send response
@@ -35,7 +43,8 @@ def launchDeltaH(input_args):
     # Set up server
     rospy.Service('{}/delta_h'.format(node_name),
                   DeltaH,
-                  requestDeltaH)
+                  # requestDeltaH)
+                  requestConstantDeltaH)
 
     print("Service initialized")
     # Main ROS loop

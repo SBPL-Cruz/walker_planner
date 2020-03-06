@@ -124,6 +124,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner, RM>::execute(PlanningEpisode _
 
         //std::this_thread::sleep_for(std::chrono::seconds(2));
 
+        auto then = smpl::clock::now();
         if(!updateGoal(this->getGoal(_ep)))
         {
             ROS_ERROR("Failed to update goal");
@@ -141,6 +142,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner, RM>::execute(PlanningEpisode _
         }
 
         ROS_WARN("Start updated.");
+        double precompute_time = smpl::to_seconds(smpl::clock::now() - then);
 
         MPlanner::PlannerSolution soltn;
 
@@ -155,6 +157,7 @@ ExecutionStatus MotionPlannerROS<SP, EP, Planner, RM>::execute(PlanningEpisode _
             return ExecutionStatus::FAILURE;
         } else{
             ROS_WARN("Planning Episode %d Succeeded", _ep);
+            soltn.planning_time += precompute_time;
             m_planner_soltns.emplace(_ep, soltn);
             return ExecutionStatus::SUCCESS;
         }

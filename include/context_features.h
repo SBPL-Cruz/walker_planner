@@ -29,29 +29,41 @@ class MobManipDiscreteFeatures : public AbstractContext<N, int>
     }
 };
 
-/*template <>
-class MobManipDiscreteFeatures<2> : public AbstractContext<2, int>
+template <>
+class MobManipDiscreteFeatures<16> : public AbstractContext<16, int>
 {
     public:
-    MobManipDiscreteFeatures(smpl::ManipLattice*,
-        smpl::Bfs3DHeuristic*,
-        smpl::Bfs3DBaseHeuristic*,
-        smpl::Bfs2DHeuristic* );
-    ~MobManipDiscreteFeatures();
+    MobManipDiscreteFeatures(
+            smpl::KDLRobotModel* rm,
+            smpl::ManipLattice*,
+            smpl::Bfs2DHeuristic*,
+            smpl::Bfs3DBaseHeuristic*,
+            smpl::Bfs3DHeuristic*);
 
-    using ContextArray = std::array<2, int>;
-    ContextArray getContext( std::vector<double> ) override;
+    /**Features:
+     * Ray traces
+     **/
+    using ContextArray = std::array<int, 16>;
+
+    ContextArray getContext( int state_id ) override;
+
+    ContextArray getContext(const std::vector<double>& robot_state)
+    {
+        throw "Not Implemented";
+    }
 
     void setRobotArmLength( double );
 
     private:
-    smpl::ManipLattice m_env;
-    smpl::Bfs3DHeuristic* m_bfs_3d;
-    smpl::Bfs3DBaseHeuristic* m_bfs_3d_base;
-    smpl::Bfs2DHeuristic* m_bfs_2d;
+    smpl::KDLRobotModel* m_rm = nullptr;
+    smpl::ManipLattice* m_env = nullptr;
+    smpl::Bfs2DHeuristic* m_bfs_2d = nullptr;
+    smpl::Bfs3DBaseHeuristic* m_bfs_3d_base = nullptr;
+    smpl::Bfs3DHeuristic* m_bfs_3d = nullptr;
 
     double m_arm_len = 0.0;
-};*/
+    double torso_height = 1.1;
+};
 
 template <>
 class MobManipDiscreteFeatures<4> : public AbstractContext<4, int>
