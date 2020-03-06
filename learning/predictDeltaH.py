@@ -10,7 +10,7 @@ from sklearn.linear_model import SGDRegressor
 from sklearn import svm
 from sklearn.linear_model import LinearRegression
 from sklearn import tree
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import mean_squared_error
 from utils import readData
@@ -23,7 +23,7 @@ SPLIT = 0.8
 def filterData(X, Y):
     THRESH = 100
     filtered_X, filtered_Y = [], []
-    print("Outliers: ", Y[Y > 100].size)
+    print("Outliers: ", (Y[Y > 100]).size)
     for x, y in zip(X, Y):
         if math.isnan(y):
             continue
@@ -31,6 +31,10 @@ def filterData(X, Y):
         # else:
             filtered_X.append(x)
             filtered_Y.append(y)
+        elif (y >= THRESH):
+            filtered_X.append(x)
+            filtered_Y.append(THRESH)
+
     return ( np.array(filtered_X), np.array(filtered_Y) )
 
 def loadData(normalize=False):
@@ -61,21 +65,26 @@ def loadData(normalize=False):
         for line in f.readlines():
             values.append(float(line.split()[0]))
     values = np.array(values)[:(int)(1.0*len(values))]
-    u, c = np.unique(values, return_counts=True)
-    print("Unique counter: ", u.shape)
 
     truncated_features, values = filterData(truncated_features, values)
+    u, c = np.unique(values, return_counts=True)
+    print("Unique counter: ", u.shape)
     # values[values > 1000] = 1000
-    # plt.hist(values)
-    # plt.show()
+    plt.hist(values)
+    plt.show()
     print("Size of values: ", values.shape)
 
     scale = 1.0 #np.max(values)
     if(normalize):
-        # values = values - np.mean(values )
-        # values = values / np.std(values)
+        truncated_features = truncated_features - np.mean(truncated_features,
+                axis=0)
+        truncated_features = truncated_features / np.std(truncated_features,
+                axis=0)
+        # values = values - np.mean(values, axis=0)
+        # values = values / np.std(values, axis=0)
         # values = 100.0 * values / np.max(values)
         # values = values / np.max(values)
+        # values = values / 100
         pass
 
     return (train_test_split(
@@ -94,7 +103,7 @@ def testModel(model, X_test, y_test, scale, plot=False):
         plt.scatter(y_test, preds)
         plt.xlabel("Ground Truth")
         plt.ylabel("Predicted")
-        # plt.plot([0, 0.5], [0, 0.5])
+        plt.plot([0, 1], [0, 1], 'r')
         # plt.plot(preds/y_test, 'bo')
         # plt.plot(y_test, 'r')
         plt.show()
@@ -102,6 +111,13 @@ def testModel(model, X_test, y_test, scale, plot=False):
 
 
 if __name__ == "__main__":
+    print("Check data files in the script")
+    # global FEATURES_FILE
+    # global VALUES_FILE
+
+    # FEATURES_FILE = sys.argv[1]
+    # VALUES_FILE = sys.argv[2]
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--plot', help="Generate plots")
     parser.add_argument('--save', help="Save trained model")
@@ -121,15 +137,17 @@ if __name__ == "__main__":
     regs = {
             # "linear-regression" : LinearRegression(normalize=True).fit(X_train, y_train),
             # "sgd" : SGDRegressor(loss="squared_loss", penalty="l1", max_iter=1000),
-            # "svm" : svm.SVR(),
+            # "svm" : svm.SVR(gamma="scale"),
             # "decision-tree" : tree.DecisionTreeRegressor(max_depth=20),
-            "random-forest" : RandomForestRegressor(max_depth=20),
-            # "mlp" : MLPRegressor(hidden_layer_sizes=(400, 400, 100), learning_rate='adaptive', max_iter=1000)
+            # "random-forest" : RandomForestRegressor(max_depth=8, n_estimators=100, max_features=None),
+            # "random-forest" : RandomForestRegressor(max_depth=5, n_estimators=100, max_features=None),
+            # "extra-trees" : ExtraTreesRegressor(max_depth=10, n_estimators=100, max_features=None),
+            "mlp" : MLPRegressor(hidden_layer_sizes=(300, 100 ), learning_rate='adaptive', max_iter=500)
             }
 
     errors = []
     for name, reg in regs.items():
-    # for depth in range(2, 100, 5):
+    # for depth in range(2, 25, 2):
         # name  = "random-forest"
         # reg = RandomForestRegressor(max_depth=depth)
         print(name)
@@ -148,7 +166,7 @@ if __name__ == "__main__":
         if(args.save in ['True', 'true']):
             with open(name + ".pkl", 'wb') as f:
                 pickle.dump(reg, f)
-    # plt.plot(range(2, 100, 5), errors)
+    # plt.plot(range(2, 25, 2), errors)
     # plt.show()
 
     # testModel(reg, X_train, y_train)
