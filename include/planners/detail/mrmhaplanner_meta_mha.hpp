@@ -180,8 +180,9 @@ int MRMHAPlannerMetaMHA<N, R, SP>::replan(
         // Policy doesn't know about anchor
         for(int j = 1; j < num_heuristics(); j++)
         {
-            ROS_DEBUG_NAMED(LOG, "  hidx: %d, best_h: %d, offset: %d", j, m_best_h[j], m_heuristic_offsets[j]);
+            //m_heuristic_offsets[j] = dynamic_cast<smpl::RobotHeuristic*>(this->m_h_inads[j-1])->offset;
             this->m_scheduling_policy->updateMinH(j - 1, m_best_h[j], m_heuristic_offsets[j]);
+            ROS_DEBUG_NAMED(LOG, "  hidx: %d, best_h: %d, offset: %d", j, m_best_h[j], m_heuristic_offsets[j]);
         }
 
         this->m_scheduling_policy->updatePolicy(hidx - 1, m_best_h[hidx], m_heuristic_offsets[hidx]);

@@ -167,8 +167,9 @@ int MRMHAPlannerMetaA<N, R, SP>::replan(
         }
 
         // Policy doesn't know about anchor
-        for(int j = 1; j < num_heuristics(); j++)
-            this->m_scheduling_policy->updateMinH(j - 1, m_best_h[j]);
+t        // Meta-A* does not update minH
+        //for(int j = 1; j < num_heuristics(); j++)
+            //this->m_scheduling_policy->updateMinH(j - 1, m_best_h[j]);
 
         this->m_scheduling_policy->updatePolicy(hidx - 1, m_best_h[hidx]);
         auto end_time = smpl::clock::now();
