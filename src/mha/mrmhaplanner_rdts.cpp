@@ -442,6 +442,7 @@ int main(int argc, char** argv) {
         ROS_ERROR("Episode: %d", ep);
         loop_rate.sleep();
         dts_policy->setSeed(rand());
+        //dts_policy->reset();
         std::string file_suffix = std::to_string(ep) + ".txt";
         //space->clearStates();
         space->clearStats();

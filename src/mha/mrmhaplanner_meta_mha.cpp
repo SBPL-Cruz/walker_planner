@@ -19,6 +19,7 @@
 //#include <sbpl/planners/mrmhaplanner.h>
 #include <smpl/search/smhastar.h>
 #include <sbpl/planners/types.h>
+#include <smpl/post_processing.h>
 
 #include "heuristics/walker_heuristics.h"
 #include "planners/mrmhaplanner_meta_mha.h"
@@ -26,7 +27,6 @@
 #include "motion_planner_ros.h"
 #include "scheduling_policies.h"
 #include "utils/utils.h"
-#include "walker_planner/DeltaH.h"
 
 class ReadExperimentsFromFile {
     public:
@@ -108,12 +108,12 @@ smpl::GoalConstraint stringToGoalConstraint(std::string _pose_str){
     smpl::GoalConstraint goal;
     goal.type = smpl::GoalType::XYZ_RPY_GOAL;
     goal.pose = goal_pose;
-    goal.xyz_tolerance[0] = 0.05;
-    goal.xyz_tolerance[1] = 0.05;
-    goal.xyz_tolerance[2] = 0.05;
-    goal.rpy_tolerance[0] = 0.39;
-    goal.rpy_tolerance[1] = 0.39;
-    goal.rpy_tolerance[2] = 0.39;
+    goal.xyz_tolerance[0] = 0.15;
+    goal.xyz_tolerance[1] = 0.15;
+    goal.xyz_tolerance[2] = 0.15;
+    goal.rpy_tolerance[0] = 2.9;
+    goal.rpy_tolerance[1] = 2.9;
+    goal.rpy_tolerance[2] = 2.9;
 
     return goal;
 }
@@ -181,34 +181,9 @@ void writePath(std::string _file_name, std::string _header, std::vector<smpl::Ro
     file.close();
 }
 
-struct DeltaHClient
-{
-    DeltaHClient(ros::NodeHandle nh) :
-        m_nh{nh}
-    {
-        m_client = nh.serviceClient<walker_planner::DeltaH>("/delta_h_service/delta_h");
-    }
-    double getDeltaH(std::vector<double> features)
-    {
-        walker_planner::DeltaH srv;
-        srv.request.features = features;
-        //while(!m_client.call(srv));
-        if(!m_client.call(srv))
-        {
-            ROS_ERROR("Did not get a response");
-            return -1;
-        }
-
-        return srv.response.delta_h;
-    }
-
-    ros::NodeHandle m_nh;
-    ros::ServiceClient m_client;
-};
-
 int main(int argc, char** argv) {
     SMPL_INFO("Testing the MRMHAPlanner Representation Meta A");
-    ros::init(argc, argv, "mrmhaplanner_meta_a");
+    ros::init(argc, argv, "mrmhaplanner_meta_mha");
     ros::NodeHandle nh;
     ros::NodeHandle ph("~");
     ros::Rate loop_rate(10);
@@ -395,14 +370,14 @@ int main(int argc, char** argv) {
 
     std::array<int, NUM_QUEUES> rep_ids;
 
-    //if(!constructHeuristicsMeta( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
-        //ROS_ERROR("Could not construct heuristics.");
-        //return 0;
-    //}
-    if(!constructHeuristicsFullbody( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    if(!constructHeuristicsMeta( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }
+    //if(!constructHeuristicsFullbody( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+        //ROS_ERROR("Could not construct heuristics.");
+        //return 0;
+    //}
 
     //for(int i = 0; i < NUM_QUEUES; i++)
     //{
@@ -452,7 +427,7 @@ int main(int argc, char** argv) {
     // ##########
 
     // H Value
-    std::vector<int> delta_h(NUM_QUEUES - 1, 1000);
+    //std::vector<int> delta_h(NUM_QUEUES - 1, 150);
     //delta_h[0] = 10000;
     //delta_h[NUM_QUEUES - 3] = 5000;
     //delta_h[NUM_QUEUES - 2] = 5000;
@@ -474,30 +449,39 @@ int main(int argc, char** argv) {
 
     // Branching Factor dependent
     std::vector<int> edge_costs;
+    std::vector<int> delta_h;
     for(int i = 1; i < NUM_QUEUES; i++)
     {
         if(rep_ids[i] == (int) Fullbody)
+        {
             edge_costs.push_back(36);
+            delta_h.push_back(105);
+
+        }
         else if(rep_ids[i] == (int) Arm)
+        {
             edge_costs.push_back(28);
+            delta_h.push_back(100);
+        }
         else if(rep_ids[i] == (int) Base)
+        {
             edge_costs.push_back(8);
+            delta_h.push_back(250);
+        }
         else
             throw "Action Space not understood";
+
     }
+
+    delta_h.assign(NUM_QUEUES - 1, 2000);
 
     // Unit Edge Cost
     //std::vector<double> edge_costs(NUM_QUEUES - 1, 1.0);
 
-    auto meta_mha_policy = std::make_unique<PolicyT>(NUM_QUEUES - 1, delta_h, edge_costs, 2.0, grid_ptr.get(), all_robot_heurs);
-
     // Ros-Service Client
     DeltaHClient client(ph);
-    std::vector<double> a(347, 1);
-    auto val = client.getDeltaH(a);
-    ROS_ERROR("Delta_h : %f", val);
 
-    return 0;
+    auto meta_mha_policy = std::make_unique<PolicyT>(NUM_QUEUES - 1, delta_h, edge_costs, 5.0, grid_ptr.get(), all_robot_heurs, &client);
 
     //std::vector<int> branching_factor = {4, 1, 3};
     //meta_mha_policy->setBranchingFactor(branching_factor);
@@ -555,21 +539,79 @@ int main(int argc, char** argv) {
             writePath(file_name, header , plan);
             //////////////
 
-            visualization_msgs::MarkerArray whole_path;
+            //visualization_msgs::MarkerArray whole_path;
+            //std::vector<visualization_msgs::Marker> m_all;
+
+            //int idx = 0;
+            //for( int pidx=0; pidx<plan.size(); pidx++ ){
+                //auto& state = plan[pidx];
+                //auto markers = cc.getCollisionRobotVisualization(state);
+                //for (auto& m : markers.markers) {
+                    //m.ns = "path_animation";
+                    //m.id = idx;
+                    //idx++;
+                    //whole_path.markers.push_back(m);
+                //}
+                //visualizer.visualize(smpl::visual::Level::Info, markers);
+                ////std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            //}
+        //}
+        visualization_msgs::MarkerArray whole_path;
             std::vector<visualization_msgs::Marker> m_all;
+        std::vector<smpl::RobotState> path;
+        smpl::InterpolatePath(cc, plan );
 
             int idx = 0;
             for( int pidx=0; pidx<plan.size(); pidx++ ){
+            //for( int pidx=0; pidx<path.size(); pidx++ ){
                 auto& state = plan[pidx];
-                auto markers = cc.getCollisionRobotVisualization(state);
-                for (auto& m : markers.markers) {
-                    m.ns = "path_animation";
-                    m.id = idx;
-                    idx++;
-                    whole_path.markers.push_back(m);
+                //auto& state = path[pidx];
+                std::vector<double> color(3, 0.0);
+                if(pidx > 0)
+                {
+                    auto before = plan[pidx-1];
+                    auto after = plan[pidx];
+                    std::vector<double> diff(before.size(), 0.0);
+                    int index = -1;
+                    for(int i = 0; i < before.size(); i++)
+                    {
+                        diff[i] = fabs(after[i] - before[i]);
+                        if(diff[i] > 0.001)
+                            index = i;
+                    }
+                    if(index < 3 )
+                    {
+                        color[0] = 0;
+                        color[1] = 1;
+                        color[2] = 0;
+                    }
+                    else
+                    {
+                        color[0] = 0;
+                        color[1] = 0;
+                        color[2] = 1;
+                    }
                 }
-                visualizer.visualize(smpl::visual::Level::Info, markers);
-                //std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                if (pidx % 2 == 0)
+                {
+                    auto markers = cc.getCollisionRobotVisualization(state);
+                    for (auto& m : markers.markers) {
+                        m.ns = "path_animation";
+                        m.id = idx;
+                        m.color.r = color[0];
+                        m.color.g = color[1];
+                        m.color.b = color[2];
+                        if(color[2] == 1)
+                            m.color.a = 1;
+                        else
+                            m.color.a = 0.5;
+
+                        idx++;
+                        whole_path.markers.push_back(m);
+                    }
+                    visualizer.visualize(smpl::visual::Level::Info, markers);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                }
             }
         }
 

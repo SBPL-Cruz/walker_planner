@@ -386,7 +386,8 @@ int main(int argc, char** argv) {
     std::array<int, NUM_QUEUES> rep_ids;
 
     //if(!constructHeuristics( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
-    if(!constructHeuristicsSmall( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    //if(!constructHeuristicsMultiRep( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
+    if(!constructHeuristicsMeta( robot_heurs, rep_ids, bfs_heurs, space.get(), grid_ptr.get(), rm.get(), planning_config )){
         ROS_ERROR("Could not construct heuristics.");
         return 0;
     }

@@ -33,6 +33,10 @@ class ReadExperimentsFromFile {
     moveit_msgs::RobotState getStart(PlanningEpisode);
     smpl::GoalConstraint getGoal(PlanningEpisode);
     bool canCallPlanner() const { return true; }
+    int numEpisodes()
+    {
+        return std::min(m_start_states.size(), m_goal_constraints.size());
+    }
 
     private:
     ros::NodeHandle m_nh;
@@ -351,8 +355,8 @@ int main(int argc, char** argv) {
 
     ROS_INFO("Initialize Occupancy Grid");
 
-    auto df_size_x = 20.0;
-    auto df_size_y = 15.0;
+    auto df_size_x = 6.0;//20.0;
+    auto df_size_y = 6.0;//15.0;
     auto df_size_z = 1.5;
     auto df_res = 0.05;
     auto df_origin_x = 0;
@@ -561,7 +565,7 @@ int main(int argc, char** argv) {
     std::vector<smpl::RobotState> starts;
     std::vector<smpl::Affine3> goals;
     mplanner_ros.updateMap(0);
-    while(ep <= planning_config.end_planning_episode)
+    while(ep <= std::min(planning_config.end_planning_episode, read_from_file.numEpisodes() - 1))
     {
         auto goal = read_from_file.getGoal(ep);
         space->setGoal(goal);
@@ -629,7 +633,7 @@ int main(int argc, char** argv) {
 
         double dtheta = 10;
         double dr = 0.05;
-        std::vector<int> ray_cast;
+        std::vector<double> ray_cast;
         grid_ptr->getRayCast(ray_root, goal, dtheta, dr, ray_cast);
 
         ROS_ERROR("Ray cast size: %d", ray_cast.size());

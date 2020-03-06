@@ -373,6 +373,13 @@ int main(int argc, char** argv) {
         return 0;
     }
 
+    //for(int i = 0; i < rep_ids.size(); i++)
+    //{
+        //if(rep_ids[i] == (int)Fullbody)
+            //rep_ids[i] = (int)Arm;
+    //}
+
+
     ROS_ERROR("Number of heuristics: %d", robot_heurs.size());
     assert(robot_heurs.size() == NUM_QUEUES);
 
@@ -408,9 +415,13 @@ int main(int argc, char** argv) {
             dynamic_cast<smpl::Bfs3DBaseHeuristic*> (bfs_heurs[2].get()),
             dynamic_cast<smpl::Bfs3DHeuristic*> (bfs_heurs[0].get()) );
 
+    const unsigned int seed = time(NULL);
+    //using PolicyT = ContextualDTSPolicy<ContextArray>;
+    using PolicyT = ContextualHumanPolicy<ContextArray>;
+    auto dts_policy = std::make_unique<PolicyT>(NUM_ACTION_SPACES, seed);//100);
     std::string beta_file_name;
     ph.getParam("beta_prior_file", beta_file_name);
-    dts_policy->loadBetaPrior(beta_file_name);
+    //dts_policy->loadBetaPrior(beta_file_name);
 
     //std::vector<ContextArray> contexts;
     //std::vector<int> context_ids;
