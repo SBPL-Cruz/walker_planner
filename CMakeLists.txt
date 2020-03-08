@@ -117,17 +117,6 @@ add_executable(collision_model_visualizer src/debug/collision_model_visualizer.c
     src/config/collision_space_scene.cpp)
 target_link_libraries(collision_model_visualizer ${catkin_LIBRARIES} smpl::smpl)
 
-#add_executable( test_motion_planner
-#    src/mha/test_motion_planner.cpp
-#    src/motion_planner_ros.cpp
-#    src/config/collision_space_scene.cpp
-#    src/config/planner_config.cpp
-#    src/config/get_collision_objects.cpp)
-#target_link_libraries(test_motion_planner ${catkin_LIBRARIES} smpl::smpl
-#    ${orocos_kdl_LIBRARIES} GSL::gsl GSL::gslcblas)
-#add_dependencies( test_motion_planner ${${PROJECT_NAME}_EXPORTED_TARGETS}
-#    ${catkin_EXPORTED_TARGETS} )
-#
 add_executable( mrmhaplanner
     src/mha/mrmhaplanner.cpp
     src/motion_planner_ros.cpp
@@ -148,25 +137,6 @@ add_executable( mhaplanner
 target_link_libraries( mhaplanner ${catkin_LIBRARIES} smpl::smpl
     generic_planner)
 
-#add_executable( mhaplanner_single_param
-    #src/mha/mhaplanner_single_param.cpp
-    #src/motion_planner_ros.cpp
-    #src/config/planner_config.cpp
-    #src/config/collision_space_scene.cpp
-    #src/config/get_collision_objects.cpp
-    #)
-#target_link_libraries( mhaplanner_single_param ${catkin_LIBRARIES} smpl::smpl )
-
-add_executable( estimate_fullbody_delta_h
-    src/mha/estimate_fullbody_delta_h.cpp
-    src/motion_planner_ros.cpp
-    src/config/planner_config.cpp
-    src/config/collision_space_scene.cpp
-    src/config/get_collision_objects.cpp
-    )
-target_link_libraries( estimate_fullbody_delta_h ${catkin_LIBRARIES} smpl::smpl
-    generic_planner)
-
 add_executable( mrmhaplanner_meta_mha
     src/mha/mrmhaplanner_meta_mha.cpp
     src/motion_planner_ros.cpp
@@ -175,18 +145,6 @@ add_executable( mrmhaplanner_meta_mha
     src/config/get_collision_objects.cpp
     )
 target_link_libraries( mrmhaplanner_meta_mha ${catkin_LIBRARIES} smpl::smpl
-    generic_planner)
-
-add_executable( mrmhaplanner_meta_mha_train
-    src/mha/mrmhaplanner_meta_mha_train.cpp
-    src/motion_planner_ros.cpp
-    src/config/planner_config.cpp
-    src/config/collision_space_scene.cpp
-    src/config/get_collision_objects.cpp
-    )
-add_dependencies(mrmhaplanner_meta_mha_train ${mrmhaplanner_meta_mha_train_EXPORTED_TARGETS}
-    ${catkin_EXPORTED_TARGETS})
-target_link_libraries( mrmhaplanner_meta_mha_train ${catkin_LIBRARIES} smpl::smpl
     generic_planner)
 
 add_executable( mrmhaplanner_meta_a
@@ -199,55 +157,6 @@ add_executable( mrmhaplanner_meta_a
 target_link_libraries( mrmhaplanner_meta_a ${catkin_LIBRARIES} smpl::smpl
     generic_planner)
 
-add_executable( mrmhaplanner_rdts
-    src/mha/mrmhaplanner_rdts.cpp
-    src/motion_planner_ros.cpp
-    src/config/planner_config.cpp
-    src/config/collision_space_scene.cpp
-    src/config/get_collision_objects.cpp
-    )
-target_link_libraries( mrmhaplanner_rdts ${catkin_LIBRARIES} smpl::smpl
-    generic_planner)
-
-add_executable( mrmhaplanner_hdts
-    src/mha/mrmhaplanner_hdts.cpp
-    src/motion_planner_ros.cpp
-    src/config/planner_config.cpp
-    src/config/collision_space_scene.cpp
-    src/config/get_collision_objects.cpp
-    )
-target_link_libraries( mrmhaplanner_hdts ${catkin_LIBRARIES} smpl::smpl
-    generic_planner)
-
-#add_executable( mrmhaplanner_ucb
-    #src/mha/mrmhaplanner_ucb.cpp
-    #src/motion_planner_ros.cpp
-    #src/config/planner_config.cpp
-    #src/config/collision_space_scene.cpp
-    #src/config/get_collision_objects.cpp
-    #)
-#target_link_libraries( mrmhaplanner_ucb ${catkin_LIBRARIES} smpl::smpl
-    #generic_planner)
-
-add_executable( mrmhaplanner_cobandits
-    src/mha/mrmhaplanner_cobandits.cpp
-    src/motion_planner_ros.cpp
-    src/config/planner_config.cpp
-    src/config/collision_space_scene.cpp
-    src/config/get_collision_objects.cpp
-    )
-target_link_libraries( mrmhaplanner_cobandits ${catkin_LIBRARIES} smpl::smpl
-    generic_planner)
-
-add_executable( mrmhaplanner_cobandits_train
-    src/mha/mrmhaplanner_cobandits_train.cpp
-    src/motion_planner_ros.cpp
-    src/config/planner_config.cpp
-    src/config/collision_space_scene.cpp
-    src/config/get_collision_objects.cpp
-    )
-target_link_libraries( mrmhaplanner_cobandits_train ${catkin_LIBRARIES} smpl::smpl
-    generic_planner)
 
 #add_executable( walker_planner
     #src/mha/walker_planner.cpp

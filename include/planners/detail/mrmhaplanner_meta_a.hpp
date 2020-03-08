@@ -167,7 +167,7 @@ int MRMHAPlannerMetaA<N, R, SP>::replan(
         }
 
         // Policy doesn't know about anchor
-t        // Meta-A* does not update minH
+        // Meta-A* does not update minH
         //for(int j = 1; j < num_heuristics(); j++)
             //this->m_scheduling_policy->updateMinH(j - 1, m_best_h[j]);
 
