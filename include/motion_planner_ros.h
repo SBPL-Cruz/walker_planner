@@ -63,7 +63,8 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
             RobotModel*,
             CollisionSpaceScene*,
             MotionPlanner*,
-            smpl::OccupancyGrid* );
+            smpl::OccupancyGrid*,
+            bool is_simulation = false);
     bool setPlannerParams(const MPlanner::PlannerParams&);
     bool initExperiments(std::string, std::string);
     bool canCallPlanner() const;
@@ -75,6 +76,7 @@ class MotionPlannerROS : public SceneUpdatePolicy, public ExperimentPolicy {
     bool updateStart(const moveit_msgs::RobotState&);
     bool updateGoal(const smpl::GoalConstraint&);
 
+    bool m_is_simulation;
     //Get occGrid and objects and add to occupancyGrid.
     MotionPlanner* m_planner_ptr;
     std::unordered_map<PlanningEpisode, MPlanner::PlannerSolution> m_planner_soltns;
@@ -88,8 +90,10 @@ MotionPlannerROS<SP, EP, Planner, RM>::MotionPlannerROS(
         RM* _rm,
         CollisionSpaceScene* _scene,
         Planner* _planner,
-        smpl::OccupancyGrid* _grid_ptr ) :
-    SP(_nh, _scene, _grid_ptr), EP(_nh), m_rm_ptr{_rm},
+        smpl::OccupancyGrid* _grid_ptr,
+        bool _is_simulation) :
+    SP(_nh, _scene, _grid_ptr, _is_simulation), EP(_nh), m_rm_ptr{_rm},
+    m_is_simulation{_is_simulation},
     m_planner_ptr{_planner} {}
 
 template <typename SP, typename EP, typename Planner, typename RM>
@@ -221,7 +225,8 @@ struct Callbacks {
 
     Callbacks( ros::NodeHandle,
             CollisionSpaceScene*,
-            smpl::OccupancyGrid* );
+            smpl::OccupancyGrid*,
+            bool is_simulation = false);
     bool canCallPlanner() const;
     bool updateMap(PlanningEpisode);
     bool updateStart(const moveit_msgs::RobotState&, RobotModel*);
@@ -245,7 +250,7 @@ struct Callbacks {
     ros::Subscriber m_sub_octomap;
     ros::Subscriber m_sub_occgrid;
 
-    ros::Publisher m_path_pub;
+    //ros::Publisher m_path_pub;
 
     CollisionSpaceScene* m_collision_scene;
     smpl::OccupancyGrid* m_grid;
