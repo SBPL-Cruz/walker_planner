@@ -10,7 +10,8 @@ Callbacks<RM>::Callbacks(ros::NodeHandle _nh,
         CollisionSpaceScene* _scene,
         smpl::OccupancyGrid* _grid_ptr,
         bool _is_simulation) :
-    m_nh{_nh}, m_collision_scene{_scene}, m_grid{_grid_ptr}
+    m_nh{_nh}, m_is_simulation{_is_simulation},
+    m_collision_scene{_scene}, m_grid{_grid_ptr}
 {
 
     m_start_received = false;
@@ -25,12 +26,9 @@ Callbacks<RM>::Callbacks(ros::NodeHandle _nh,
         //m_path_pub = m_nh.advertise<walker_planner::Path1>("Robot_path", 1000);
         m_sub_occgrid = m_nh.subscribe("/map", 1000, &Callbacks::occgridCallback, this);
         m_sub_octomap = m_nh.subscribe("/octomap_binary", 1000, &Callbacks::octomapCallback, this);
-        //m_sub_start = m_nh.subscribe("/poseupdate", 1000, &Callbacks::startCallback, this);
-        //m_sub_pose = m_nh.subscribe("/Grasps", 1000, &Callbacks::poseCallback, this);
-
         m_status_variables = {
-            &m_octomap_received,
-            &m_occgrid_received
+            //&m_octomap_received,
+            //&m_occgrid_received
         };
     } else
         m_status_variables = { };
@@ -65,18 +63,21 @@ bool Callbacks<RM>::updateMap(PlanningEpisode _ep){
         //m_collision_scene->ProcessCollisionObjectMsg(object);
     //}
 
-    std::string filename;
-    m_nh.getParam("object_filename", filename);
+    if(this->m_is_simulation)
+    {
+        std::string filename;
+        m_nh.getParam("object_filename", filename);
 
-    ROS_INFO("Object filename: %s", filename.c_str());
+        ROS_INFO("Object filename: %s", filename.c_str());
 
-    auto objects = GetCollisionObjects(filename, m_grid->getReferenceFrame());
-    for (auto& object : objects)
-        m_collision_scene->ProcessCollisionObjectMsg(object);
+        auto objects = GetCollisionObjects(filename, m_grid->getReferenceFrame());
+        for (auto& object : objects)
+            m_collision_scene->ProcessCollisionObjectMsg(object);
 
-    //m_grid->addPointsToField(m_occgrid_points);
+        //m_grid->addPointsToField(m_occgrid_points);
 
-    SV_SHOW_INFO(m_collision_scene->getOccupiedVoxelsVisualization());
+        SV_SHOW_INFO(m_collision_scene->getOccupiedVoxelsVisualization());
+    }
 
     return true;
 }

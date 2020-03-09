@@ -240,6 +240,7 @@ struct Callbacks {
     private:
 
     ros::NodeHandle m_nh;
+    bool m_is_simulation = false;
 
     std::vector<bool*> m_status_variables;
     bool m_start_received;

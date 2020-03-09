@@ -35,6 +35,97 @@
 using Path = std::vector< std::array<double, 3> >;
 using Point = std::pair<double, double>;
 
+class ReadExperimentFromParamServer {
+    public:
+    ReadExperimentFromParamServer(ros::NodeHandle);
+    moveit_msgs::RobotState getStart(PlanningEpisode);
+    smpl::GoalConstraint getGoal(PlanningEpisode);
+    bool canCallPlanner() const;
+
+    private:
+    void startCallback(const geometry_msgs::PoseWithCovarianceStamped start){
+        geometry_msgs::Pose start_base = start.pose.pose;
+        moveit_msgs::RobotState start_state;
+        if (!ReadInitialConfiguration(m_nh, start_state)) {
+            ROS_ERROR("Failed to get initial configuration.");
+            return;
+        }
+
+        start_state.joint_state.position[0] = start_base.position.x;
+        start_state.joint_state.position[1] = start_base.position.y;
+
+        {
+            double roll, pitch, yaw;
+            tf::Quaternion q(
+                start_base.orientation.x,
+                start_base.orientation.y,
+                start_base.orientation.z,
+                start_base.orientation.w);
+            tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
+            start_state.joint_state.position[2] = yaw;
+        }
+        m_start_state = start_state;
+        m_start_received = true;
+    }
+
+    void goalCallback(const geometry_msgs::PoseStamped _grasp){
+        geometry_msgs::Pose grasp = _grasp.pose;
+
+        smpl::Affine3 goal_pose;
+        tf::poseMsgToEigen( grasp, goal_pose);
+
+        smpl::GoalConstraint goal;
+        goal.type = smpl::GoalType::XYZ_RPY_GOAL;
+        goal.pose = goal_pose;
+        goal.xyz_tolerance[0] = 0.10;
+        goal.xyz_tolerance[1] = 0.10;
+        goal.xyz_tolerance[2] = 0.10;
+        goal.rpy_tolerance[0] = 0.70;
+        goal.rpy_tolerance[1] = 0.70;
+        goal.rpy_tolerance[2] = 0.70;
+
+        m_goal_constraint = goal;
+        m_goal_received = true;
+    }
+
+    ros::NodeHandle m_nh;
+    ros::Subscriber m_sub_goal;
+    ros::Subscriber m_sub_start;
+    moveit_msgs::RobotState m_start_state;
+    smpl::GoalConstraint m_goal_constraint;
+    bool m_start_received = false;
+    bool m_goal_received = false;
+    std::vector<bool*> m_status_variables;
+};
+
+ReadExperimentFromParamServer::ReadExperimentFromParamServer(ros::NodeHandle nh){
+    m_nh = nh;
+    m_sub_start = m_nh.subscribe("/poseupdate", 1000, &ReadExperimentFromParamServer::startCallback, this);
+    m_sub_goal = m_nh.subscribe("/Grasps", 1000, &ReadExperimentFromParamServer::goalCallback, this);
+    m_status_variables = {
+        &m_start_received,
+        &m_goal_received
+    };
+}
+
+moveit_msgs::RobotState ReadExperimentFromParamServer::getStart(PlanningEpisode _ep){
+    return m_start_state;
+}
+
+smpl::GoalConstraint ReadExperimentFromParamServer::getGoal(PlanningEpisode _ep){
+    return m_goal_constraint;
+}
+
+bool ReadExperimentFromParamServer::canCallPlanner() const {
+    return std::all_of(
+            m_status_variables.begin(), m_status_variables.end(),
+            [](bool* x){
+                return *x;
+                }
+            );
+}
+
 class ReadExperimentsFromFile {
     public:
     ReadExperimentsFromFile(ros::NodeHandle);
@@ -132,7 +223,8 @@ bool ReadExperimentsFromFile::init( std::string _start_file, std::string _goal_f
     start_stream.open(_start_file);
     ROS_ERROR("%s", _start_file.c_str());
     if(!start_stream)
-        throw "Could not read Start file.";
+        //throw "Could not read Start file.";
+        ROS_WARN("Could not read start file.");
     //std::string header;
     char header[100];
     start_stream.getline(header, 100, '\n');
@@ -151,7 +243,8 @@ bool ReadExperimentsFromFile::init( std::string _start_file, std::string _goal_f
     goal_stream.open(_goal_file);
     ROS_ERROR("%s", _goal_file.c_str());
     if(!goal_stream)
-        throw "Could not read Goal file.";
+        //throw "Could not read Goal file.";
+        ROS_WARN("Could not read Goal file.");
 
     char line2[100];
     while(goal_stream.getline(line2, 100, '\n')){
@@ -484,8 +577,16 @@ int main(int argc, char** argv) {
         ReadExperimentsFromFile,
         MotionPlanner,
         smpl::KDLRobotModel>
-        mplanner_ros(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get(),
+        mplanner_ros_sim(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get(),
                 is_simulation);
+
+    MotionPlannerROS< Callbacks<smpl::KDLRobotModel>,
+        ReadExperimentFromParamServer,
+        MotionPlanner,
+        smpl::KDLRobotModel>
+        mplanner_ros_demo(ph, rm.get(), scene_ptr.get(), mplanner.get(), grid_ptr.get(),
+                is_simulation);
+
 
     ExecutionStatus status = ExecutionStatus::WAITING;
     //while(status == ExecutionStatus::WAITING) {
@@ -494,6 +595,8 @@ int main(int argc, char** argv) {
     std::vector<smpl::RobotState> plan;
     auto path_pub = nh.advertise<walker_planner::Path1>("Robot_path", 1000);
     PlanningEpisode ep = planning_config.start_planning_episode;
+    if(!is_simulation)
+        ep  = 0;
     while(ep <= planning_config.end_planning_episode)
     {
         ROS_ERROR("Episode: %d", ep);
@@ -510,18 +613,28 @@ int main(int argc, char** argv) {
             continue;
         }
 
-        status = mplanner_ros.execute(ep);
+        if(is_simulation)
+            status = mplanner_ros_sim.execute(ep);
+        else
+            status = mplanner_ros_demo.execute(ep);
+
     //}
         if(status == ExecutionStatus::SUCCESS)
         {
+            MPlanner::PlannerSolution planner_soltn;
+            if(is_simulation)
+                planner_soltn = mplanner_ros_sim.getPlan(ep);
+            else
+                planner_soltn = mplanner_ros_demo.getPlan(ep);
+
             ROS_INFO("----------------");
-            ROS_INFO("Planning Time: %f", mplanner_ros.getPlan(ep).planning_time);
+            ROS_INFO("Planning Time: %f", planner_soltn.planning_time);
             ROS_INFO("----------------");
-            plan = mplanner_ros.getPlan(ep).robot_states;
+            plan = planner_soltn.robot_states;
 
             // Write to file.
             stats_file.open("planning_stats.txt", std::ios::app);
-            auto plan_stats = mplanner_ros.getPlan(ep);
+            auto plan_stats = planner_soltn;
             stats_file<<std::to_string(ep)<<" "<<max_planning_time<<" ";
             stats_file<<plan_stats.planning_time << " " << plan_stats.num_expansions << " " << plan_stats.cost<<" ";
             stats_file<<std::to_string(eps)<<" "<<std::to_string(eps_mha)<< " ";
@@ -562,7 +675,8 @@ int main(int argc, char** argv) {
         if(status != ExecutionStatus::WAITING)
         {
             status = ExecutionStatus::WAITING;
-            ep++;
+            if(is_simulation)
+                ep++;
         }
         ros::spinOnce();
     }

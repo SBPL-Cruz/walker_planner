@@ -3,8 +3,6 @@ initial_configuration:
     - { name: x, position: 5.0 }
     - { name: y, position: 4.0 }
     - { name: theta, position: 1.57 }
-    - { name: head_yaw,   position: 0.0 }
-    - { name: head_pitch,   position: 0.0 }
     - { name: right_j1, position: -0.0 }
     - { name: right_j2, position: -0.0 }
     - { name: right_j3, position: 0.0 }
